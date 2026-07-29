@@ -52,7 +52,7 @@ export async function submitContactForm(formData: {
     const data = await resend.emails.send({
       from: "Website Kontaktformular <onboarding@resend.dev>", // Später durch z.B. info@maurer-events.de ersetzen, sobald Domain verifiziert ist
       to: ["info@maurer-events.de"],
-      reply_to: email,
+      replyTo: email,
       subject: `Neue Anfrage von ${name}`,
       text: `Neue Kontaktanfrage über die Website:\n\nName: ${name}\nE-Mail: ${email}\nTelefon: ${phone || 'Nicht angegeben'}\n\nNachricht:\n${message}`,
     });
