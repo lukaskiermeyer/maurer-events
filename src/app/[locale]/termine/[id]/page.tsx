@@ -2,8 +2,12 @@ import React from "react";
 import { getEvents } from "@/app/actions/events";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReservationSection from "@/components/ReservationSection";
+import dynamic from "next/dynamic";
 
+const ReservationSection = dynamic(() => import("@/components/ReservationSection"), { 
+  ssr: false,
+  loading: () => <div className="animate-pulse h-96 bg-white/5 rounded-3xl mt-32"></div>
+});
 export const runtime = 'edge';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {

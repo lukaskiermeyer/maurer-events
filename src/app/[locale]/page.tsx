@@ -1,9 +1,14 @@
+import dynamic from "next/dynamic";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import ServicesSection from "@/components/ServicesSection";
 import EventsSection from "@/components/EventsSection";
-import ContactSection from "@/components/ContactSection";
 import { getEvents } from "@/app/actions/events";
+
+const ContactSection = dynamic(() => import("@/components/ContactSection"), { 
+  ssr: false,
+  loading: () => <div className="animate-pulse h-96 bg-base-light rounded-3xl mt-24"></div>
+});
 
 export const runtime = 'edge';
 

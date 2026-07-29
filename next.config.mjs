@@ -3,8 +3,10 @@ import { setupDevPlatform } from '@cloudflare/next-on-pages/next-dev';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion', '@stripe/stripe-js', 'stripe', 'date-fns'],
+  },
   async headers() {
     return [
       {
