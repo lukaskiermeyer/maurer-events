@@ -5,7 +5,7 @@ import { events, reservations } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20' as any,
+  apiVersion: '2026-06-24.dahlia',
 });
 
 export async function POST(req: Request) {
@@ -28,9 +28,9 @@ export async function POST(req: Request) {
 
     // 2. Erstelle Stripe Checkout Session
     const origin = req.headers.get('origin') || 'http://localhost:3000';
-    
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'paypal', 'giropay'], // Lokale Zahlungsmethoden
+      payment_method_types: ['card', 'paypal', 'klarna', 'sepa_debit'],
       line_items: [
         {
           price_data: {
