@@ -3,8 +3,6 @@ import { routing } from './i18n/routing';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
-
 const intlMiddleware = createMiddleware(routing);
 
 export default function middleware(req: NextRequest) {
