@@ -4,7 +4,11 @@ import { db } from '@/db';
 import { events, reservations } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+// 1. Verhindert die statische Datensammlung beim Build
+export const dynamic = 'force-dynamic';
+
+// 2. Fallback-String, falls STRIPE_SECRET_KEY beim Build nicht vorhanden ist
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build', {
   apiVersion: '2026-06-24.dahlia',
 });
 
@@ -16,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Hole Event-Details aus der DB (insbesondere Mindestabnahme)
+    // Hole Event-Details aus der DB
     const eventList = await db.select().from(events).where(eq(events.id, eventId));
     if (eventList.length === 0) {
       return NextResponse.json({ error: 'Event nicht gefunden' }, { status: 404 });
@@ -26,7 +30,7 @@ export async function POST(req: Request) {
     const minimumConsumption = event.minimumConsumption || 5000; // in Cent
     const amountTotal = minimumConsumption * guestCount;
 
-    // 2. Erstelle Stripe Checkout Session
+    // Erstelle Stripe Checkout Session
     const origin = req.headers.get('origin') || 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
       customer_email: email,
     });
 
-    // 3. Speichere Reservierung als 'pending' in der Datenbank
+    // Speichere Reservierung als 'pending'
     await db.insert(reservations).values({
       eventId: event.id,
       guestName: name,
