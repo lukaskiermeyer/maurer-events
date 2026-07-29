@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 
@@ -38,27 +38,20 @@ const glowColors = [
   "rgba(239, 68, 68, 0.12)",
 ];
 
-// --- INTERAKTIVER NEBEL (PERFORMANCE OPTIMIERT) ---
+// --- INTERAKTIVER NEBEL ---
 const InteractiveFog = () => {
-  // Framer Motion Values statt React State nutzen, um Re-Renders zu vermeiden!
-  const mouseX = useMotionValue(-1000);
-  const mouseY = useMotionValue(-1000);
-
-  // Fügt die physikalische (weiche) Verzögerung hinzu
-  const springX = useSpring(mouseX, { damping: 35, stiffness: 120, mass: 0.5 });
-  const springY = useSpring(mouseY, { damping: 35, stiffness: 120, mass: 0.5 });
+  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      // Werte direkt an die GPU übergeben, ohne React neu zu rendern
-      mouseX.set(e.clientX - 200);
-      mouseY.set(e.clientY - 200);
+      setMousePos({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [mouseX, mouseY]);
+  }, []);
 
   return (
+    // GEÄNDERT: z-15 zu z-40
     <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
       <motion.div
         className="absolute inset-0 opacity-40 mix-blend-screen blur-[60px]"
@@ -75,10 +68,13 @@ const InteractiveFog = () => {
       <motion.div
         className="absolute w-[400px] h-[400px] rounded-full blur-[80px] pointer-events-none mix-blend-screen"
         style={{
-          x: springX,
-          y: springY,
           background: "radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(59,130,246,0.1) 40%, transparent 70%)",
         }}
+        animate={{
+          x: mousePos.x - 200,
+          y: mousePos.y - 200,
+        }}
+        transition={{ type: "spring", damping: 35, stiffness: 120, mass: 0.5 }}
       />
     </div>
   );
@@ -145,61 +141,6 @@ const TclSpot = () => {
   );
 };
 
-// --- DISCOKUGEL ---
-const DiscoBall = () => {
-  return (
-    <div className="absolute top-0 left-[50%] -translate-x-[50%] z-[60] flex flex-col items-center pointer-events-none drop-shadow-2xl">
-      <div className="w-[2px] h-[60px] md:h-[120px] bg-gradient-to-b from-gray-800 to-gray-400" />
-
-      <div
-        className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden"
-        style={{
-          background: "radial-gradient(circle at 30% 30%, #f3f4f6 0%, #9ca3af 50%, #374151 100%)",
-          boxShadow: "inset -10px -10px 20px rgba(0,0,0,0.6), inset 10px 10px 20px rgba(255,255,255,0.4)"
-        }}
-      >
-        {/* Animated Grid */}
-        <motion.div
-          className="absolute top-0 bottom-0 left-0 w-[200%] opacity-50 mix-blend-overlay"
-          style={{
-            backgroundImage: `
-               linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px),
-               linear-gradient(0deg, rgba(255,255,255,0.9) 1px, transparent 1px)
-             `,
-            backgroundSize: "8px 8px",
-          }}
-          animate={{ x: [0, -80] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-        />
-
-        {/* Lichtreflexe (Glanzpunkte) animiert */}
-        <motion.div
-          className="absolute inset-0 opacity-80 mix-blend-screen"
-          animate={{
-            background: [
-              "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.8) 0%, transparent 40%)",
-              "radial-gradient(circle at 80% 60%, rgba(255,255,255,0.8) 0%, transparent 40%)",
-              "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.8) 0%, transparent 40%)"
-            ]
-          }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute inset-0 opacity-60 mix-blend-screen"
-          animate={{
-            background: [
-              "radial-gradient(circle at 70% 20%, rgba(255,255,255,0.7) 0%, transparent 30%)",
-              "radial-gradient(circle at 30% 80%, rgba(255,255,255,0.7) 0%, transparent 30%)",
-              "radial-gradient(circle at 70% 20%, rgba(255,255,255,0.7) 0%, transparent 30%)"
-            ]
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        />
-      </div>
-    </div>
-  );
-};
-
 export default function HeroSection() {
   const t = useTranslations("Hero");
 
@@ -232,10 +173,8 @@ export default function HeroSection() {
       {/* --- INTERAKTIVER NEBEL --- */}
       <InteractiveFog />
 
-      {/* --- DISCOKUGEL --- */}
-      <DiscoBall />
-
       {/* --- Die BEIDEN TCL SPOTS --- */}
+      {/* GEÄNDERT: z-10 zu z-30 damit das Licht über der Bühne, aber hinter dem Content liegt */}
       <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden max-w-[1600px] mx-auto w-full">
         <div className="absolute top-2 -left-6 md:-left-8 lg:-left-2">
           <TclSpot />
@@ -246,6 +185,7 @@ export default function HeroSection() {
       </div>
 
       {/* --- CONTENT WRAPPER --- */}
+      {/* GEÄNDERT: z-20 zu z-50, damit der gesamte Inhalt (inkl. Buttons) vor der Bühne liegt */}
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 relative z-50 flex-grow flex flex-col h-full pt-[140px] sm:pt-[160px] md:pt-[120px] pb-28 md:pb-48">
 
         <div className="flex-[1.5] md:flex-[2]"></div>
@@ -287,6 +227,7 @@ export default function HeroSection() {
 
         {/* CTAs */}
         <div className="flex flex-col items-center justify-start pt-8 md:pt-12 w-full shrink-0">
+          {/* GEÄNDERT: z-30 zu z-50 (obwohl es durch den Parent z-50 ohnehin vorne ist, zur Sicherheit beibehalten) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -312,6 +253,7 @@ export default function HeroSection() {
       </div>
 
       {/* --- UNTERER BEREICH: RESPONSIVE 3D BÜHNE & WAND --- */}
+      {/* GEÄNDERT: z-30 zu z-10 */}
       <div className="absolute bottom-0 left-0 w-full z-10 pointer-events-none flex flex-col justify-end overflow-hidden">
 
         {/* 1. Bühnenboden */}
@@ -352,6 +294,7 @@ export default function HeroSection() {
         </div>
 
         {/* 2. Bühnenwand (Frontalansicht) */}
+        {/* GEÄNDERT: z-40 zu z-20 */}
         <div className="w-full h-[7vh] sm:h-[8vh] md:h-[10vh] min-h-[50px] sm:min-h-[70px] md:min-h-[120px] bg-[#1a0f08] relative shadow-[0_-20px_50px_rgba(0,0,0,0.95)] z-20 border-t-[4px] md:border-t-[6px] border-[#3B2414]">
 
           {/* Helle Kante oben (Lichtkante) */}
