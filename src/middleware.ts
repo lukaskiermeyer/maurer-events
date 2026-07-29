@@ -7,11 +7,11 @@ export const runtime = 'edge';
 
 const intlMiddleware = createMiddleware(routing);
 
-export default function proxy(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   // Check if it's an admin route (e.g., /de/admin or /admin)
   if (req.nextUrl.pathname.includes('/admin')) {
     const basicAuth = req.headers.get('authorization');
-    
+
     if (basicAuth) {
       const authValue = basicAuth.split(' ')[1];
       const [user, pwd] = atob(authValue).split(':');
@@ -36,6 +36,5 @@ export default function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Match only internationalized pathnames, and ensure admin path is covered
   matcher: ['/', '/(de|en)/:path*']
 };
