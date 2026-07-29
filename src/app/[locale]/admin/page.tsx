@@ -1,6 +1,8 @@
 import { getEvents } from "@/app/actions/events";
 import AdminEventList from "./AdminEventList";
 
+export const runtime = 'edge';
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {

@@ -5,6 +5,8 @@ import EventsSection from "@/components/EventsSection";
 import ContactSection from "@/components/ContactSection";
 import { getEvents } from "@/app/actions/events";
 
+export const runtime = 'edge';
+
 export const revalidate = 60; // Optional: revalidate every minute if not using on-demand revalidation
 
 export default async function Home() {

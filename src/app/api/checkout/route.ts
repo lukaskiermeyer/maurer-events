@@ -4,6 +4,8 @@ import { db } from '@/db';
 import { events, reservations } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
+export const runtime = 'edge';
+
 // 1. Verhindert die statische Datensammlung beim Build
 export const dynamic = 'force-dynamic';
 

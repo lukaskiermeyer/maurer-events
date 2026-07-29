@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReservationSection from "@/components/ReservationSection";
 
+export const runtime = 'edge';
+
 // Dies generiert statische Seiten für alle bekannten Events
 export async function generateStaticParams() {
   const upcomingEvents = await getEvents();

@@ -1,5 +1,7 @@
 import React from "react";
 
+export const runtime = 'edge';
+
 export const metadata = {
   title: "Impressum | MAURER EVENTS",
 };

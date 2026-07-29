@@ -2,6 +2,8 @@ import React from "react";
 import { getEvents } from "@/app/actions/events";
 import Link from "next/link";
 
+export const runtime = 'edge';
+
 export const metadata = {
   title: "Alle Termine | MAURER EVENTS",
 };
