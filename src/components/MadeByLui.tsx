@@ -10,7 +10,7 @@ export default function MadeByLui({ dark = false }: { dark?: boolean }) {
 
     return (
         <a
-            href="https://bento.me/lui"
+            href="https://madebylui.net"
             target="_blank"
             rel="noopener noreferrer"
             className="group inline-block no-underline opacity-80 hover:opacity-100 transition-opacity"
