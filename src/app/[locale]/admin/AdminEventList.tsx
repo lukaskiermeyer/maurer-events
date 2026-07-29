@@ -12,7 +12,8 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
     description: "",
     imageUrl: "",
     link: "/termine/ohne-reservierung",
-    reservable: false
+    reservable: false,
+    minimumConsumption: 50 // Default 50€
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +25,7 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
         date: new Date(formData.date)
       });
       setFormData({
-        title: "", date: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false
+        title: "", date: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, minimumConsumption: 50
       });
       window.location.reload();
     } catch (err) {
@@ -101,6 +102,20 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
             />
             <label htmlFor="res" className="text-sm font-bold cursor-pointer">Tische reservierbar?</label>
           </div>
+
+          {formData.reservable && (
+            <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg animate-fade-in">
+              <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
+              <input 
+                type="number" 
+                min="0"
+                value={formData.minimumConsumption} 
+                onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} 
+                className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" 
+              />
+              <p className="text-xs mt-2 opacity-70">Dieser Betrag wird pro Person im Checkout verlangt (z.B. 50 = 50€).</p>
+            </div>
+          )}
           
           <button disabled={loading} type="submit" className="w-full bg-accent-green text-white font-bold uppercase tracking-widest py-3 rounded-lg mt-4 disabled:opacity-50 hover:bg-base-dark transition-colors">
             {loading ? "Speichert..." : "Event Speichern"}

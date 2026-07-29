@@ -1,18 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations("Navbar");
 
   useEffect(() => {
     // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
-    if (pathname !== "/") {
+    // Need to handle locales in pathname, e.g., /en or /de or /
+    const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
+    
+    if (!isHome) {
       setShowNavbar(true);
       return;
     }
@@ -35,11 +41,11 @@ export default function Navbar() {
   }, [pathname]);
 
   const navLinks = [
-    { name: "Startseite", href: "/#start" },
-    { name: "Über uns", href: "/#about" },
-    { name: "Dienstleistungen", href: "/#services" },
-    { name: "Veranstaltungen", href: "/#events" },
-    { name: "Kontakt", href: "/#contact" },
+    { name: t("startseite"), href: "/#start" },
+    { name: t("about"), href: "/#about" },
+    { name: t("services"), href: "/#services" },
+    { name: t("events"), href: "/#events" },
+    { name: t("contact"), href: "/#contact" },
   ];
 
   return (
@@ -58,26 +64,28 @@ export default function Navbar() {
             </div>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-10">
+            <div className="hidden md:flex items-center space-x-8 lg:space-x-10">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
-                  href={link.href}
+                  href={link.href as any}
                   className="text-base-dark hover:text-accent-green font-sans text-sm font-bold tracking-wide transition-colors"
                 >
                   {link.name}
                 </Link>
               ))}
+              <LanguageSwitcher />
               <Link
                 href="/#contact"
                 className="px-6 py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-sm hover:bg-base-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
-                Anfrage senden
+                {t("event_anfragen")}
               </Link>
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center gap-4">
+              <LanguageSwitcher />
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-base-dark hover:text-accent-green focus:outline-none"
@@ -107,7 +115,7 @@ export default function Navbar() {
                 {navLinks.map((link) => (
                   <Link
                     key={link.name}
-                    href={link.href}
+                    href={link.href as any}
                     onClick={() => setIsOpen(false)}
                     className="block py-3 text-base-dark font-sans text-lg font-bold border-b border-border-light/50 hover:text-accent-green"
                   >
@@ -119,7 +127,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="block w-full text-center mt-6 px-6 py-4 bg-accent-green text-white rounded-xl font-display font-bold shadow-md"
                 >
-                  Anfrage senden
+                  {t("event_anfragen")}
                 </Link>
               </div>
             </motion.div>

@@ -1,19 +1,24 @@
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import MadeByLui from "./MadeByLui";
 
 export default function Footer() {
+  const t = useTranslations("Footer");
+  const navT = useTranslations("Navbar"); // Re-use Navbar translations for navigation links
+
   return (
-    <footer className="bg-accent-green text-white py-24">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 md:gap-8">
+    <footer className="bg-accent-green text-white">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-16 md:py-24">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8">
           
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="font-display font-black text-4xl tracking-tighter uppercase mb-6 text-white">
-              MAURER<span className="text-white/70">EVENTS</span>
-            </h3>
+          <div className="col-span-2 md:col-span-2 flex flex-col items-center md:items-start text-center md:text-left">
+            <Link href="/#start" className="mb-6 md:mb-8 hover:opacity-90 transition-opacity block">
+              <img src="/Logo.png" alt="Maurer Events Logo" className="h-16 sm:h-20 md:h-24 w-auto object-contain brightness-0 invert drop-shadow-md" />
+            </Link>
             <p className="font-sans text-white/80 mb-8 max-w-sm text-sm leading-relaxed">
-              Bayerisches Herz. Moderne Umsetzung. Seit 2025 bringen wir Tradition und erstklassige Event-Ästhetik zusammen.
+              {t("brand_desc")}
             </p>
-            <div className="flex space-x-4">
+            <div className="flex justify-center md:justify-start space-x-4">
               {/* Social Links placeholder (Softer style) */}
               <a href="#" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white hover:text-accent-green transition-colors">
                 <span className="sr-only">Facebook</span>
@@ -26,19 +31,19 @@ export default function Footer() {
             </div>
           </div>
           
-          <div>
-            <h4 className="font-display font-bold mb-6 text-white uppercase tracking-widest text-xs">Navigation</h4>
-            <ul className="space-y-4 text-sm font-bold text-white/80">
-              <li><Link href="/#about" className="hover:text-white transition-colors">Über uns</Link></li>
-              <li><Link href="/#services" className="hover:text-white transition-colors">Dienstleistungen</Link></li>
-              <li><Link href="/#events" className="hover:text-white transition-colors">Veranstaltungen</Link></li>
-              <li><Link href="/#contact" className="hover:text-white transition-colors">Kontakt</Link></li>
+          <div className="flex flex-col items-start md:items-start text-left">
+            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">Navigation</h4>
+            <ul className="space-y-3 md:space-y-4 text-sm font-bold text-white/80">
+              <li><Link href="/#about" className="hover:text-white transition-colors">{navT("about")}</Link></li>
+              <li><Link href="/#services" className="hover:text-white transition-colors">{navT("services")}</Link></li>
+              <li><Link href="/#events" className="hover:text-white transition-colors">{navT("events")}</Link></li>
+              <li><Link href="/#contact" className="hover:text-white transition-colors">{navT("contact")}</Link></li>
             </ul>
           </div>
           
-          <div>
-            <h4 className="font-display font-bold mb-6 text-white uppercase tracking-widest text-xs">Kontakt</h4>
-            <ul className="space-y-4 text-white/80 text-sm">
+          <div className="flex flex-col items-start md:items-start text-left">
+            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("contact_title")}</h4>
+            <ul className="space-y-3 md:space-y-4 text-white/80 text-sm break-words hyphens-auto pr-2">
               <li>MAURER EVENTS</li>
               <li>Musterstraße 1</li>
               <li>80331 München</li>
@@ -47,12 +52,19 @@ export default function Footer() {
             </ul>
           </div>
         </div>
+      </div>
         
-        <div className="mt-24 pt-8 border-t border-white/20 text-white/60 text-xs flex flex-col md:flex-row justify-between items-center font-sans font-medium">
-          <p>&copy; {new Date().getFullYear()} MAURER EVENTS. ALLE RECHTE VORBEHALTEN.</p>
-          <div className="flex space-x-8 mt-4 md:mt-0">
-            <Link href="/impressum" className="hover:text-white transition-colors">Impressum</Link>
-            <Link href="/datenschutz" className="hover:text-white transition-colors">Datenschutz</Link>
+      <div className="bg-base-dark">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-2 flex flex-col md:flex-row justify-between items-center md:items-center gap-2 md:gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left text-xs text-white/60 font-sans font-medium">
+            <p>&copy; {new Date().getFullYear()} {t("rights")}</p>
+            <div className="flex space-x-6 md:space-x-8">
+              <Link href="/impressum" className="hover:text-white transition-colors">{t("impressum")}</Link>
+              <Link href="/datenschutz" className="hover:text-white transition-colors">{t("datenschutz")}</Link>
+            </div>
+          </div>
+          <div>
+            <MadeByLui dark={true} />
           </div>
         </div>
       </div>

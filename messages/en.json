@@ -1,0 +1,123 @@
+{
+  "Navbar": {
+    "startseite": "Home",
+    "about": "About Us",
+    "services": "Services",
+    "events": "Events",
+    "contact": "Contact",
+    "event_anfragen": "Inquire Event"
+  },
+  "Hero": {
+    "badge": "Est. 2025 · Modern Festivities",
+    "title_1": "Tradition",
+    "title_2": "reimagined.",
+    "subtitle": "Experience authentic celebrations with a modern twist. From small village festivals to exclusive event gastronomy – we bring the traditional host into the present.",
+    "cta_primary": "Inquire Event",
+    "cta_secondary": "View Dates",
+    "scroll": "Scroll"
+  },
+  "About": {
+    "title_1_alt": "Your",
+    "title_2_alt": "Host",
+    "title": "Welcome to Maurerwirt!",
+    "subtitle": "Bavarian Roots. Modern Celebrations.",
+    "p1": "I am Florian Maurer – known to many simply as \"Maurerwirt\". With roots in the Halbauer butchery, I learned early on what quality and genuine hospitality mean. Today, I bring this tradition into the modern event world.",
+    "p2": "Whether it's a traditional folk festival, an elegant company anniversary, or a very personal club party – we combine Bavarian warmth with precise planning and professional equipment.",
+    "quote": "\"A good party doesn't plan itself, but it should feel like it does.\"",
+    "p3": "Let's work together to create an event that your guests will remember fondly for a long time.",
+    "placeholder_img": "Placeholder: Photo of Florian Maurer",
+    "placeholder_desc": "(Maurerwirt) in Lederhosen, modern setting"
+  },
+  "Services": {
+    "title": "Our Services",
+    "subtitle": "Tailored for every occasion",
+    "items": {
+      "volksfest": {
+        "title": "Folk Festival",
+        "description": "Large festival tents, traditional music, and the best Bavarian atmosphere."
+      },
+      "firmenevent": {
+        "title": "Corporate Event",
+        "description": "Professional B2B events with that special touch."
+      },
+      "vereinsfest": {
+        "title": "Club Party",
+        "description": "Celebrate together, live tradition. We take care of everything."
+      },
+      "tagesveranstaltung": {
+        "title": "Day Events",
+        "description": "From small celebrations to large day trips."
+      }
+    }
+  },
+  "Events": {
+    "title_1_alt": "Our",
+    "title_2_alt": "Events",
+    "title": "Upcoming Events",
+    "subtitle": "Come by and celebrate with us",
+    "view_all": "View all dates",
+    "date_label": "Date",
+    "details_btn": "Details",
+    "no_events": "No events found."
+  },
+  "Contact": {
+    "title": "Let's Talk!",
+    "subtitle": "Tell us about your plans and we'll turn them into a celebration.",
+    "location": "Location",
+    "email": "Email",
+    "phone": "Phone",
+    "form_title": "Event Inquiry",
+    "form_success_title": "Thank you for your inquiry!",
+    "form_success_desc": "We will get back to you shortly with an initial concept.",
+    "form_success_btn": "Send another inquiry",
+    "label_name": "Name / Company",
+    "placeholder_name": "John Doe",
+    "label_email": "Email Address",
+    "placeholder_email": "john@example.com",
+    "label_type": "Event Type",
+    "option_default": "Please select...",
+    "option_volksfest": "Folk Festival / Beer Tent",
+    "option_firma": "Company Event / Anniversary",
+    "option_verein": "Club Party",
+    "option_privat": "Private Celebration / Wedding",
+    "option_other": "Other",
+    "label_message": "Your Message",
+    "placeholder_message": "Tell us a bit about your planned event...",
+    "btn_submit": "Send Inquiry",
+    "btn_submitting": "Sending..."
+  },
+  "Footer": {
+    "brand_desc": "We plan, you celebrate. Since 2025, we bring Bavarian tradition and professional event expertise together.",
+    "links_title": "Links",
+    "contact_title": "Contact",
+    "rights": "Maurer Events. All rights reserved.",
+    "impressum": "Imprint",
+    "datenschutz": "Privacy Policy"
+  },
+  "Reservation": {
+    "title_1_alt": "Reserve",
+    "title_2_alt": "Table",
+    "title": "Secure your spot",
+    "subtitle": "Guaranteed seats and best service.",
+    "step_1": "1. Event & Guests",
+    "step_2": "2. Time",
+    "step_3": "3. Consumption Packages",
+    "select_event": "Select Event",
+    "guests": "Guests",
+    "persons": "Persons",
+    "summary": "Summary",
+    "event_time": "Event & Time",
+    "consumption_package": "Consumption Package",
+    "name_label": "Name / Reservation for",
+    "name_placeholder": "John Doe",
+    "email_label": "Email for confirmation",
+    "email_placeholder": "john@example.com",
+    "total_amount": "Total Amount",
+    "voucher_hint": "(100% as voucher)",
+    "submit_btn": "Binding Reservation",
+    "submitting": "Just a moment...",
+    "error_checkout": "Checkout Error",
+    "error_connection": "Connection Error",
+    "popular": "Popular"
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "Navbar": {
+    "startseite": "Startseite",
+    "about": "Über uns",
+    "services": "Dienstleistungen",
+    "events": "Veranstaltungen",
+    "contact": "Kontakt",
+    "event_anfragen": "Event Anfragen"
+  },
+  "Hero": {
+    "badge": "Est. 2025 · Modernes Festwesen",
+    "title_1": "Tradition",
+    "title_2": "neu gedacht.",
+    "subtitle": "Erlebe zünftige Feste, modern interpretiert. Vom kleinen Dorffest bis zur exklusiven Eventgastronomie – wir bringen den Wirt von damals in das Heute.",
+    "cta_primary": "Event anfragen",
+    "cta_secondary": "Termine ansehen",
+    "scroll": "Scrollen"
+  },
+  "About": {
+    "title_1_alt": "Dein",
+    "title_2_alt": "Festwirt",
+    "title": "Servus beim Maurerwirt!",
+    "subtitle": "Bayerische Wurzeln. Moderne Feste.",
+    "p1": "Ich bin Florian Maurer – für viele einfach \"da Maurerwirt\". Mit Wurzeln in der Metzgerei Halbauer habe ich früh gelernt, was Qualität und echte Gastfreundschaft bedeuten. Heute bringe ich diese Tradition in die moderne Eventwelt.",
+    "p2": "Ob zünftiges Volksfest, elegantes Firmenjubiläum oder das ganz persönliche Vereinsfest – wir verbinden bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
+    "quote": "\"Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.\"",
+    "p3": "Lass uns gemeinsam ein Event auf die Beine stellen, das deinen Gästen noch lange in bester Erinnerung bleibt.",
+    "placeholder_img": "Platzhalter: Foto Florian Maurer",
+    "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting"
+  },
+  "Services": {
+    "title": "Unsere Dienstleistungen",
+    "subtitle": "Maßgeschneidert für jeden Anlass",
+    "items": {
+      "volksfest": {
+        "title": "Volksfest",
+        "description": "Große Festzelte, traditionelle Musik und beste bayerische Stimmung."
+      },
+      "firmenevent": {
+        "title": "Firmenevent",
+        "description": "Professionelle B2B-Veranstaltungen mit dem gewissen Etwas."
+      },
+      "vereinsfest": {
+        "title": "Vereinsfest",
+        "description": "Gemeinsam feiern, Tradition leben. Wir kümmern uns um alles."
+      },
+      "tagesveranstaltung": {
+        "title": "Tagesveranstaltungen",
+        "description": "Von der kleinen Feier bis zum großen Tagesausflug."
+      }
+    }
+  },
+  "Events": {
+    "title_1_alt": "Unsere",
+    "title_2_alt": "Termine",
+    "title": "Nächste Feste",
+    "subtitle": "Komm vorbei und feier mit uns",
+    "view_all": "Alle Termine ansehen",
+    "date_label": "Datum",
+    "details_btn": "Details",
+    "no_events": "Keine Veranstaltungen gefunden."
+  },
+  "Contact": {
+    "title": "Lass uns reden!",
+    "subtitle": "Erzähl uns von deinen Plänen und wir machen ein Fest daraus.",
+    "location": "Standort",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "form_title": "Event anfragen",
+    "form_success_title": "Vielen Dank für deine Anfrage!",
+    "form_success_desc": "Wir melden uns in Kürze bei dir mit einem ersten Konzept.",
+    "form_success_btn": "Weitere Anfrage senden",
+    "label_name": "Name / Firma",
+    "placeholder_name": "Max Mustermann",
+    "label_email": "E-Mail Adresse",
+    "placeholder_email": "max@beispiel.de",
+    "label_type": "Art der Veranstaltung",
+    "option_default": "Bitte wählen...",
+    "option_volksfest": "Volksfest / Bierzelt",
+    "option_firma": "Firmenevent / Jubiläum",
+    "option_verein": "Vereinsfest",
+    "option_privat": "Private Feier / Hochzeit",
+    "option_other": "Sonstiges",
+    "label_message": "Deine Nachricht",
+    "placeholder_message": "Erzähl uns etwas über dein geplantes Event...",
+    "btn_submit": "Anfrage senden",
+    "btn_submitting": "Wird gesendet..."
+  },
+  "Footer": {
+    "brand_desc": "Wir planen, du feierst. Seit 2025 bringen wir bayerische Tradition und professionelle Event-Expertise zusammen.",
+    "links_title": "Links",
+    "contact_title": "Kontakt",
+    "rights": "Maurer Events. Alle Rechte vorbehalten.",
+    "impressum": "Impressum",
+    "datenschutz": "Datenschutz"
+  },
+  "Reservation": {
+    "title_1_alt": "Tisch",
+    "title_2_alt": "reservieren",
+    "title": "Sichere dir deinen Platz",
+    "subtitle": "Garantierte Sitzplätze und bester Service am Tisch.",
+    "step_1": "1. Event & Gäste",
+    "step_2": "2. Uhrzeit",
+    "step_3": "3. Verzehrpakete",
+    "select_event": "Event auswählen",
+    "guests": "Gäste",
+    "persons": "Personen",
+    "summary": "Zusammenfassung",
+    "event_time": "Event & Zeit",
+    "consumption_package": "Verzehrpaket",
+    "name_label": "Name / Reservierung auf",
+    "name_placeholder": "Max Mustermann",
+    "email_label": "E-Mail für Bestätigung",
+    "email_placeholder": "max@beispiel.de",
+    "total_amount": "Gesamtbetrag",
+    "voucher_hint": "(100% als Gutschein)",
+    "submit_btn": "Jetzt verbindlich reservieren",
+    "submitting": "Einen Moment...",
+    "error_checkout": "Fehler beim Checkout",
+    "error_connection": "Verbindungsfehler",
+    "popular": "Beliebt"
+  }
+}

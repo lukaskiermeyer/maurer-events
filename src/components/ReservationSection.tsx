@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function ReservationSection({ initialEvents, initialSelectedEvent }: { initialEvents: any[], initialSelectedEvent?: string }) {
+  const t = useTranslations("Reservation");
   const reservableEvents = initialEvents.filter((e: any) => e.reservable);
 
   const [step, setStep] = useState(1);
@@ -11,6 +13,38 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const [selectedTime, setSelectedTime] = useState("");
   const [guests, setGuests] = useState(4);
   const [selectedPackage, setSelectedPackage] = useState("");
+  
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+
+  const handleCheckout = async () => {
+    setIsCheckingOut(true);
+    setCheckoutError("");
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: selectedEvent,
+          guestCount: guests,
+          name: guestName,
+          email: guestEmail
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setCheckoutError(data.error || t('error_checkout'));
+      }
+    } catch (err) {
+      setCheckoutError(t('error_connection'));
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
 
   const times = ["17:00 Uhr", "18:00 Uhr", "19:00 Uhr"];
   
@@ -51,7 +85,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            Tisch <span className="text-accent-green">Reservieren</span>
+            {t('title_1_alt')} <span className="text-accent-green">{t('title_2_alt')}</span>
           </motion.h2>
           <motion.p 
             className="text-lg md:text-xl opacity-80 leading-relaxed font-sans"
@@ -60,7 +94,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            Wir verzichten auf unfaire Tischgebühren! Bei uns kaufst du lediglich ein Verzehrpaket vorab, das du zu 100% am Abend einlösen kannst. Fair für dich, Planungssicherheit für uns.
+            {t('subtitle')}
           </motion.p>
         </div>
 
@@ -76,12 +110,12 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
               <div className={step === 1 ? "opacity-100" : "opacity-50 pointer-events-none"}>
                 <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
                   <span className="w-8 h-8 rounded-full bg-accent-green text-base-dark flex items-center justify-center text-sm font-black">1</span>
-                  Welches Event & Wie viele?
+                  {t('step_1')}
                 </h3>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Event wählen</label>
+                    <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('select_event')}</label>
                     <div className="grid grid-cols-1 gap-3">
                       {initialSelectedEvent ? (
                         <div className="py-3 px-4 text-sm font-bold rounded-xl border bg-accent-green/20 text-white border-accent-green/50 opacity-80 cursor-not-allowed flex justify-between items-center">
@@ -109,7 +143,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Uhrzeit</label>
+                      <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('step_2').split('.')[1]?.trim() || t('step_2')}</label>
                       <div className="grid grid-cols-3 gap-2">
                         {times.map(time => (
                           <button 
@@ -123,7 +157,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Personen</label>
+                      <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('persons')}</label>
                       <div className="flex items-center gap-4 bg-white/5 border border-white/20 rounded-xl p-1">
                         <button onClick={() => setGuests(Math.max(2, guests - 1))} className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-lg text-xl">-</button>
                         <span className="flex-1 text-center font-bold text-lg">{guests}</span>
@@ -138,7 +172,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
               <div className={step === 2 ? "opacity-100" : "opacity-50 pointer-events-none"}>
                 <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
                   <span className="w-8 h-8 rounded-full bg-accent-green text-base-dark flex items-center justify-center text-sm font-black">2</span>
-                  Verzehrpaket wählen
+                  {t('step_3').split('.')[1]?.trim() || t('step_3')}
                 </h3>
                 
                 <div className="space-y-4">
@@ -150,7 +184,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                     >
                       {pkg.popular && (
                         <span className="absolute -top-3 right-4 bg-accent-green text-base-dark text-[10px] font-black uppercase tracking-widest py-1 px-3 rounded-full">
-                          Beliebt
+                          {t('popular')}
                         </span>
                       )}
                       <div className="flex justify-between items-start mb-2">
@@ -167,22 +201,22 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
 
             {/* Right Column: Summary & Checkout */}
             <div className="bg-base-dark/50 border border-white/10 rounded-3xl p-8 flex flex-col">
-              <h3 className="text-2xl font-bold mb-8 border-b border-white/10 pb-6">Zusammenfassung</h3>
+              <h3 className="text-2xl font-bold mb-8 border-b border-white/10 pb-6">{t('summary')}</h3>
               
               <div className="space-y-6 flex-1">
                 <div className="flex justify-between items-center">
-                  <span className="opacity-70">Event & Zeit</span>
+                  <span className="opacity-70">{t('event_time')}</span>
                   <span className="font-bold text-right">
                     {selectedEvent ? reservableEvents.find(e => e.id === selectedEvent)?.title : "-"} <br className="md:hidden"/> 
                     <span className="opacity-70 font-normal">| {selectedTime || "-"}</span>
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="opacity-70">Gäste</span>
-                  <span className="font-bold">{guests} Personen</span>
+                  <span className="opacity-70">{t('guests')}</span>
+                  <span className="font-bold">{guests} {t('persons')}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="opacity-70">Verzehrpaket</span>
+                <div className="flex justify-between items-start mb-6">
+                  <span className="opacity-70">{t('consumption_package')}</span>
                   <div className="text-right">
                     <span className="font-bold block">{selectedPackage ? packages.find(p => p.id === selectedPackage)?.name : "-"}</span>
                     {selectedPackage && (
@@ -190,21 +224,61 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                     )}
                   </div>
                 </div>
+
+                {selectedPackage && (
+                  <div className="space-y-4 pt-6 border-t border-white/10 animate-fade-in">
+                    <div>
+                      <label className="block text-sm font-bold opacity-70 mb-2">{t('name_label')}</label>
+                      <input 
+                        type="text" 
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        placeholder="Max Mustermann"
+                        className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-accent-green focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold opacity-70 mb-2">{t('email_label')}</label>
+                      <input 
+                        type="email" 
+                        value={guestEmail}
+                        onChange={(e) => setGuestEmail(e.target.value)}
+                        placeholder="max@beispiel.de"
+                        className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-accent-green focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-8 pt-8 border-t border-white/10">
+                {checkoutError && (
+                  <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-xl mb-6 text-sm">
+                    {checkoutError}
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-end mb-8">
-                  <span className="text-lg font-bold">Gesamtbetrag <br/><span className="text-xs font-normal opacity-50">(100% als Gutschein)</span></span>
+                  <span className="text-lg font-bold">{t('total_amount')} <br/><span className="text-xs font-normal opacity-50">{t('voucher_hint')}</span></span>
                   <span className="text-4xl font-black text-accent-green">
                     {selectedPackage ? (packages.find(p => p.id === selectedPackage)?.price || 0) * guests : 0}€
                   </span>
                 </div>
 
                 <button 
-                  disabled={!selectedEvent || !selectedTime || !selectedPackage}
-                  className="w-full bg-accent-green text-base-dark font-black uppercase tracking-widest py-4 rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!selectedEvent || !selectedTime || !selectedPackage || !guestName || !guestEmail || isCheckingOut}
+                  onClick={handleCheckout}
+                  className="w-full bg-accent-green text-base-dark font-black uppercase tracking-widest py-4 rounded-xl hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Jetzt verbindlich reservieren
+                  {isCheckingOut ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-base-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {t('submitting')}
+                    </>
+                  ) : t('submit_btn')}
                 </button>
               </div>
             </div>

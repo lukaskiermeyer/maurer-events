@@ -1,17 +1,42 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { Turnstile } from '@marsidev/react-turnstile';
+import { submitContactForm } from "@/app/actions/contact";
 
 export default function ContactSection() {
-  const [formStatus, setFormStatus] = useState("idle");
+  const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      setErrorMessage("Bitte bestätige, dass du kein Roboter bist.");
+      return;
+    }
+
     setFormStatus("submitting");
-    setTimeout(() => {
+    setErrorMessage("");
+
+    const formData = new FormData(e.currentTarget);
+    const result = await submitContactForm({
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      message: formData.get("message") as string,
+      turnstileToken
+    });
+
+    if (result.success) {
       setFormStatus("success");
-    }, 1500);
+      formRef.current?.reset();
+    } else {
+      setFormStatus("error");
+      setErrorMessage(result.error || "Ein unbekannter Fehler ist aufgetreten.");
+    }
   };
 
   return (
@@ -114,13 +139,19 @@ export default function ContactSection() {
                 </button>
               </motion.div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-8">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
+                {formStatus === "error" && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-bold mb-6">
+                    {errorMessage}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="flex flex-col">
                     <label htmlFor="name" className="text-sm font-bold text-base-dark mb-2">Name / Firma</label>
                     <input 
                       type="text" 
                       id="name" 
+                      name="name"
                       required
                       className="w-full bg-border-light/40 border border-border-light rounded-xl px-4 py-3 text-base text-base-dark focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green transition-all"
                       placeholder="Max Mustermann"
@@ -131,6 +162,7 @@ export default function ContactSection() {
                     <input 
                       type="email" 
                       id="email" 
+                      name="email"
                       required
                       className="w-full bg-border-light/40 border border-border-light rounded-xl px-4 py-3 text-base text-base-dark focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green transition-all"
                       placeholder="max@beispiel.de"
@@ -142,6 +174,7 @@ export default function ContactSection() {
                   <label htmlFor="eventType" className="text-sm font-bold text-base-dark mb-2">Art der Veranstaltung</label>
                   <select 
                     id="eventType" 
+                    name="eventType"
                     required
                     defaultValue=""
                     className="w-full bg-border-light/40 border border-border-light rounded-xl px-4 py-3 text-base text-base-dark focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green transition-all appearance-none"
@@ -159,11 +192,20 @@ export default function ContactSection() {
                   <label htmlFor="message" className="text-sm font-bold text-base-dark mb-2">Deine Nachricht</label>
                   <textarea 
                     id="message" 
+                    name="message"
                     rows={4} 
                     required
                     className="w-full bg-border-light/40 border border-border-light rounded-xl px-4 py-3 text-base text-base-dark focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green transition-all resize-none"
                     placeholder="Worum geht es?"
                   ></textarea>
+                </div>
+
+                <div className="py-2">
+                  <Turnstile 
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    options={{ theme: 'light' }}
+                  />
                 </div>
 
                 <div className="relative pt-4 flex justify-between items-end">

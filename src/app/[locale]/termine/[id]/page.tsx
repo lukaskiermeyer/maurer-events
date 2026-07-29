@@ -20,8 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: `${event.title} | MAURER EVENTS` };
 }
 
-export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
+  const { id, locale } = await params;
   const upcomingEvents = await getEvents();
   const event = upcomingEvents.find(e => e.id === id);
 
@@ -29,8 +29,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
+  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
+  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+
   const dateObj = new Date(event.date);
-  const dateStr = dateObj.toLocaleDateString('de-DE', {
+  const dateStr = dateObj.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
@@ -51,11 +55,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Zurück zur Übersicht
+            {locale === "en" ? "Back to Overview" : "Zurück zur Übersicht"}
           </Link>
           
           <h1 className="font-display font-black text-5xl md:text-7xl lg:text-8xl text-base-dark leading-[0.9] mb-8">
-            {event.title}
+            {title}
           </h1>
           
           <div className="flex flex-wrap gap-8 text-base-dark/80 font-sans text-lg">
@@ -75,7 +79,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <span className="font-bold">{event.location}</span>
+              <span className="font-bold">{location}</span>
             </div>
           </div>
         </div>
@@ -85,31 +89,41 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           <div className="lg:col-span-2">
-            <h2 className="font-display font-bold text-3xl mb-6 text-base-dark">Über dieses Event</h2>
+            <h2 className="font-display font-bold text-3xl mb-6 text-base-dark">
+              {locale === "en" ? "About this Event" : "Über dieses Event"}
+            </h2>
             <div className="prose prose-lg font-sans text-base-dark/80">
               <p className="text-xl leading-relaxed mb-6">
-                {event.description}
+                {description}
               </p>
               <p>
-                (Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)
+                {locale === "en" 
+                  ? "(This is a placeholder for more detailed descriptions, line-ups, menus, or special features of this exact event.)"
+                  : "(Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)"}
               </p>
               
               <div className="my-12 p-8 bg-white border border-border-light rounded-2xl shadow-sm relative overflow-hidden">
                  <div className="absolute top-0 left-0 w-2 h-full bg-accent-green"></div>
-                 <h3 className="font-display font-bold text-xl mb-2 text-base-dark">Tischreservierung & Anfragen</h3>
+                 <h3 className="font-display font-bold text-xl mb-2 text-base-dark">
+                    {locale === "en" ? "Table Reservation & Inquiries" : "Tischreservierung & Anfragen"}
+                 </h3>
                  
                  {event.reservable ? (
                    <>
-                     <p className="text-sm text-base-dark/70 mb-6">Für dieses Event kannst du Tische inkl. Verzehrpakete direkt online reservieren!</p>
+                     <p className="text-sm text-base-dark/70 mb-6">
+                       {locale === "en" ? "You can reserve tables including consumption packages online for this event!" : "Für dieses Event kannst du Tische inkl. Verzehrpakete direkt online reservieren!"}
+                     </p>
                      <a href="#reservation" className="inline-block px-8 py-3 bg-accent-green text-white font-bold rounded-xl hover:bg-base-dark transition-colors">
-                       Jetzt online reservieren
+                       {locale === "en" ? "Reserve online now" : "Jetzt online reservieren"}
                      </a>
                    </>
                  ) : (
                    <>
-                     <p className="text-sm text-base-dark/70 mb-6">Für größere Gruppen empfehlen wir eine rechtzeitige Anfrage über unser Kontaktformular.</p>
+                     <p className="text-sm text-base-dark/70 mb-6">
+                       {locale === "en" ? "For larger groups we recommend a timely inquiry via our contact form." : "Für größere Gruppen empfehlen wir eine rechtzeitige Anfrage über unser Kontaktformular."}
+                     </p>
                      <Link href="/#contact" className="inline-block px-8 py-3 bg-accent-green text-white font-bold rounded-xl hover:bg-base-dark transition-colors">
-                       Jetzt anfragen
+                       {locale === "en" ? "Inquire now" : "Jetzt anfragen"}
                      </Link>
                    </>
                  )}
