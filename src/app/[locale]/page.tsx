@@ -5,10 +5,9 @@ import ServicesSection from "@/components/ServicesSection";
 import EventsSection from "@/components/EventsSection";
 import { getEvents } from "@/app/actions/events";
 
-const ContactSection = dynamic(() => import("@/components/ContactSection"), { 
-  ssr: false,
-  loading: () => <div className="animate-pulse h-96 bg-base-light rounded-3xl mt-24"></div>
-});
+const ContactSection = dynamic(() => import("@/components/ContactSection"), {
+    loading: () => <div className="animate-pulse h-96 bg-base-light rounded-3xl mt-24"></div>
+})
 
 export const runtime = 'edge';
 
