@@ -1,5 +1,4 @@
 import createNextIntlPlugin from 'next-intl/plugin';
-import { setupDevPlatform } from '@cloudflare/next-on-pages/next-dev';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -37,9 +36,5 @@ const nextConfig = {
     ];
   },
 };
-
-if (process.env.NODE_ENV === 'development') {
-  setupDevPlatform().catch(console.error);
-}
 
 export default withNextIntl(nextConfig);
