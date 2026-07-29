@@ -6,14 +6,6 @@ import ReservationSection from "@/components/ReservationSection";
 
 export const runtime = 'edge';
 
-// Dies generiert statische Seiten für alle bekannten Events
-export async function generateStaticParams() {
-  const upcomingEvents = await getEvents();
-  return upcomingEvents.map((event) => ({
-    id: event.id,
-  }));
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const upcomingEvents = await getEvents();
