@@ -3,7 +3,7 @@ import { events, reservations, tables } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import ReservationAdminMap from './ReservationAdminMap';
 
-export const runtime = 'edge';
+
 
 export const dynamic = "force-dynamic";
 

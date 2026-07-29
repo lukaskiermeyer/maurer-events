@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { reservations } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export const runtime = 'edge';
+
 
 // 1. ZWINGEND: Verhindert, dass Next.js diese Route beim Build statisch verarbeitet
 export const dynamic = 'force-dynamic';

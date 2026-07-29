@@ -9,7 +9,7 @@ const ContactSection = dynamic(() => import("@/components/ContactSection"), {
     loading: () => <div className="animate-pulse h-96 bg-base-light rounded-3xl mt-24"></div>
 })
 
-export const runtime = 'edge';
+
 
 export const revalidate = 60; // Optional: revalidate every minute if not using on-demand revalidation
 
