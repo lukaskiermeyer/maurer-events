@@ -62,6 +62,7 @@ export async function submitContactForm(formData: {
       return { success: false, error: "E-Mail konnte nicht gesendet werden." };
     }
 
+
     return { success: true };
   } catch (error) {
     console.error("Email sending exception:", error);
