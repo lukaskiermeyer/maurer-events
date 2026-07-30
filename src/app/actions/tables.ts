@@ -1,51 +1,87 @@
 "use server";
 
 import { db } from "@/db";
-import { reservations, tables } from "@/db/schema";
+import { tables, reservations } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { saveTentSettings } from "./settings";
 
-export async function generateTableGrid(rows: number, cols: number, capacityPerTable: number = 8) {
-  try {
-    // 1. Unassign all reservations from tables to prevent foreign key errors
-    await db.update(reservations).set({ tableId: null });
+export async function getTables() {
+  return db.select().from(tables);
+}
 
-    // 2. Delete all existing tables
-    await db.delete(tables);
+export async function createTable(data: { name: string; capacity: number; positionX?: number; positionY?: number }) {
+  await db.insert(tables).values({
+    name: data.name,
+    capacity: data.capacity,
+    positionX: data.positionX ?? 0,
+    positionY: data.positionY ?? 0
+  });
+  revalidatePath("/admin/events/[id]", "page");
+}
 
-    // 3. Generate new grid
-    // We want the grid to fit nicely into the 100x100 percentage layout
-    // Let's leave a 10% margin on the edges.
-    const startX = 10;
-    const startY = 10;
-    const endX = 90;
-    const endY = 90;
-
-    const stepX = cols > 1 ? (endX - startX) / (cols - 1) : 0;
-    const stepY = rows > 1 ? (endY - startY) / (rows - 1) : 0;
-
-    const newTables = [];
-    let tableNumber = 1;
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        newTables.push({
-          name: `Tisch ${tableNumber}`,
-          capacity: capacityPerTable,
-          positionX: cols === 1 ? 50 : Math.round(startX + (col * stepX)),
-          positionY: rows === 1 ? 50 : Math.round(startY + (row * stepY)),
-        });
-        tableNumber++;
-      }
+export async function deleteTable(id: string) {
+  await db.update(reservations).set({ tableId: null }).where(eq(reservations.tableId, id));
+  await db.delete(tables).where(eq(tables.id, id));
+  
+  // Auto-renumber remaining tables
+  const remainingTables = await db.select().from(tables);
+  
+  // Sort by Y first (row), then X (column)
+  remainingTables.sort((a, b) => {
+    if (a.positionY === b.positionY) {
+      return a.positionX - b.positionX;
     }
+    return a.positionY - b.positionY;
+  });
 
-    if (newTables.length > 0) {
-      await db.insert(tables).values(newTables);
+  // Update names sequentially
+  for (let i = 0; i < remainingTables.length; i++) {
+    const table = remainingTables[i];
+    const newName = `Tisch ${i + 1}`;
+    if (table.name !== newName) {
+      await db.update(tables).set({ name: newName }).where(eq(tables.id, table.id));
     }
-
-    revalidatePath("/admin/reservations");
-    return { success: true };
-  } catch (err: any) {
-    console.error("Fehler beim Generieren der Tische:", err);
-    return { success: false, error: err.message };
   }
+
+  revalidatePath("/admin/events/[id]", "page");
+}
+
+export async function updateTablePosition(id: string, x: number, y: number) {
+  await db.update(tables).set({ positionX: x, positionY: y }).where(eq(tables.id, id));
+  revalidatePath("/admin/events/[id]", "page");
+}
+
+export async function generateTentLayout(tablesWidth: number, tablesLength: number, capacity: number) {
+  // Unassign all reservations to avoid foreign key violations
+  await db.update(reservations).set({ tableId: null });
+  // Delete all existing tables
+  await db.delete(tables);
+  
+  const gridWidth = tablesWidth + 1; // Middle aisle
+  const gridHeight = tablesLength + Math.floor(tablesLength / 2); // Aisle every 2 rows
+  
+  let tableIndex = 1;
+  const newTables = [];
+  
+  for (let y = 0; y < tablesLength; y++) {
+    const gridY = y + Math.floor(y / 2);
+    for (let x = 0; x < tablesWidth; x++) {
+      const gridX = x < Math.floor(tablesWidth / 2) ? x : x + 1;
+      newTables.push({
+        name: `Tisch ${tableIndex}`,
+        capacity: capacity,
+        positionX: gridX,
+        positionY: gridY
+      });
+      tableIndex++;
+    }
+  }
+  
+  if (newTables.length > 0) {
+    await db.insert(tables).values(newTables);
+  }
+  
+  await saveTentSettings(gridWidth, gridHeight);
+  revalidatePath("/admin/events/[id]", "page");
 }

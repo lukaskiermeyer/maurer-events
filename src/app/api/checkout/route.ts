@@ -16,9 +16,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
 
 export async function POST(req: Request) {
   try {
-    const { eventId, guestCount, name, email } = await req.json();
+    const { eventId, guestCount, name, email, reservationDate } = await req.json();
 
-    if (!eventId || !guestCount || !name || !email) {
+    if (!eventId || !guestCount || !name || !email || !reservationDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -28,6 +28,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Event nicht gefunden' }, { status: 404 });
     }
     const event = eventList[0];
+
+    // Kapazitätsprüfung
+    const { tables } = await import('@/db/schema');
+    const allTables = await db.select().from(tables);
+    const totalCapacity = allTables.reduce((sum, t) => sum + t.capacity, 0);
+
+    const { and } = await import('drizzle-orm');
+    const existingRes = await db.select().from(reservations).where(
+      and(eq(reservations.eventId, event.id), eq(reservations.reservationDate, new Date(reservationDate)))
+    );
+    
+    // Status 'cancelled' sollte nicht in die Kapazität zählen, aber wir nehmen an alle anderen blockieren Plätze
+    const activeRes = existingRes.filter(r => r.status !== 'cancelled');
+    const currentBooked = activeRes.reduce((sum, r) => sum + r.guestCount, 0);
+
+    const walkInReserve = event.walkInReserve || 0;
+    const availableCapacity = totalCapacity - walkInReserve - currentBooked;
+
+    if (guestCount > availableCapacity) {
+      return NextResponse.json({ error: `Leider sind nicht mehr genügend Plätze frei. Verfügbar: ${Math.max(0, availableCapacity)}` }, { status: 400 });
+    }
 
     const minimumConsumption = event.minimumConsumption || 5000; // in Cent
     const amountTotal = minimumConsumption * guestCount;
@@ -64,6 +85,7 @@ export async function POST(req: Request) {
       guestCount: guestCount,
       amountTotal: amountTotal,
       stripeSessionId: session.id,
+      reservationDate: new Date(reservationDate),
       status: 'pending'
     });
 

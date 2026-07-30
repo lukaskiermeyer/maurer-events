@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
@@ -40,41 +39,30 @@ const glowColors = [
 
 // --- INTERAKTIVER NEBEL ---
 const InteractiveFog = () => {
-  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
   return (
     // GEÄNDERT: z-15 zu z-40
     <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
       <motion.div
-        className="absolute inset-0 opacity-40 mix-blend-screen blur-[60px]"
+        className="absolute inset-0 mix-blend-screen"
         style={{
           background: "radial-gradient(circle at 30% 30%, rgba(203, 121, 19, 0.15) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(31, 87, 50, 0.15) 0%, transparent 50%)",
+          willChange: "opacity"
         }}
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
+        animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
 
       <motion.div
-        className="absolute w-[400px] h-[400px] rounded-full blur-[80px] pointer-events-none mix-blend-screen"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none mix-blend-screen"
         style={{
-          background: "radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(59,130,246,0.1) 40%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(203, 121, 19, 0.08) 40%, transparent 70%)",
+          willChange: "transform, opacity"
         }}
         animate={{
-          x: mousePos.x - 200,
-          y: mousePos.y - 200,
+          scale: [1, 1.1, 1],
+          opacity: [0.5, 0.8, 0.5]
         }}
-        transition={{ type: "spring", damping: 35, stiffness: 120, mass: 0.5 }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
     </div>
   );
@@ -84,21 +72,10 @@ const InteractiveFog = () => {
 const TclSpot = () => {
   return (
     <div className="relative flex flex-col items-start w-[120px] md:w-[150px] h-[120px] md:h-[150px]">
-      <motion.div
-        className="absolute origin-top mix-blend-screen pointer-events-none blur-[24px]"
-        style={{
-          top: "75px", left: "75px", width: "90vw", height: "120vh",
-          x: "-50%", rotate: -45,
-          clipPath: "polygon(48% 0, 52% 0, 100% 100%, 0% 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%)",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%)",
-        }}
-        animate={{ background: washBeamColors.map(c => `linear-gradient(to bottom, ${c}, transparent 100%)`) }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* Äußerer Strahl (washBeamColors) entfernt auf User-Wunsch */}
 
       <motion.div
-        className="absolute origin-top mix-blend-screen pointer-events-none blur-[6px]"
+        className="absolute origin-top mix-blend-screen pointer-events-none"
         style={{
           top: "75px", left: "75px", width: "45vw", height: "100vh",
           x: "-50%", rotate: -45,
@@ -152,11 +129,12 @@ export default function HeroSection() {
       {/* --- Sunburst BACKGROUND --- */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-80">
         <motion.div
-          className="absolute bottom-0 left-[50%] w-[300vw] h-[200vh] origin-bottom"
+          className="absolute bottom-0 left-[50%] w-[200vmax] h-[200vmax] origin-bottom"
           style={{
             x: "-50%",
             background:
               "repeating-conic-gradient(from 0deg at 50% 100%, var(--color-canvas-light) 0deg 8deg, var(--color-base-light) 8deg 16deg)",
+            willChange: "transform"
           }}
           animate={{ rotate: [0, 360] }}
           transition={{ repeat: Infinity, duration: 180, ease: "linear" }}
@@ -166,7 +144,8 @@ export default function HeroSection() {
       {/* --- UMGEBUNGS-GLOW --- */}
       <motion.div
         className="absolute inset-0 z-0 pointer-events-none mix-blend-multiply"
-        animate={{ background: glowColors.map(c => `radial-gradient(circle at 50% 50%, ${c} 0%, transparent 65%)`) }}
+        style={{ willChange: "transform" }}
+        animate={{ background: glowColors.map(c => `radial-gradient(circle at 50% 50%, ${c}, transparent 65%)`) }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
 
@@ -176,45 +155,48 @@ export default function HeroSection() {
       {/* --- Die BEIDEN TCL SPOTS --- */}
       {/* GEÄNDERT: z-10 zu z-30 damit das Licht über der Bühne, aber hinter dem Content liegt */}
       <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden max-w-[1600px] mx-auto w-full">
-        <div className="absolute top-2 -left-6 md:-left-8 lg:-left-2">
+        <div className="absolute top-2 -left-6 md:-left-8 lg:-left-2 origin-top rotate-[25deg] md:rotate-0">
           <TclSpot />
         </div>
-        <div className="absolute top-2 -right-6 md:-right-8 lg:-right-2 scale-x-[-1]">
+        <div className="absolute top-2 -right-6 md:-right-8 lg:-right-2 origin-top scale-x-[-1] rotate-[25deg] md:rotate-0">
           <TclSpot />
         </div>
       </div>
 
       {/* --- CONTENT WRAPPER --- */}
       {/* GEÄNDERT: z-20 zu z-50, damit der gesamte Inhalt (inkl. Buttons) vor der Bühne liegt */}
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 relative z-50 flex-grow flex flex-col h-full pt-[140px] sm:pt-[160px] md:pt-[120px] pb-28 md:pb-48">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-8 relative z-50 flex-grow flex flex-col h-full pt-[80px] sm:pt-[100px] md:pt-[120px] pb-28 md:pb-48">
 
-        <div className="flex-[1.5] md:flex-[2]"></div>
+        <div className="flex-[0.5] sm:flex-[1] md:flex-[2]"></div>
 
         {/* --- LOGO & GRAFIK --- */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 drop-shadow-xl shrink-0"
+          className="w-full flex flex-col md:flex-row items-center justify-center gap-2 sm:gap-4 md:gap-8 drop-shadow-xl shrink-0"
         >
           {/* Text Bereich */}
           <div className="flex flex-col items-center md:items-end justify-center leading-[0.85] text-accent-green text-center md:text-right relative z-10">
-            <span className="font-display font-black text-[64px] sm:text-[80px] md:text-[120px] lg:text-[160px] tracking-tighter">
+            <span className="font-display font-black text-[72px] sm:text-[80px] md:text-[120px] lg:text-[160px] tracking-tighter">
               MAURER
             </span>
-            <span className="font-display font-black text-[64px] sm:text-[80px] md:text-[120px] lg:text-[160px] tracking-tighter">
+            <span className="font-display font-black text-[72px] sm:text-[80px] md:text-[120px] lg:text-[160px] tracking-tighter">
               EVENTS
             </span>
-            <span className="font-sans font-bold text-sm sm:text-base md:text-xl lg:text-3xl tracking-[0.2em] mt-3 md:mt-4 md:mr-2">
+            <span className="font-sans font-bold text-base sm:text-base md:text-xl lg:text-3xl tracking-[0.2em] mt-3 md:mt-4 md:mr-2">
               seit 2025
             </span>
           </div>
 
           {/* Männchen Grafik */}
-          <div className="h-[130px] sm:h-[160px] md:h-[200px] lg:h-[260px] shrink-0 relative mt-2 md:-mt-4">
+          <div className="h-[180px] sm:h-[180px] md:h-[200px] lg:h-[260px] shrink-0 relative mt-4 md:-mt-4">
             <motion.div
-              className="absolute inset-0 blur-3xl z-[-1] opacity-70"
-              animate={{ backgroundColor: washBeamColors }}
+              className="absolute inset-[-40px] z-[-1] opacity-70 mix-blend-screen"
+              style={{ willChange: "transform" }}
+              animate={{ 
+                background: washBeamColors.map(c => `radial-gradient(circle at 50% 50%, ${c}, transparent 65%)`)
+              }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
             <img
@@ -282,14 +264,7 @@ export default function HeroSection() {
                 `
             }}
           >
-            {/* Reflexion der Spots */}
-            <motion.div
-              className="absolute inset-0 mix-blend-screen opacity-60"
-              animate={{
-                background: washBeamColors.map(c => `radial-gradient(ellipse at 50% 80%, ${c}, transparent 65%)`)
-              }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            />
+            {/* Reflexion der Spots (auf User-Wunsch entfernt) */}
           </div>
         </div>
 

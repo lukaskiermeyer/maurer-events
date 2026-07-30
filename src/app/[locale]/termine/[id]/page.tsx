@@ -2,9 +2,12 @@ import React from "react";
 import { getEvents } from "@/app/actions/events";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import dynamic from "next/dynamic";
+import dynamicComponent from "next/dynamic";
 
-const ReservationSection = dynamic(() => import("@/components/ReservationSection"), {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const ReservationSection = dynamicComponent(() => import("@/components/ReservationSection"), {
   loading: () => <div className="animate-pulse h-96 bg-white/5 rounded-3xl mt-32"></div>
 });
 
@@ -43,43 +46,65 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       {/* Event Header Banner */}
       <div className="bg-canvas-light border-b border-border-light pt-32 pb-20 relative overflow-hidden">
         {event.imageUrl && (
-           <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${event.imageUrl})` }}></div>
+           <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-xl scale-110" style={{ backgroundImage: `url(${event.imageUrl})` }}></div>
         )}
-        <div className="absolute inset-0 opacity-10 bg-accent-wood"></div>
-        <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-accent-wood/20 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 opacity-20 bg-accent-green mix-blend-overlay"></div>
+        <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-accent-green/20 rounded-full blur-3xl"></div>
         
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10">
-          <Link href="/termine" className="inline-flex items-center text-sm font-bold uppercase tracking-widest text-accent-wood hover:text-base-dark transition-colors mb-8">
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            {locale === "en" ? "Back to Overview" : "Zurück zur Übersicht"}
-          </Link>
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10 flex flex-col lg:flex-row gap-16 lg:gap-24 items-center">
           
-          <h1 className="font-display font-black text-5xl md:text-7xl lg:text-8xl text-base-dark leading-[0.9] mb-8">
-            {title}
-          </h1>
-          
-          <div className="flex flex-wrap gap-8 text-base-dark/80 font-sans text-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-wood shadow-sm">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className="font-bold">{dateStr}</span>
-            </div>
+          <div className="flex-1 w-full text-center lg:text-left">
+            <Link href="/termine" className="inline-flex items-center text-sm font-bold uppercase tracking-widest text-accent-green hover:text-base-dark transition-colors mb-8 bg-white/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/50">
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              {locale === "en" ? "Back to Overview" : "Zurück zur Übersicht"}
+            </Link>
             
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-wood shadow-sm">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+            <h1 className="font-display font-black text-5xl md:text-7xl lg:text-8xl text-base-dark leading-[0.9] mb-10 drop-shadow-sm">
+              {title}
+            </h1>
+            
+            <div className="flex flex-wrap gap-6 text-base-dark/80 font-sans text-lg justify-center lg:justify-start">
+              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-6 py-4 rounded-2xl shadow-sm border border-white/50">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-green shadow-sm">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="block text-xs font-bold uppercase tracking-widest text-base-dark/50 mb-0.5">{locale === "en" ? "Date" : "Datum"}</span>
+                  <span className="font-bold text-base-dark leading-tight block">{dateStr}</span>
+                </div>
               </div>
-              <span className="font-bold">{location}</span>
+              
+              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-6 py-4 rounded-2xl shadow-sm border border-white/50">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-green shadow-sm">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="block text-xs font-bold uppercase tracking-widest text-base-dark/50 mb-0.5">{locale === "en" ? "Location" : "Location"}</span>
+                  <span className="font-bold text-base-dark leading-tight block">{location}</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          {event.imageUrl && (
+            <div className="w-full sm:w-[400px] lg:w-[450px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border-[12px] border-white/80 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
+                <img 
+                  src={event.imageUrl} 
+                  alt={title} 
+                  className="w-full h-auto object-contain" 
+                />
+              </div>
+            </div>
+          )}
+          
         </div>
       </div>
 
@@ -100,32 +125,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   : "(Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)"}
               </p>
               
-              <div className="my-12 p-8 bg-white border border-border-light rounded-2xl shadow-sm relative overflow-hidden">
-                 <div className="absolute top-0 left-0 w-2 h-full bg-accent-green"></div>
-                 <h3 className="font-display font-bold text-xl mb-2 text-base-dark">
-                    {locale === "en" ? "Table Reservation & Inquiries" : "Tischreservierung & Anfragen"}
-                 </h3>
-                 
-                 {event.reservable ? (
-                   <>
-                     <p className="text-sm text-base-dark/70 mb-6">
-                       {locale === "en" ? "You can reserve tables including consumption packages online for this event!" : "Für dieses Event kannst du Tische inkl. Verzehrpakete direkt online reservieren!"}
-                     </p>
-                     <a href="#reservation" className="inline-block px-8 py-3 bg-accent-green text-white font-bold rounded-xl hover:bg-base-dark transition-colors">
-                       {locale === "en" ? "Reserve online now" : "Jetzt online reservieren"}
-                     </a>
-                   </>
-                 ) : (
-                   <>
-                     <p className="text-sm text-base-dark/70 mb-6">
-                       {locale === "en" ? "For larger groups we recommend a timely inquiry via our contact form." : "Für größere Gruppen empfehlen wir eine rechtzeitige Anfrage über unser Kontaktformular."}
-                     </p>
-                     <Link href="/#contact" className="inline-block px-8 py-3 bg-accent-green text-white font-bold rounded-xl hover:bg-base-dark transition-colors">
-                       {locale === "en" ? "Inquire now" : "Jetzt anfragen"}
-                     </Link>
-                   </>
-                 )}
-              </div>
+
             </div>
           </div>
           

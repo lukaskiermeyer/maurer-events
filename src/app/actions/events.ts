@@ -3,18 +3,21 @@
 import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import { translateContent } from "@/lib/translate";
 
 export async function createEvent(data: {
   title: string;
   date: Date;
+  endDate?: Date;
+  reservableDates?: any;
   location: string;
   description: string;
   imageUrl?: string;
   link: string;
   reservable: boolean;
   minimumConsumption?: number;
+  walkInReserve?: number;
 }) {
   const [titleEn, locationEn, descriptionEn] = await Promise.all([
     translateContent(data.title),
@@ -25,12 +28,15 @@ export async function createEvent(data: {
   await db.insert(events).values({
     title: data.title,
     date: data.date,
+    endDate: data.endDate,
     location: data.location,
     description: data.description,
     imageUrl: data.imageUrl,
     link: data.link,
     reservable: data.reservable,
+    reservableDates: data.reservableDates,
     minimumConsumption: data.minimumConsumption ? data.minimumConsumption * 100 : 5000,
+    walkInReserve: data.walkInReserve || 0,
     titleEn,
     locationEn,
     descriptionEn
@@ -70,5 +76,6 @@ export async function deleteEvent(id: string) {
 }
 
 export async function getEvents() {
+  noStore();
   return await db.select().from(events).orderBy(asc(events.date));
 }

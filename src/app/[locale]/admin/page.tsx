@@ -1,7 +1,6 @@
 import { getEvents } from "@/app/actions/events";
 import AdminEventList from "./AdminEventList";
-
-
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +14,7 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-base-light pt-24 pb-12">
-      <div className="max-w-[1000px] mx-auto px-4">
+      <div className="max-w-[1200px] mx-auto px-4">
         <h1 className="text-4xl font-display font-black text-base-dark mb-8">Admin <span className="text-accent-green">Panel</span></h1>
         
         {events.length === 0 && (

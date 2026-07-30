@@ -26,8 +26,8 @@ export default function LanguageSwitcher() {
       aria-label={locale === 'de' ? "Switch to English" : "Auf Deutsch wechseln"}
       title={locale === 'de' ? "English" : "Deutsch"}
     >
-      {locale === 'de' ? (
-        // Show UK flag to switch to English
+      {locale === 'en' ? (
+        // Show UK flag since the current language is English
         <svg viewBox="0 0 60 30" className="w-5 h-3.5 rounded-[2px] object-cover shadow-sm group-hover:scale-110 transition-transform duration-300">
           <clipPath id="uk-flag">
             <path d="M0,0 v30 h60 v-30 z"/>
@@ -44,7 +44,7 @@ export default function LanguageSwitcher() {
           </g>
         </svg>
       ) : (
-        // Show German flag to switch to German
+        // Show German flag since the current language is German
         <svg viewBox="0 0 640 480" className="w-5 h-3.5 rounded-[2px] object-cover shadow-sm group-hover:scale-110 transition-transform duration-300">
           <path fill="#ffce00" d="M0 320h640v160H0z"/>
           <path d="M0 0h640v160H0z"/>
