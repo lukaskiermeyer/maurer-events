@@ -16,22 +16,37 @@ export default function ImpressumPage() {
       <div className="prose prose-lg text-base-dark/80 font-sans max-w-none">
         <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Angaben gemäß § 5 TMG</h2>
         <p>
-          Florian Maurer<br />
           Maurer Events<br />
-          Musterstraße 1<br />
-          80331 München
+          Schwaiger Str. 6<br />
+          85126 Müchsmünster
+        </p>
+
+        <p>
+          <strong>Vertreten durch:</strong><br />
+          Geschäftsführer: Florian Maurer
         </p>
 
         <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Kontakt</h2>
         <p>
-          Telefon: +49 (0) 123 456 789<br />
-          E-Mail: info@maurer-events.de
+          E-Mail: servus@maurer-events.com<br />
+          Internet: maurer-events.com
+        </p>
+
+        <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Registereintrag</h2>
+        <p>
+          Registergericht: Amtsgericht München
         </p>
 
         <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Umsatzsteuer-ID</h2>
         <p>
           Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:<br />
-          DE123456789
+          DE 453 682 944
+        </p>
+
+        <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Steuernummer</h2>
+        <p>
+          154/248/60236<br />
+          Finanzamt Pfaffenhofen
         </p>
 
         <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Verbraucherstreitbeilegung/Universalschlichtungsstelle</h2>

@@ -17,15 +17,20 @@ const inter = Inter({
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://maurer-events.com"),
+  alternates: {
+    canonical: '/',
+  },
   title: "MAURER EVENTS | Moderne bayerische Gastfreundschaft",
-  description: "Erlebe modernste Events mit bayerischem Herz. Wir organisieren Zeltfeste, Firmenevents und vieles mehr in München und Umgebung.",
-  keywords: ["Events", "München", "Zeltfest", "Bayerisch", "Maurer Events", "Catering", "Gastronomie"],
+  description: "Erlebe modernste Events mit bayerischem Herz. Wir organisieren Zeltfeste, Firmenevents und vieles mehr in München, Müchsmünster und Umgebung.",
+  keywords: ["Events", "München", "Müchsmünster", "Zeltfest", "Bayerisch", "Maurer Events", "Catering", "Gastronomie"],
   authors: [{ name: "Maurer Events" }],
   creator: "Maurer Events",
   openGraph: {
     type: "website",
     locale: "de_DE",
-    url: "https://maurer-events.de",
+    alternateLocale: ["en_US"],
+    url: "https://maurer-events.com",
     title: "MAURER EVENTS",
     description: "Modern Events. Bavarian Heart.",
     siteName: "Maurer Events",
@@ -50,24 +55,47 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   "name": "Maurer Events",
-  "image": "https://maurer-events.de/logo.png",
-  "@id": "https://maurer-events.de",
-  "url": "https://maurer-events.de",
-  "telephone": "+49123456789",
+  "image": "https://maurer-events.com/og-image.jpg",
+  "@id": "https://maurer-events.com",
+  "url": "https://maurer-events.com",
+  "email": "servus@maurer-events.com",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "Musterstraße 1",
-    "addressLocality": "München",
-    "postalCode": "80331",
+    "streetAddress": "Schwaiger Str. 6",
+    "addressLocality": "Müchsmünster",
+    "postalCode": "85126",
     "addressCountry": "DE"
   },
   "geo": {
     "@type": "GeoCoordinates",
-    "latitude": 48.1351,
-    "longitude": 11.5820
+    "latitude": 48.7618,
+    "longitude": 11.6781
   },
+  "areaServed": [
+    {
+      "@type": "City",
+      "name": "München"
+    },
+    {
+      "@type": "City",
+      "name": "Ingolstadt"
+    },
+    {
+      "@type": "City",
+      "name": "Müchsmünster"
+    },
+    {
+      "@type": "City",
+      "name": "Regensburg"
+    },
+    {
+      "@type": "City",
+      "name": "Pfaffenhofen"
+    }
+  ],
   "sameAs": [
-    "https://instagram.com/maurer-events"
+    "https://www.instagram.com/damaurerwirt",
+    "https://www.tiktok.com/@damaurerwirt"
   ]
 };
 

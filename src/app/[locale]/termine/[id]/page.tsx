@@ -13,12 +13,30 @@ const ReservationSection = dynamicComponent(() => import("@/components/Reservati
 
 
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function generateMetadata({ params }: { params: Promise<{ id: string, locale: string }> }) {
+  const { id, locale } = await params;
   const upcomingEvents = await getEvents();
   const event = upcomingEvents.find(e => e.id === id);
   if (!event) return { title: "Event nicht gefunden" };
-  return { title: `${event.title} | MAURER EVENTS` };
+  
+  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
+  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
+  
+  return { 
+    title: `${title} | MAURER EVENTS`,
+    description: description,
+    openGraph: {
+      title: `${title} | MAURER EVENTS`,
+      description: description,
+      images: event.imageUrl ? [{ url: event.imageUrl }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | MAURER EVENTS`,
+      description: description,
+      images: event.imageUrl ? [event.imageUrl] : [],
+    }
+  };
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
@@ -41,8 +59,35 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     year: 'numeric'
   });
 
+  const eventSchema = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": title,
+    "description": description,
+    "startDate": new Date(event.date).toISOString(),
+    "endDate": event.endDate ? new Date(event.endDate).toISOString() : new Date(event.date).toISOString(),
+    "image": event.imageUrl ? [event.imageUrl] : [],
+    "location": {
+      "@type": "Place",
+      "name": location,
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": location,
+      }
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": "Maurer Events",
+      "url": "https://maurer-events.com"
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-light">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }}
+      />
       {/* Event Header Banner */}
       <div className="bg-canvas-light border-b border-border-light pt-32 pb-20 relative overflow-hidden">
         {event.imageUrl && (
