@@ -1,6 +1,8 @@
-import { getTables } from "@/app/actions/tables";
 import { getReservationsByEvent } from "@/app/actions/reservations";
+import { getTables } from "@/app/actions/tables";
 import { getTentSettings } from "@/app/actions/settings";
+import { getGalleryImages } from "@/app/actions/gallery";
+import { getWaitlist } from "@/app/actions/waitlist";
 import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -18,9 +20,13 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const reservations = await getReservationsByEvent(resolvedParams.id);
-  const tables = await getTables();
-  const tentSettings = await getTentSettings();
+  const [reservations, tables, tentSettings, galleryImages, waitlistEntries] = await Promise.all([
+    getReservationsByEvent(resolvedParams.id),
+    getTables(),
+    getTentSettings(),
+    getGalleryImages(resolvedParams.id),
+    getWaitlist(resolvedParams.id)
+  ]);
 
   return (
     <div className="min-h-screen bg-base-light pt-24 pb-12">
@@ -41,6 +47,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           initialReservations={reservations} 
           initialTables={tables}
           tentSettings={tentSettings}
+          initialGallery={galleryImages}
+          initialWaitlist={waitlistEntries}
         />
       </div>
     </div>

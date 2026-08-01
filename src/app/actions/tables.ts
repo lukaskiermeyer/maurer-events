@@ -52,6 +52,25 @@ export async function updateTablePosition(id: string, x: number, y: number) {
   revalidatePath("/admin/events/[id]", "page");
 }
 
+export async function toggleTableVip(id: string, isVip: boolean, vipPrice: number = 0) {
+  await db.update(tables).set({ isVip, vipPrice }).where(eq(tables.id, id));
+  revalidatePath("/admin/events/[id]", "page");
+}
+
+export async function getBookedTableIds(eventId: string, dateStr: string) {
+  const { and, ne } = await import("drizzle-orm");
+  const booked = await db.select({ tableId: reservations.tableId })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.eventId, eventId),
+        eq(reservations.reservationDate, new Date(dateStr)),
+        ne(reservations.status, 'cancelled')
+      )
+    );
+  return booked.filter(b => b.tableId !== null).map(b => b.tableId as string);
+}
+
 export async function generateTentLayout(tablesWidth: number, tablesLength: number, capacity: number) {
   // Unassign all reservations to avoid foreign key violations
   await db.update(reservations).set({ tableId: null });

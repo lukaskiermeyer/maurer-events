@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { updateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/app/actions/upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
-import { createTable, deleteTable, generateTentLayout } from "@/app/actions/tables";
+import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
 import { saveTentSettings } from "@/app/actions/settings";
 
 function stringToColor(str: string) {
@@ -16,8 +18,11 @@ function stringToColor(str: string) {
   return `hsl(${hue}, 70%, 85%)`;
 }
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings }: any) {
-  const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables">("edit");
+import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
+import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
+
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [] }: any) {
+  const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist">("edit");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -31,10 +36,15 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     imageUrl: event.imageUrl || "",
     link: event.link,
     reservable: event.reservable,
+    allowTableSelection: event.allowTableSelection ?? true,
+    maxCapacity: event.maxCapacity || 0,
     minimumConsumption: event.minimumConsumption / 100,
     walkInReserve: event.walkInReserve || 0
   });
+  });
   const [file, setFile] = useState<File | null>(null);
+  const [galleryFile, setGalleryFile] = useState<File | null>(null);
+  const [galleryUrl, setGalleryUrl] = useState("");
 
   const availableDays = useMemo(() => {
     if (!formData.date) return [];
@@ -87,17 +97,23 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       return;
     }
     setIsUpdating(true);
-    await createManualReservation({
-      eventId: event.id,
-      guestName: manualRes.name,
-      email: manualRes.email,
-      guestCount: manualRes.guests,
-      reservationDate: selectedDate
-    });
-    setManualRes({ name: "", email: "", guests: 4 });
-    setShowManualForm(false);
-    setIsUpdating(false);
-    window.location.reload();
+    try {
+      await createManualReservation({
+        eventId: event.id,
+        guestName: manualRes.name,
+        email: manualRes.email,
+        guestCount: manualRes.guests,
+        reservationDate: selectedDate
+      });
+      setManualRes({ name: "", email: "", guests: 4 });
+      setShowManualForm(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("Fehler beim Erstellen der manuellen Reservierung:", error);
+      alert("Es gab einen Fehler beim Erstellen der Reservierung.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleEventUpdate = async (e: React.FormEvent) => {
@@ -124,6 +140,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         reservableDates: formData.reservableDates,
+        allowTableSelection: formData.allowTableSelection,
+        maxCapacity: formData.maxCapacity,
         minimumConsumption: formData.minimumConsumption * 100,
         walkInReserve: formData.walkInReserve
       });
@@ -163,6 +181,30 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     }
   };
 
+  const handleGalleryUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!galleryFile && !galleryUrl) return;
+    
+    setIsUpdating(true);
+    try {
+      let finalUrl = galleryUrl;
+      if (galleryFile) {
+        const uploadData = new FormData();
+        uploadData.append("file", galleryFile);
+        const res = await uploadImage(uploadData);
+        if (res.success) finalUrl = res.url;
+      }
+      if (finalUrl) {
+        await addGalleryImage(event.id, finalUrl);
+        setGalleryFile(null);
+        setGalleryUrl("");
+      }
+    } catch (err) {
+      alert("Fehler beim Bildupload.");
+    }
+    setIsUpdating(false);
+  };
+
   const renderTableMap = (mode: "edit" | "assign") => {
     const grid = [];
     for (let y = 0; y < tentH; y++) {
@@ -179,7 +221,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         const totalGuests = resHere.reduce((sum: number, r: any) => sum + r.reservation.guestCount, 0);
         
         let bgColor = "#e5e7eb"; // light gray
-        let tooltip = tableHere ? `${tableHere.name} (bis ${tableHere.capacity} Pers.)` : `Feld ${x+1}/${y+1}: Leer (Klicken zum Erstellen)`;
+        if (mode === "edit" && tableHere?.isVip) bgColor = "#fef08a"; // yellow-200 for VIP
+
+        let tooltip = tableHere ? `${tableHere.name} (bis ${tableHere.capacity} Pers.)${tableHere.isVip ? ' [VIP]' : ''}` : `Feld ${x+1}/${y+1}: Leer (Klicken zum Erstellen)`;
         
         if (mode === "assign" && tableHere) {
           if (resHere.length > 0) {
@@ -198,6 +242,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             }}
             onDrop={(e) => {
               if (mode === "assign" && tableHere) handleDrop(e, tableHere.id);
+            }}
+            onContextMenu={(e) => {
+              if (mode === "edit" && tableHere) {
+                e.preventDefault();
+                const makeVip = !tableHere.isVip;
+                const priceStr = makeVip ? prompt("VIP Aufpreis für den gesamten Tisch (in €)?", "100") : "0";
+                if (priceStr !== null) {
+                  const price = parseInt(priceStr) * 100; // in cents
+                  setIsUpdating(true);
+                  toggleTableVip(tableHere.id, makeVip, price).then(()=>window.location.reload()).finally(() => setIsUpdating(false));
+                }
+              }
             }}
             onClick={() => {
               if (mode === "edit") {
@@ -227,6 +283,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             {tableHere ? (
               <>
                 <span className="font-bold text-sm text-base-dark break-words text-center leading-tight">{tableHere.name}</span>
+                {tableHere.isVip && <span className="bg-yellow-400 text-yellow-900 text-[9px] px-1 rounded absolute top-1 right-1">VIP</span>}
                 {mode === "assign" && resHere.length > 0 && (
                   <div className="flex flex-col items-center gap-1 mt-1 z-10">
                     {resHere.map((r: any) => (
@@ -291,6 +348,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         >
           ⚙️ Tisch-Stammdaten & Zelt-Plan
         </button>
+        <button 
+          onClick={() => setActiveTab("gallery")}
+          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "gallery" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+        >
+          📸 Galerie ({initialGallery.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab("waitlist")}
+          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "waitlist" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+        >
+          ⏳ Warteliste ({initialWaitlist.length})
+        </button>
       </div>
 
       <div className="p-6 lg:p-10">
@@ -343,6 +412,17 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
               {formData.reservable && (
                 <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg mt-2 space-y-4">
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-border-light mb-4">
+                    <input 
+                      type="checkbox" 
+                      id="tableSelEdit" 
+                      className="w-5 h-5 accent-accent-green"
+                      checked={formData.allowTableSelection} 
+                      onChange={e => setFormData({...formData, allowTableSelection: e.target.checked})} 
+                    />
+                    <label htmlFor="tableSelEdit" className="text-sm font-bold cursor-pointer">Zelt-Layout & Tischauswahl aktivieren?</label>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-bold mb-1 opacity-70">Welche Tage sind reservierbar?</label>
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -363,14 +443,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[150px]">
                       <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
                       <input type="number" min="0" value={formData.minimumConsumption} onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-[150px]">
                       <label className="block text-sm font-bold mb-1 opacity-70">Laufkundschaft-Puffer (Pers.)</label>
                       <input type="number" min="0" value={formData.walkInReserve} onChange={e => setFormData({...formData, walkInReserve: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-sm font-bold mb-1 opacity-70">Max. Kapazität (0=unlimitiert)</label>
+                      <input type="number" min="0" value={formData.maxCapacity} onChange={e => setFormData({...formData, maxCapacity: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
                     </div>
                   </div>
                 </div>
@@ -435,14 +519,31 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               </div>
             </div>
             
-            <div className="flex justify-between items-end mb-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
               <h3 className="text-xl font-display font-bold">Gästeliste ({initialReservations.length})</h3>
-              <button 
-                onClick={() => setShowManualForm(!showManualForm)}
-                className="bg-base-dark text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-green transition-colors font-bold"
-              >
-                + Manuelle Reservierung
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <Link 
+                  href={`/admin/events/${event.id}/scanner`}
+                  className="bg-accent-green text-white text-sm px-4 py-2 rounded-lg hover:bg-base-dark transition-colors font-bold flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+                  Scanner (Einlass)
+                </Link>
+                <Link 
+                  href={`/admin/events/${event.id}/print`}
+                  target="_blank"
+                  className="bg-white border border-border-light text-base-dark text-sm px-4 py-2 rounded-lg hover:border-accent-green transition-colors font-bold flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  Liste Drucken (PDF)
+                </Link>
+                <button 
+                  onClick={() => setShowManualForm(!showManualForm)}
+                  className="bg-base-dark text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-green transition-colors font-bold"
+                >
+                  + Manuelle Reservierung
+                </button>
+              </div>
             </div>
 
             {showManualForm && (
@@ -526,10 +627,11 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                               value={row.reservation.status}
                               onChange={(e) => handleStatusChange(row.reservation.id, e.target.value)}
                               disabled={isUpdating}
-                              className={`border rounded p-1 text-xs font-bold ${row.reservation.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : row.reservation.status === 'cancelled' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
+                              className={`border rounded p-1 text-xs font-bold ${row.reservation.status === 'confirmed' ? 'bg-blue-100 text-blue-800 border-blue-200' : row.reservation.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : row.reservation.status === 'cancelled' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
                             >
                               <option value="pending">Ausstehend</option>
                               <option value="paid">Bezahlt</option>
+                              <option value="confirmed">Bestätigt (Ticket PDF gesendet)</option>
                               <option value="cancelled">Storniert</option>
                             </select>
                           </td>
@@ -588,7 +690,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             
             {tableMode === "edit" && (
               <div className="space-y-6 animate-fade-in">
-                <p className="text-sm opacity-70">Erstelle ein neues Zelt-Layout. Danach kannst du durch Klicken einzelne Tische entfernen oder hinzufügen, um das Layout anzupassen.</p>
+                <p className="text-sm opacity-70">Erstelle ein neues Zelt-Layout. Danach kannst du durch Klicken einzelne Tische entfernen oder hinzufügen, um das Layout anzupassen. <strong>Rechtsklick auf einen Tisch markiert ihn als VIP.</strong></p>
                 <div className="bg-canvas-light border border-border-light p-6 rounded-2xl">
                   <form onSubmit={handleGenerate} className="flex flex-wrap gap-4 items-end">
                     <div>
@@ -670,6 +772,130 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* GALLERY TAB */}
+        {activeTab === "gallery" && (
+          <div className="space-y-8 animate-fade-in">
+            <h3 className="font-display font-bold text-2xl">Bildergalerie (Rückblick)</h3>
+            
+            <div className="bg-canvas-light border border-border-light p-6 rounded-2xl">
+              <h4 className="font-bold mb-4">Neues Bild hinzufügen</h4>
+              <form onSubmit={handleGalleryUpload} className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 w-full">
+                  <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei</label>
+                  <input type="file" accept="image/*" onChange={e => setGalleryFile(e.target.files ? e.target.files[0] : null)} className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryUrl.length > 0} />
+                </div>
+                <div className="font-bold opacity-50 py-2">ODER</div>
+                <div className="flex-1 w-full">
+                  <label className="block text-xs font-bold uppercase opacity-70 mb-1">Bild-URL (extern)</label>
+                  <input type="url" value={galleryUrl} onChange={e => setGalleryUrl(e.target.value)} placeholder="https://..." className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryFile !== null} />
+                </div>
+                <button type="submit" disabled={isUpdating || (!galleryFile && !galleryUrl)} className="bg-accent-green text-white font-bold px-6 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-base-dark transition-colors">
+                  Hochladen
+                </button>
+              </form>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              {initialGallery.length === 0 ? (
+                <p className="col-span-full text-center opacity-50 py-10">Keine Bilder in der Galerie.</p>
+              ) : (
+                initialGallery.map((img: any) => (
+                  <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group">
+                    <Image src={img.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-105 transition-transform" />
+                    <button 
+                      onClick={async () => {
+                        if (confirm("Bild wirklich löschen?")) {
+                          setIsUpdating(true);
+                          await removeGalleryImage(img.id);
+                          setIsUpdating(false);
+                        }
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* WAITLIST TAB */}
+        {activeTab === "waitlist" && (
+          <div className="space-y-8 animate-fade-in">
+            <h3 className="font-display font-bold text-2xl">Warteliste</h3>
+            <p className="text-sm opacity-70">Hier siehst du alle Gäste, die auf einen freien Tisch warten. Du kannst sie benachrichtigen, wenn etwas frei wird.</p>
+            
+            <div className="bg-canvas-light rounded-2xl border border-border-light overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-white border-b border-border-light text-sm font-bold uppercase tracking-wider opacity-70">
+                    <tr>
+                      <th className="p-4">Name</th>
+                      <th className="p-4">Email</th>
+                      <th className="p-4">Personen</th>
+                      <th className="p-4">Eingetragen am</th>
+                      <th className="p-4">Status / Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light font-sans text-sm font-medium">
+                    {initialWaitlist.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center opacity-50">Keine Einträge auf der Warteliste.</td>
+                      </tr>
+                    ) : (
+                      initialWaitlist.map((entry: any) => (
+                        <tr key={entry.id} className="hover:bg-white transition-colors">
+                          <td className="p-4">{entry.name}</td>
+                          <td className="p-4"><a href={`mailto:${entry.email}`} className="text-accent-green underline">{entry.email}</a></td>
+                          <td className="p-4">{entry.guestCount}</td>
+                          <td className="p-4">{new Date(entry.createdAt).toLocaleString('de-DE')}</td>
+                          <td className="p-4 flex gap-2">
+                            {entry.notifiedAt ? (
+                              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold border border-blue-200">
+                                Benachrichtigt am {new Date(entry.notifiedAt).toLocaleDateString('de-DE')}
+                              </span>
+                            ) : (
+                              <button 
+                                onClick={async () => {
+                                  if (confirm(`Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`)) {
+                                    setIsUpdating(true);
+                                    await notifyWaitlistEntry(entry.id);
+                                    setIsUpdating(false);
+                                  }
+                                }}
+                                disabled={isUpdating}
+                                className="bg-accent-green text-white text-xs px-3 py-1 rounded font-bold hover:bg-base-dark transition-colors disabled:opacity-50"
+                              >
+                                Benachrichtigen
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (confirm("Eintrag aus der Warteliste löschen?")) {
+                                  setIsUpdating(true);
+                                  await removeWaitlistEntry(entry.id, event.id);
+                                  setIsUpdating(false);
+                                }
+                              }}
+                              disabled={isUpdating}
+                              className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors disabled:opacity-50"
+                              title="Löschen"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

@@ -5,7 +5,7 @@ import { createEvent, deleteEvent } from "@/app/actions/events";
 import { uploadImage } from "@/app/actions/upload";
 import Link from "next/link";
 
-export default function AdminEventList({ initialEvents }: { initialEvents: any[] }) {
+export default function AdminEventList({ initialEvents, stats }: { initialEvents: any[], stats?: any }) {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -17,9 +17,12 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
     imageUrl: "",
     link: "/termine/ohne-reservierung",
     reservable: false,
+    allowTableSelection: true,
+    maxCapacity: 0,
     minimumConsumption: 50, // Default 50€
     walkInReserve: 0, // default
-    reservableDates: [] as string[]
+    reservableDates: [] as string[],
+    publishTablesAt: "" // ISO String
   });
 
   const availableDays = useMemo(() => {
@@ -69,10 +72,13 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         reservableDates: formData.reservableDates,
-        walkInReserve: formData.walkInReserve
+        allowTableSelection: formData.allowTableSelection,
+        maxCapacity: formData.maxCapacity,
+        walkInReserve: formData.walkInReserve,
+        publishTablesAt: formData.publishTablesAt ? new Date(formData.publishTablesAt) : undefined
       });
       setFormData({
-        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, minimumConsumption: 50, walkInReserve: 0, reservableDates: []
+        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, maxCapacity: 0, minimumConsumption: 50, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
       });
       setFile(null);
       window.location.reload();
@@ -86,6 +92,32 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* List */}
       <div className="lg:col-span-2 space-y-4">
+        
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
+              <div className="text-3xl font-black text-accent-green mb-1">{stats.totalEvents}</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Events Gesamt</div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
+              <div className="text-3xl font-black text-accent-green mb-1">{stats.reservableEvents}</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Davon Reservierbar</div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
+              <div className="text-3xl font-black text-accent-green mb-1">{stats.totalReservations}</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Reservierungen</div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
+              <div className="text-3xl font-black text-accent-green mb-1">{stats.revenue.toLocaleString('de-DE')}€</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Umsatz (Bezahlt)</div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-yellow-300 shadow-sm text-center">
+              <div className="text-3xl font-black text-yellow-600 mb-1">{stats.devShare.toLocaleString('de-DE')}€</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider text-yellow-800">Dev Share (VIP)</div>
+            </div>
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold mb-4 font-display">Aktuelle Termine</h2>
         {initialEvents.map(event => (
           <Link key={event.id} href={`/admin/events/${event.id}`} className="group block bg-white p-6 rounded-2xl border border-border-light shadow-sm hover:border-accent-green hover:shadow-md transition-all relative">
@@ -198,6 +230,17 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
 
           {formData.reservable && (
             <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg animate-fade-in space-y-4">
+              <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-border-light mb-4">
+                <input 
+                  type="checkbox" 
+                  id="tableSel" 
+                  className="w-5 h-5 accent-accent-green"
+                  checked={formData.allowTableSelection} 
+                  onChange={e => setFormData({...formData, allowTableSelection: e.target.checked})} 
+                />
+                <label htmlFor="tableSel" className="text-sm font-bold cursor-pointer">Zelt-Layout & Tischauswahl aktivieren?</label>
+              </div>
+              
               <div>
                 <label className="block text-sm font-bold mb-1 opacity-70">Welche Tage sind reservierbar?</label>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -241,6 +284,17 @@ export default function AdminEventList({ initialEvents }: { initialEvents: any[]
                     title="Anzahl an Plätzen, die immer für Spontanbesucher reserviert bleiben."
                   />
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold mb-1 opacity-70">Tisch-Layout freischalten ab (Datum & Uhrzeit)</label>
+                <input 
+                  type="datetime-local" 
+                  value={formData.publishTablesAt} 
+                  onChange={e => setFormData({...formData, publishTablesAt: e.target.value})} 
+                  className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" 
+                  title="Ab wann sollen Kunden Tische sehen und buchen können? Leer lassen für sofort."
+                />
               </div>
             </div>
           )}

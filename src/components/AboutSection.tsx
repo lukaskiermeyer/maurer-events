@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 
 export default function AboutSection() {
   const t = useTranslations("About");
@@ -31,9 +32,11 @@ export default function AboutSection() {
                   {/* Fake Klebestreifen (Tape) oben */}
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#E5DCC5]/80 backdrop-blur-sm rotate-[3deg] shadow-sm"></div>
 
-                  <img
+                  <Image
                       src="/florian.jpg"
                       alt="Florian Maurer - Festwirt"
+                      width={600}
+                      height={800}
                       className="w-full h-auto object-cover grayscale-[10%] contrast-110" // Leicht analoger Foto-Look
                   />
 

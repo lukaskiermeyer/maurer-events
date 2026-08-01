@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, uuid, integer, json } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, uuid, integer, json, index } from 'drizzle-orm/pg-core';
 
 export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -13,9 +13,12 @@ export const events = pgTable('events', {
   imageUrl: text('image_url'),
   link: text('link'),
   reservable: boolean('reservable').default(false).notNull(),
+  allowTableSelection: boolean('allow_table_selection').default(true).notNull(),
+  maxCapacity: integer('max_capacity').default(0).notNull(),
   reservableDates: json('reservable_dates'), // Array of ISO date strings
   minimumConsumption: integer('minimum_consumption').default(5000), // Default 50€ (in cents)
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
+  publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -26,6 +29,8 @@ export const tables = pgTable('tables', {
   capacity: integer('capacity').default(8).notNull(),
   positionX: integer('position_x').default(0).notNull(),
   positionY: integer('position_y').default(0).notNull(),
+  isVip: boolean('is_vip').default(false).notNull(),
+  vipPrice: integer('vip_price').default(0),
 });
 
 export const reservations = pgTable('reservations', {
@@ -38,12 +43,48 @@ export const reservations = pgTable('reservations', {
   guestCount: integer('guest_count').notNull(),
   amountTotal: integer('amount_total').notNull(), // in cents
   stripeSessionId: text('stripe_session_id'),
-  status: text('status').default('pending').notNull(), // 'pending', 'paid', 'cancelled'
+  status: text('status').default('pending').notNull(), // 'pending', 'paid', 'cancelled', 'confirmed'
+  pdfUrl: text('pdf_url'),
+  qrCodeText: text('qr_code_text'),
+  scannedAt: timestamp('scanned_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    eventIdIdx: index('res_event_id_idx').on(table.eventId),
+    tableIdIdx: index('res_table_id_idx').on(table.tableId),
+    sessionIdIdx: index('res_session_id_idx').on(table.stripeSessionId),
+    dateIdx: index('res_date_idx').on(table.reservationDate),
+  };
+});
+
+export const galleries = pgTable('galleries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => events.id).notNull(),
+  imageUrl: text('image_url').notNull(),
+  publicId: text('public_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    eventIdIdx: index('gal_event_id_idx').on(table.eventId),
+  };
 });
 
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(), // JSON string for flexibility
+});
+
+export const waitlists = pgTable('waitlists', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => events.id).notNull(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  guestCount: integer('guest_count').notNull(),
+  notifiedAt: timestamp('notified_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    eventIdIdx: index('wait_event_id_idx').on(table.eventId),
+  };
 });

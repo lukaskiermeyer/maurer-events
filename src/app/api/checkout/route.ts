@@ -16,7 +16,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
 
 export async function POST(req: Request) {
   try {
-    const { eventId, guestCount, name, email, reservationDate } = await req.json();
+    const { eventId, tableId, guestCount, name, email, reservationDate } = await req.json();
 
     if (!eventId || !guestCount || !name || !email || !reservationDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -29,65 +29,154 @@ export async function POST(req: Request) {
     }
     const event = eventList[0];
 
-    // Kapazitätsprüfung
-    const { tables } = await import('@/db/schema');
-    const allTables = await db.select().from(tables);
-    const totalCapacity = allTables.reduce((sum, t) => sum + t.capacity, 0);
-
-    const { and } = await import('drizzle-orm');
-    const existingRes = await db.select().from(reservations).where(
-      and(eq(reservations.eventId, event.id), eq(reservations.reservationDate, new Date(reservationDate)))
-    );
-    
-    // Status 'cancelled' sollte nicht in die Kapazität zählen, aber wir nehmen an alle anderen blockieren Plätze
-    const activeRes = existingRes.filter(r => r.status !== 'cancelled');
-    const currentBooked = activeRes.reduce((sum, r) => sum + r.guestCount, 0);
-
-    const walkInReserve = event.walkInReserve || 0;
-    const availableCapacity = totalCapacity - walkInReserve - currentBooked;
-
-    if (guestCount > availableCapacity) {
-      return NextResponse.json({ error: `Leider sind nicht mehr genügend Plätze frei. Verfügbar: ${Math.max(0, availableCapacity)}` }, { status: 400 });
+    // Prüfe ob Tables veröffentlicht sind
+    if (event.publishTablesAt && new Date() < new Date(event.publishTablesAt)) {
+      return NextResponse.json({ error: 'Reservierungen sind noch nicht freigeschaltet.' }, { status: 403 });
     }
 
-    const minimumConsumption = event.minimumConsumption || 5000; // in Cent
-    const amountTotal = minimumConsumption * guestCount;
+    const { tables } = await import('@/db/schema');
+    let table = null;
+    let amountTotal = (event.minimumConsumption || 5000) * guestCount; // in Cent
+    
+    if (tableId) {
+      const tableList = await db.select().from(tables).where(eq(tables.id, tableId));
+      if (tableList.length === 0) {
+        return NextResponse.json({ error: 'Tisch nicht gefunden' }, { status: 404 });
+      }
+      table = tableList[0];
 
-    // Erstelle Stripe Checkout Session
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+      if (guestCount > table.capacity) {
+        return NextResponse.json({ error: `Tisch hat nur Kapazität für ${table.capacity} Personen.` }, { status: 400 });
+      }
+      
+      if (table.isVip) {
+        amountTotal += table.vipPrice || 0;
+      }
+    }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'paypal', 'klarna', 'sepa_debit'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'eur',
-            product_data: {
-              name: `Reservierung: ${event.title}`,
-              description: `Mindestabnahme für ${guestCount} Personen`,
+    let reservationId: string | undefined;
+
+    const { and, sql } = await import('drizzle-orm');
+
+    // 1. Transaction für Atomarität und Lock
+    try {
+      await db.transaction(async (tx) => {
+        if (event.maxCapacity && event.maxCapacity > 0) {
+          // Event Lock (verhindert Race Conditions auf die globale Kapazität)
+          await tx.execute(sql`SELECT 1 FROM ${events} WHERE id = ${event.id} FOR UPDATE`);
+          
+          const allRes = await tx.select().from(reservations).where(
+            and(
+              eq(reservations.eventId, event.id),
+              eq(reservations.reservationDate, new Date(reservationDate))
+            )
+          );
+          
+          let currentTotal = 0;
+          for (const r of allRes) {
+            if (r.status === 'cancelled') continue;
+            if (r.status === 'paid' || r.status === 'confirmed') {
+              currentTotal += r.guestCount;
+            } else if (r.status === 'pending') {
+              const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
+              if (diffMs < 15 * 60 * 1000) {
+                currentTotal += r.guestCount;
+              }
+            }
+          }
+          
+          if (currentTotal + guestCount > event.maxCapacity) {
+            throw new Error('Leider sind für diesen Tag nicht mehr ausreichend Plätze verfügbar.');
+          }
+        }
+
+        if (table) {
+          // Table Lock (verhindert Race Conditions: parallel Requests auf denselben Tisch warten nacheinander)
+          await tx.execute(sql`SELECT 1 FROM ${tables} WHERE id = ${table.id} FOR UPDATE`);
+
+          const existingRes = await tx.select().from(reservations).where(
+            and(
+              eq(reservations.eventId, event.id),
+              eq(reservations.reservationDate, new Date(reservationDate)),
+              eq(reservations.tableId, table.id)
+            )
+          );
+          
+          // Blockiere nur, wenn 'paid'/'confirmed', oder wenn 'pending' und jünger als 15 Minuten
+          const activeRes = existingRes.filter(r => {
+            if (r.status === 'cancelled') return false;
+            if (r.status === 'paid' || r.status === 'confirmed') return true;
+            if (r.status === 'pending') {
+              const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
+              return diffMs < 15 * 60 * 1000; // 15 Minuten blockiert
+            }
+            return false;
+          });
+
+          if (activeRes.length > 0) {
+            throw new Error('Dieser Tisch ist an diesem Datum bereits reserviert oder wird gerade gebucht.');
+          }
+        }
+
+        // Vorläufig als 'pending' speichern
+        const inserted = await tx.insert(reservations).values({
+          eventId: event.id,
+          tableId: table ? table.id : null,
+          guestName: name,
+          email: email,
+          guestCount: guestCount,
+          amountTotal: amountTotal,
+          reservationDate: new Date(reservationDate),
+          status: 'pending'
+        }).returning({ id: reservations.id });
+
+        reservationId = inserted[0].id;
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+
+    // 2. Erstelle Stripe Checkout Session (außerhalb der DB Transaction!)
+    try {
+      const origin = req.headers.get('origin') || 'http://localhost:3000';
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card', 'paypal', 'klarna', 'sepa_debit'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: `Reservierung: ${event.title}`,
+                description: `Mindestabnahme für ${guestCount} Personen`,
+              },
+              unit_amount: event.minimumConsumption || 5000,
             },
-            unit_amount: minimumConsumption,
+            quantity: guestCount,
           },
-          quantity: guestCount,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?canceled=true`,
-      customer_email: email,
-    });
+        ],
+        mode: 'payment',
+        success_url: `${origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/?canceled=true`,
+        customer_email: email,
+        metadata: {
+          reservationId: reservationId!
+        }
+      });
 
-    // Speichere Reservierung als 'pending'
-    await db.insert(reservations).values({
-      eventId: event.id,
-      guestName: name,
-      email: email,
-      guestCount: guestCount,
-      amountTotal: amountTotal,
-      stripeSessionId: session.id,
-      reservationDate: new Date(reservationDate),
-      status: 'pending'
-    });
+      // Session ID in der DB hinterlegen
+      await db.update(reservations)
+        .set({ stripeSessionId: session.id })
+        .where(eq(reservations.id, reservationId!));
+
+      return NextResponse.json({ url: session.url });
+    } catch (stripeErr: any) {
+      // Rollback: Wenn Stripe fehlschlägt, lösche die vorläufige Reservierung wieder
+      if (reservationId) {
+        await db.delete(reservations).where(eq(reservations.id, reservationId));
+      }
+      throw stripeErr;
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {

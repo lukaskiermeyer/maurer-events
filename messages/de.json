@@ -118,6 +118,11 @@
     "submitting": "Einen Moment...",
     "error_checkout": "Fehler beim Checkout",
     "error_connection": "Verbindungsfehler",
-    "popular": "Beliebt"
+    "popular": "Beliebt",
+    "waitlist_btn": "Kein passender Tisch dabei? In die Warteliste eintragen",
+    "waitlist_title": "Warteliste",
+    "waitlist_desc": "Trage dich ein und wir informieren dich sofort, wenn durch Stornierungen wieder Tische frei werden.",
+    "waitlist_success": "Eingetragen! Du stehst jetzt auf der Warteliste und wir melden uns, sobald ein Platz frei wird.",
+    "waitlist_submit": "Kostenlos eintragen"
   }
 }

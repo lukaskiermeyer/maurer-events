@@ -118,6 +118,11 @@
     "submitting": "Just a moment...",
     "error_checkout": "Checkout Error",
     "error_connection": "Connection Error",
-    "popular": "Popular"
+    "popular": "Popular",
+    "waitlist_btn": "No suitable table? Join the waitlist",
+    "waitlist_title": "Waitlist",
+    "waitlist_desc": "Sign up and we will inform you immediately if tables become available due to cancellations.",
+    "waitlist_success": "Signed up! We will let you know as soon as a table is available.",
+    "waitlist_submit": "Join for free"
   }
 }

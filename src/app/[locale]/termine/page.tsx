@@ -3,7 +3,8 @@ import { getEvents } from "@/app/actions/events";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Alle Termine | MAURER EVENTS",
+  title: "Alle Termine & Events | MAURER EVENTS",
+  description: "Übersicht aller anstehenden Zeltfeste und Veranstaltungen von Maurer Events. Komm vorbei und feiere mit uns in echter bayerischer Atmosphäre.",
 };
 
 export default async function TermineOverviewPage({ params }: { params: Promise<{ locale: string }> }) {

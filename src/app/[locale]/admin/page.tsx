@@ -1,4 +1,4 @@
-import { getEvents } from "@/app/actions/events";
+import { getEvents, getAdminStats } from "@/app/actions/events";
 import AdminEventList from "./AdminEventList";
 import Link from "next/link";
 
@@ -6,8 +6,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   let events = [];
+  let stats = null;
   try {
     events = await getEvents();
+    stats = await getAdminStats();
   } catch (error) {
     console.error("Datenbank-Verbindung fehlgeschlagen. Bitte DATABASE_URL prüfen.", error);
   }
@@ -23,7 +25,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminEventList initialEvents={events} />
+        <AdminEventList initialEvents={events} stats={stats} />
       </div>
     </div>
   );

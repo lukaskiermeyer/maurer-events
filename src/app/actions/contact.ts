@@ -8,11 +8,11 @@ const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
 export async function submitContactForm(formData: {
   name: string;
   email: string;
-  phone?: string;
+  eventType: string;
   message: string;
   turnstileToken: string;
 }) {
-  const { name, email, phone, message, turnstileToken } = formData;
+  const { name, email, eventType, message, turnstileToken } = formData;
 
   if (!turnstileToken) {
     return { success: false, error: "Spam-Schutz fehlgeschlagen. Bitte lade die Seite neu." };
@@ -50,11 +50,11 @@ export async function submitContactForm(formData: {
 
   try {
     const data = await resend.emails.send({
-      from: "Website Kontaktformular <onboarding@resend.dev>", // Später durch z.B. info@maurer-events.de ersetzen, sobald Domain verifiziert ist
-      to: ["info@maurer-events.de"],
+      from: "Maurer Events Kontakt <servus@maurer-events.com>",
+      to: ["servus@maurer-events.com"],
       replyTo: email,
-      subject: `Neue Anfrage von ${name}`,
-      text: `Neue Kontaktanfrage über die Website:\n\nName: ${name}\nE-Mail: ${email}\nTelefon: ${phone || 'Nicht angegeben'}\n\nNachricht:\n${message}`,
+      subject: `Neue Anfrage von ${name} - ${eventType}`,
+      text: `Neue Kontaktanfrage über die Website:\n\nName: ${name}\nE-Mail: ${email}\nVeranstaltungstyp: ${eventType}\n\nNachricht:\n${message}`,
     });
 
     if (data.error) {

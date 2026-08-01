@@ -1,6 +1,8 @@
 import React from "react";
 import { getEvents } from "@/app/actions/events";
+import { getGalleryImages } from "@/app/actions/gallery";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
 
@@ -51,6 +53,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+
+  const galleryImages = await getGalleryImages(event.id);
 
   const dateObj = new Date(event.date);
   const dateStr = dateObj.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', {
@@ -141,9 +145,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           {event.imageUrl && (
             <div className="w-full sm:w-[400px] lg:w-[450px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
               <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border-[12px] border-white/80 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
-                <img 
+                <Image 
                   src={event.imageUrl} 
                   alt={title} 
+                  width={800}
+                  height={800}
                   className="w-full h-auto object-contain" 
                 />
               </div>
@@ -203,6 +209,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       {event.reservable && (
         <div className="mt-32">
           <ReservationSection initialEvents={upcomingEvents} initialSelectedEvent={event.id} />
+        </div>
+      )}
+
+      {/* Gallery Section */}
+      {galleryImages.length > 0 && (
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-32 mb-20">
+          <h2 className="font-display font-black text-4xl mb-8 text-center text-base-dark">Rückblick: <span className="text-accent-green">Galerie</span></h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {galleryImages.map(img => (
+              <div key={img.id} className="relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group">
+                <Image src={img.imageUrl} alt="Event Foto" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-110 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
