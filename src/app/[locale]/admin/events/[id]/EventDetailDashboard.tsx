@@ -41,7 +41,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     minimumConsumption: event.minimumConsumption / 100,
     walkInReserve: event.walkInReserve || 0
   });
-  });
+
   const [file, setFile] = useState<File | null>(null);
   const [galleryFile, setGalleryFile] = useState<File | null>(null);
   const [galleryUrl, setGalleryUrl] = useState("");
