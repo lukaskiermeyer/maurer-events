@@ -39,6 +39,9 @@ export async function submitContactForm(formData: {
       return { success: false, error: "Verbindungsfehler beim Spam-Schutz." };
     }
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      return { success: false, error: "Spam-Schutz ist nicht konfiguriert." };
+    }
     console.warn("TURNSTILE_SECRET_KEY is not set. Skipping real verification.");
   }
 

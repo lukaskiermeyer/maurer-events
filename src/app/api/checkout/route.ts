@@ -16,11 +16,33 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
 
 export async function POST(req: Request) {
   try {
-    const { eventId, tableId, guestCount, name, email, reservationDate } = await req.json();
+    const { eventId, tableId, guestCount, name, email, reservationDate, selectedPackage, selectedTime } = await req.json();
 
     if (!eventId || !guestCount || !name || !email || !reservationDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Ghost cleanup (Delete pending reservations older than 15 mins)
+    try {
+      const { and, lt, eq } = await import('drizzle-orm');
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+      await db.delete(reservations).where(
+        and(
+          eq(reservations.status, 'pending'),
+          lt(reservations.createdAt, fifteenMinsAgo)
+        )
+      );
+    } catch (cleanupErr) {
+      console.error('Failed to cleanup ghost reservations:', cleanupErr);
+    }
+
+    // Timezone safe date parsing (Use selectedTime or fallback to noon UTC)
+    let timeString = '12:00';
+    if (selectedTime) {
+      timeString = selectedTime.split(' ')[0];
+    }
+    const safeDateStr = reservationDate.includes('T') ? reservationDate.split('T')[0] + `T${timeString}:00Z` : `${reservationDate}T${timeString}:00Z`;
+    const parsedDate = new Date(safeDateStr);
 
     // Hole Event-Details aus der DB
     const eventList = await db.select().from(events).where(eq(events.id, eventId));
@@ -36,7 +58,15 @@ export async function POST(req: Request) {
 
     const { tables } = await import('@/db/schema');
     let table = null;
-    let amountTotal = (event.minimumConsumption || 5000) * guestCount; // in Cent
+    
+    let packagePriceCents = event.minimumConsumption || 5000;
+    if (selectedPackage === 'brotzeit') {
+      packagePriceCents = 2500;
+    } else if (selectedPackage === 'vollgas') {
+      packagePriceCents = 5000;
+    }
+    
+    let amountTotal = packagePriceCents * guestCount; // in Cent
     
     if (tableId) {
       const tableList = await db.select().from(tables).where(eq(tables.id, tableId));
@@ -68,7 +98,7 @@ export async function POST(req: Request) {
           const allRes = await tx.select().from(reservations).where(
             and(
               eq(reservations.eventId, event.id),
-              eq(reservations.reservationDate, new Date(reservationDate))
+              eq(reservations.reservationDate, parsedDate)
             )
           );
           
@@ -97,7 +127,7 @@ export async function POST(req: Request) {
           const existingRes = await tx.select().from(reservations).where(
             and(
               eq(reservations.eventId, event.id),
-              eq(reservations.reservationDate, new Date(reservationDate)),
+              eq(reservations.reservationDate, parsedDate),
               eq(reservations.tableId, table.id)
             )
           );
@@ -126,7 +156,7 @@ export async function POST(req: Request) {
           email: email,
           guestCount: guestCount,
           amountTotal: amountTotal,
-          reservationDate: new Date(reservationDate),
+          reservationDate: parsedDate,
           status: 'pending'
         }).returning({ id: reservations.id });
 
@@ -148,9 +178,9 @@ export async function POST(req: Request) {
               currency: 'eur',
               product_data: {
                 name: `Reservierung: ${event.title}`,
-                description: `Mindestabnahme für ${guestCount} Personen`,
+                description: `Paket: ${selectedPackage === 'brotzeit' ? 'Brotzeit' : selectedPackage === 'vollgas' ? 'Vollgas' : 'Standard'} für ${guestCount} Personen`,
               },
-              unit_amount: event.minimumConsumption || 5000,
+              unit_amount: packagePriceCents,
             },
             quantity: guestCount,
           },
@@ -177,8 +207,6 @@ export async function POST(req: Request) {
       }
       throw stripeErr;
     }
-
-    return NextResponse.json({ url: session.url });
   } catch (err: any) {
     console.error('Stripe Checkout Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

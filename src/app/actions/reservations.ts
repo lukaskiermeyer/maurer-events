@@ -6,6 +6,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { generateTicketPdf } from "@/lib/ticket";
 import { Resend } from "resend";
+import { requireAdmin } from "@/lib/auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "dummy_key");
 
@@ -41,11 +42,22 @@ export async function getReservationsByEvent(eventId: string) {
 }
 
 export async function assignTableToReservation(reservationId: string, tableId: string | null) {
+  await requireAdmin();
+  if (tableId) {
+    const resList = await db.select().from(reservations).where(eq(reservations.id, reservationId));
+    const tableList = await db.select().from(tables).where(eq(tables.id, tableId));
+    if (resList.length > 0 && tableList.length > 0) {
+       if (resList[0].guestCount > tableList[0].capacity) {
+          throw new Error(`Kapazität überschritten: Der Tisch hat nur Platz für ${tableList[0].capacity} Personen (Reservierung hat ${resList[0].guestCount} Personen).`);
+       }
+    }
+  }
   await db.update(reservations).set({ tableId }).where(eq(reservations.id, reservationId));
   revalidatePath("/admin/reservations");
 }
 
 export async function updateReservationStatus(reservationId: string, status: string) {
+  await requireAdmin();
   if (status === "confirmed") {
     // 1. Fetch reservation details
     const resList = await db.select({
@@ -91,9 +103,10 @@ export async function updateReservationStatus(reservationId: string, status: str
           });
         } catch (error) {
           console.error("Failed to send ticket email for reservation", reservation.id, error);
-          // We still continue to update the database to confirmed, even if email fails,
-          // so the admin can at least see it's confirmed. A retry mechanism would be better,
-          // but for now we prevent the crash.
+          await db.update(reservations).set({ status, qrCodeText }).where(eq(reservations.id, reservationId));
+          revalidatePath("/admin/reservations");
+          revalidatePath(`/admin/events`);
+          return { success: true, warning: "E-Mail konnte nicht gesendet werden." };
         }
       }
 
@@ -106,6 +119,7 @@ export async function updateReservationStatus(reservationId: string, status: str
 
   revalidatePath("/admin/reservations");
   revalidatePath(`/admin/events`);
+  return { success: true };
 }
 
 export async function createManualReservation(data: {
@@ -115,6 +129,7 @@ export async function createManualReservation(data: {
   guestCount: number;
   reservationDate: string;
 }) {
+  await requireAdmin();
   await db.insert(reservations).values({
     eventId: data.eventId,
     guestName: data.guestName,
@@ -128,6 +143,7 @@ export async function createManualReservation(data: {
 }
 
 export async function checkInGuestByQR(eventId: string, qrCodeText: string) {
+  await requireAdmin();
   // Find reservation by QR code (or ID as fallback, since qrCodeText might just be the ID in older versions)
   // Also ensure it belongs to the correct event
   const [reservation] = await db.select()

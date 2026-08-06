@@ -71,9 +71,11 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
           eventId: selectedEvent,
           tableId: selectedTableId,
           reservationDate: selectedDate || selectedEventObj?.date,
+          selectedTime: selectedTime,
           guestCount: guests,
           name: guestName,
-          email: guestEmail
+          email: guestEmail,
+          selectedPackage: selectedPackage
         })
       });
       const data = await res.json();

@@ -5,6 +5,7 @@ import { events } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_noStore as noStore, unstable_cache } from "next/cache";
 import { translateContent } from "@/lib/translate";
+import { requireAdmin } from "@/lib/auth";
 
 export async function createEvent(data: {
   title: string;
@@ -22,6 +23,7 @@ export async function createEvent(data: {
   walkInReserve?: number;
   publishTablesAt?: Date;
 }) {
+  await requireAdmin();
   const [titleEn, locationEn, descriptionEn] = await Promise.all([
     translateContent(data.title),
     translateContent(data.location),
@@ -54,6 +56,7 @@ export async function createEvent(data: {
 }
 
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
+  await requireAdmin();
   const updates: Partial<typeof events.$inferInsert> = { ...data, updatedAt: new Date() };
 
   // If any of the translatable fields changed, re-translate them
@@ -77,6 +80,7 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
 }
 
 export async function deleteEvent(id: string) {
+  await requireAdmin();
   await db.delete(events).where(eq(events.id, id));
   revalidatePath("/");
   revalidatePath("/termine/mit-reservierung");
@@ -95,6 +99,7 @@ export const getEvents = unstable_cache(
 );
 
 export async function getAdminStats() {
+  await requireAdmin();
   noStore();
   const { reservations, tables } = await import("@/db/schema");
   const allEvents = await db.select().from(events);

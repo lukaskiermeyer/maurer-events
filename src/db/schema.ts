@@ -35,7 +35,7 @@ export const tables = pgTable('tables', {
 
 export const reservations = pgTable('reservations', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventId: uuid('event_id').references(() => events.id).notNull(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
   tableId: uuid('table_id').references(() => tables.id), // Nullable until assigned by admin
   reservationDate: timestamp('reservation_date').defaultNow().notNull(), // The specific day they booked for
   guestName: text('guest_name').notNull(),
@@ -60,7 +60,7 @@ export const reservations = pgTable('reservations', {
 
 export const galleries = pgTable('galleries', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventId: uuid('event_id').references(() => events.id).notNull(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
   imageUrl: text('image_url').notNull(),
   publicId: text('public_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -77,7 +77,7 @@ export const settings = pgTable('settings', {
 
 export const waitlists = pgTable('waitlists', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventId: uuid('event_id').references(() => events.id).notNull(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   email: text('email').notNull(),
   guestCount: integer('guest_count').notNull(),

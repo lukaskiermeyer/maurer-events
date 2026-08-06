@@ -38,12 +38,16 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      // Update reservation status in database
-      await db.update(reservations)
-          .set({ status: 'paid' })
-          .where(eq(reservations.stripeSessionId, session.id));
+      if (session.payment_status === 'paid') {
+        // Update reservation status in database
+        await db.update(reservations)
+            .set({ status: 'paid' })
+            .where(eq(reservations.stripeSessionId, session.id));
 
-      console.log(`Payment successful for session ${session.id}. Reservation updated.`);
+        console.log(`Payment successful for session ${session.id}. Reservation updated.`);
+      } else {
+        console.log(`Payment not yet paid for session ${session.id}. Current status: ${session.payment_status}`);
+      }
     }
 
     return NextResponse.json({ received: true });
