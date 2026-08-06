@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import EventDetailDashboard from "./EventDetailDashboard";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";

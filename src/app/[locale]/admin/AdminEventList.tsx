@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { createEvent, deleteEvent } from "@/app/actions/events";
 import { uploadImage } from "@/app/actions/upload";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 
 export default function AdminEventList({ initialEvents, stats }: { initialEvents: any[], stats?: any }) {
   const [loading, setLoading] = useState(false);

@@ -13,8 +13,30 @@ export async function joinWaitlist(data: {
   name: string;
   email: string;
   guestCount: number;
+  turnstileToken: string;
 }) {
   try {
+    // 1. Turnstile verifizieren
+    const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+    if (TURNSTILE_SECRET_KEY) {
+      if (!data.turnstileToken) {
+        return { success: false, error: "Bitte bestätige, dass du kein Roboter bist." };
+      }
+      const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+      const verifyData = new URLSearchParams();
+      verifyData.append('secret', TURNSTILE_SECRET_KEY);
+      verifyData.append('response', data.turnstileToken);
+
+      try {
+        const turnstileResponse = await fetch(verifyUrl, { method: 'POST', body: verifyData });
+        const turnstileOutcome = await turnstileResponse.json();
+        if (!turnstileOutcome.success) {
+          return { success: false, error: "Spam-Schutz fehlgeschlagen." };
+        }
+      } catch (error) {
+        return { success: false, error: "Verbindungsfehler beim Spam-Schutz." };
+      }
+    }
     const existing = await db.select()
       .from(waitlists)
       .where(and(eq(waitlists.eventId, data.eventId), eq(waitlists.email, data.email)));

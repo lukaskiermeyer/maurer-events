@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { scanTicket } from "@/app/actions/scanner";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 
 export default function AdminScanPage() {
   const [scanResult, setScanResult] = useState<any>(null);

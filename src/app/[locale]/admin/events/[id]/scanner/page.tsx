@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { checkInGuestByQR } from "@/app/actions/reservations";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 
 export default function ScannerPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);

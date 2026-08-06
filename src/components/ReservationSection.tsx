@@ -31,6 +31,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
 
   const [isWaitlistMode, setIsWaitlistMode] = useState(false);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+  const [waitlistTurnstileToken, setWaitlistTurnstileToken] = useState("");
 
   const selectedEventObj = reservableEvents.find((e: any) => e.id === selectedEvent);
   const isCountdown = selectedEventObj?.publishTablesAt && new Date(selectedEventObj.publishTablesAt) > new Date();
@@ -105,11 +106,18 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
     e.preventDefault();
     setIsCheckingOut(true);
     setCheckoutError("");
+    if (!waitlistTurnstileToken) {
+      setCheckoutError("Bitte bestätige, dass du kein Roboter bist.");
+      setIsCheckingOut(false);
+      return;
+    }
+    
     const res = await joinWaitlist({
       eventId: selectedEvent,
       name: guestName,
       email: guestEmail,
-      guestCount: guests
+      guestCount: guests,
+      turnstileToken: waitlistTurnstileToken
     });
     if (res.success) {
       setWaitlistSuccess(true);
@@ -495,7 +503,15 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                         <input required type="number" min={1} value={guests} onChange={e => setGuests(parseInt(e.target.value) || 1)} className="w-full border rounded-xl px-4 py-3 bg-canvas-light" />
                       </div>
 
-                      <button disabled={isCheckingOut} type="submit" className="w-full bg-accent-green text-white font-bold py-4 rounded-xl disabled:opacity-50">
+                      <div className="flex justify-center">
+                        <Turnstile
+                          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                          onSuccess={(token) => setWaitlistTurnstileToken(token)}
+                          options={{ theme: "light" }}
+                        />
+                      </div>
+
+                      <button disabled={isCheckingOut || !waitlistTurnstileToken} type="submit" className="w-full bg-accent-green text-white font-bold py-4 rounded-xl disabled:opacity-50">
                         {isCheckingOut ? t('submitting') : t('waitlist_submit')}
                       </button>
                     </form>

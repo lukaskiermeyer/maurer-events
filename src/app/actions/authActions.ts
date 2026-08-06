@@ -123,6 +123,34 @@ export async function verifyOtp(email: string, code: string, turnstileToken: str
   return { success: true };
 }
 
+
+export async function bypassLoginForStaging() {
+  if (process.env.NODE_ENV === "production") {
+    return { success: false, error: "Bypass in production not allowed." };
+  }
+
+  const stagingEmail = "staging-admin@maurer-events.com";
+  const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 Tage gültig
+
+  // Session in der Datenbank anlegen
+  const [session] = await db.insert(adminSessions).values({
+    email: stagingEmail,
+    validUntil,
+  }).returning();
+
+  // Sicheres HttpOnly Cookie setzen
+  const cookieStore = await cookies();
+  cookieStore.set("admin_token", session.id, {
+    httpOnly: true,
+    secure: false, // Für lokale Staging-Umgebungen ohne HTTPS
+    sameSite: "strict",
+    expires: validUntil,
+    path: "/",
+  });
+
+  return { success: true };
+}
+
 export async function logout() {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;

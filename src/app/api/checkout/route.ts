@@ -188,21 +188,37 @@ export async function POST(req: Request) {
     try {
       const origin = req.headers.get('origin') || 'http://localhost:3000';
 
+      const lineItems: any[] = [
+        {
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: `Reservierung: ${event.title}`,
+              description: `Paket: ${selectedPackage === 'brotzeit' ? 'Brotzeit' : selectedPackage === 'vollgas' ? 'Vollgas' : 'Standard'} für ${guestCount} Personen`,
+            },
+            unit_amount: packagePriceCents,
+          },
+          quantity: guestCount,
+        },
+      ];
+
+      if (table && table.isVip && table.vipPrice && table.vipPrice > 0) {
+        lineItems.push({
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: `VIP Aufpreis`,
+              description: `Tisch: ${table.name}`,
+            },
+            unit_amount: table.vipPrice,
+          },
+          quantity: 1,
+        });
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card', 'paypal', 'klarna', 'sepa_debit'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'eur',
-              product_data: {
-                name: `Reservierung: ${event.title}`,
-                description: `Paket: ${selectedPackage === 'brotzeit' ? 'Brotzeit' : selectedPackage === 'vollgas' ? 'Vollgas' : 'Standard'} für ${guestCount} Personen`,
-              },
-              unit_amount: packagePriceCents,
-            },
-            quantity: guestCount,
-          },
-        ],
+        line_items: lineItems,
         mode: 'payment',
         success_url: `${origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/?canceled=true`,

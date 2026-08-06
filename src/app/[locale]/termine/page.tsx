@@ -1,6 +1,6 @@
 import React from "react";
 import { getEvents } from "@/app/actions/events";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 
 export const metadata = {
   title: "Alle Termine & Events | MAURER EVENTS",

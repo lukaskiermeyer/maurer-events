@@ -1,7 +1,7 @@
 import React from "react";
 import { getEvents } from "@/app/actions/events";
 import { getGalleryImages } from "@/app/actions/gallery";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";

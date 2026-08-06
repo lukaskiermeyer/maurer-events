@@ -1,6 +1,6 @@
 import { getEvents, getAdminStats } from "@/app/actions/events";
 import AdminEventList from "./AdminEventList";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 
 import { requireAdmin } from "@/lib/auth";
 
