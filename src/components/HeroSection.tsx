@@ -158,7 +158,7 @@ export default function HeroSection() {
         <div className="absolute top-2 -left-6 md:-left-8 lg:-left-2 origin-top rotate-[25deg] md:rotate-0">
           <TclSpot />
         </div>
-        <div className="absolute top-2 -right-6 md:-right-8 lg:-right-2 origin-top scale-x-[-1] rotate-[25deg] md:rotate-0">
+        <div className="absolute top-2 -right-6 md:-right-8 lg:-right-2 origin-top scale-x-[-1] -rotate-[25deg] md:rotate-0">
           <TclSpot />
         </div>
       </div>
