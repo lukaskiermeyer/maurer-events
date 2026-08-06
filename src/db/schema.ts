@@ -88,3 +88,26 @@ export const waitlists = pgTable('waitlists', {
     eventIdIdx: index('wait_event_id_idx').on(table.eventId),
   };
 });
+
+export const adminAuth = pgTable('admin_auth', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  otpCode: text('otp_code').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    emailIdx: index('auth_email_idx').on(table.email),
+  };
+});
+
+export const adminSessions = pgTable('admin_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  validUntil: timestamp('valid_until').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    sessionEmailIdx: index('sess_email_idx').on(table.email),
+  };
+});

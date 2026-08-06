@@ -1,18 +1,44 @@
 import { cookies } from "next/headers";
+import { db } from "@/db";
+import { adminSessions } from "@/db/schema";
+import { eq, and, gt } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
-export async function requireAdmin() {
+export async function requireAdmin(redirectOnFailure = false) {
   const cookieStore = await cookies();
-  const adminToken = cookieStore.get("admin_token")?.value;
+  const sessionId = cookieStore.get("admin_token")?.value;
 
-  if (process.env.ADMIN_TOKEN && adminToken !== process.env.ADMIN_TOKEN) {
-    throw new Error("Unauthorized: Invalid admin token.");
+  let isValid = false;
+
+  if (sessionId) {
+    try {
+      const [session] = await db.select()
+        .from(adminSessions)
+        .where(
+          and(
+            eq(adminSessions.id, sessionId),
+            gt(adminSessions.validUntil, new Date())
+          )
+        );
+      
+      if (session) {
+        isValid = true;
+      }
+    } catch (err) {
+      // Catch UUID parsing errors etc.
+    }
   }
-  
-  if (!process.env.ADMIN_TOKEN) {
-    if (process.env.NODE_ENV === 'production') {
-       throw new Error("Unauthorized: ADMIN_TOKEN is not configured on the server.");
+
+  if (!isValid && !process.env.ADMIN_EMAILS && process.env.NODE_ENV !== 'production') {
+    console.warn("ADMIN_EMAILS is not set. Bypassing auth check for development.");
+    return;
+  }
+
+  if (!isValid) {
+    if (redirectOnFailure) {
+      redirect("/admin/login");
     } else {
-       console.warn("ADMIN_TOKEN is not set in environment variables. Bypassing auth check for development.");
+      throw new Error("Unauthorized: Invalid or expired session.");
     }
   }
 }
