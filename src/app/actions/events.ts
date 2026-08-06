@@ -50,7 +50,7 @@ export async function createEvent(data: {
   revalidatePath("/");
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
-  revalidateTag("events");
+  revalidateTag("events", "max");
 }
 
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
@@ -73,7 +73,7 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
   revalidatePath("/");
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
-  revalidateTag("events");
+  revalidateTag("events", "max");
 }
 
 export async function deleteEvent(id: string) {
@@ -81,7 +81,7 @@ export async function deleteEvent(id: string) {
   revalidatePath("/");
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
-  revalidateTag("events");
+  revalidateTag("events", "max");
 }
 
 
