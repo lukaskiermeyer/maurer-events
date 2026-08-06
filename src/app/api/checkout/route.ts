@@ -16,20 +16,38 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
 
 export async function POST(req: Request) {
   try {
-    const { eventId, tableId, guestCount, name, email, reservationDate, selectedPackage, selectedTime } = await req.json();
+    const { eventId, tableId, guestCount, name, email, reservationDate, selectedPackage, selectedTime, turnstileToken } = await req.json();
 
-    if (!eventId || !guestCount || !name || !email || !reservationDate) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!eventId || !guestCount || !name || !email || !reservationDate || !turnstileToken) {
+      return NextResponse.json({ error: 'Missing required fields or spam protection token' }, { status: 400 });
+    }
+
+    // Turnstile Verify
+    if (process.env.TURNSTILE_SECRET_KEY) {
+      const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+      const verifyData = new URLSearchParams();
+      verifyData.append('secret', process.env.TURNSTILE_SECRET_KEY);
+      verifyData.append('response', turnstileToken);
+
+      try {
+        const turnstileResponse = await fetch(verifyUrl, { method: 'POST', body: verifyData });
+        const turnstileOutcome = await turnstileResponse.json();
+        if (!turnstileOutcome.success) {
+          return NextResponse.json({ error: 'Spam-Schutz fehlgeschlagen.' }, { status: 400 });
+        }
+      } catch (error) {
+        return NextResponse.json({ error: 'Verbindungsfehler beim Spam-Schutz.' }, { status: 500 });
+      }
     }
 
     // Ghost cleanup (Delete pending reservations older than 15 mins)
     try {
       const { and, lt, eq } = await import('drizzle-orm');
-      const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
       await db.delete(reservations).where(
         and(
           eq(reservations.status, 'pending'),
-          lt(reservations.createdAt, fifteenMinsAgo)
+          lt(reservations.createdAt, thirtyMinsAgo)
         )
       );
     } catch (cleanupErr) {
@@ -109,7 +127,7 @@ export async function POST(req: Request) {
               currentTotal += r.guestCount;
             } else if (r.status === 'pending') {
               const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
-              if (diffMs < 15 * 60 * 1000) {
+              if (diffMs < 30 * 60 * 1000) {
                 currentTotal += r.guestCount;
               }
             }
@@ -138,7 +156,7 @@ export async function POST(req: Request) {
             if (r.status === 'paid' || r.status === 'confirmed') return true;
             if (r.status === 'pending') {
               const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
-              return diffMs < 15 * 60 * 1000; // 15 Minuten blockiert
+              return diffMs < 30 * 60 * 1000; // 30 Minuten blockiert
             }
             return false;
           });
@@ -189,6 +207,7 @@ export async function POST(req: Request) {
         success_url: `${origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/?canceled=true`,
         customer_email: email,
+        expires_at: Math.floor(Date.now() / 1000) + (30 * 60),
         metadata: {
           reservationId: reservationId!
         }

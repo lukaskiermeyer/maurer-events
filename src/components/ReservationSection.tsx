@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { getTables, getBookedTableIds } from "@/app/actions/tables";
 import { joinWaitlist } from "@/app/actions/waitlist";
 
@@ -26,6 +27,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const [guestEmail, setGuestEmail] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const [isWaitlistMode, setIsWaitlistMode] = useState(false);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
@@ -63,6 +65,13 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const handleCheckout = async () => {
     setIsCheckingOut(true);
     setCheckoutError("");
+    
+    if (!turnstileToken) {
+      setCheckoutError("Bitte bestätige, dass du kein Roboter bist.");
+      setIsCheckingOut(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -75,7 +84,8 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
           guestCount: guests,
           name: guestName,
           email: guestEmail,
-          selectedPackage: selectedPackage
+          selectedPackage: selectedPackage,
+          turnstileToken: turnstileToken
         })
       });
       const data = await res.json();
@@ -430,8 +440,16 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                   </span>
                 </div>
 
+                <div className="flex justify-center mb-6">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    options={{ theme: "light" }}
+                  />
+                </div>
+
                 <button 
-                  disabled={(!selectedTableId && selectedEventObj?.allowTableSelection !== false) || !selectedTime || !selectedPackage || !guestName || !guestEmail || isCheckingOut}
+                  disabled={(!selectedTableId && selectedEventObj?.allowTableSelection !== false) || !selectedTime || !selectedPackage || !guestName || !guestEmail || !turnstileToken || isCheckingOut}
                   onClick={handleCheckout}
                   className="w-full bg-accent-green text-white font-black uppercase tracking-widest py-4 rounded-xl hover:bg-base-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm"
                 >

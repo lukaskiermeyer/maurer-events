@@ -1,5 +1,10 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import QRCode from 'qrcode';
+import fs from 'fs/promises';
+import path from 'path';
+
+let cachedFontBytes: Uint8Array | Buffer | null = null;
 
 export async function generateTicketPdf(data: {
   eventName: string;
@@ -10,11 +15,18 @@ export async function generateTicketPdf(data: {
   qrCodeText: string;
 }) {
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+
   const page = pdfDoc.addPage([600, 400]); // Ticket size
   const { width, height } = page.getSize();
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  if (!cachedFontBytes) {
+    const fontPath = path.join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf');
+    cachedFontBytes = await fs.readFile(fontPath);
+  }
+  
+  const font = await pdfDoc.embedFont(cachedFontBytes);
+  const fontBold = font; // Using regular as fallback for bold to ensure all characters are supported
 
   // Background
   page.drawRectangle({

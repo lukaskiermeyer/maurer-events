@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { waitlists, events } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
@@ -15,6 +15,14 @@ export async function joinWaitlist(data: {
   guestCount: number;
 }) {
   try {
+    const existing = await db.select()
+      .from(waitlists)
+      .where(and(eq(waitlists.eventId, data.eventId), eq(waitlists.email, data.email)));
+      
+    if (existing.length > 0) {
+      return { success: false, error: "Du stehst bereits auf der Warteliste für dieses Event." };
+    }
+
     await db.insert(waitlists).values({
       eventId: data.eventId,
       name: data.name,
