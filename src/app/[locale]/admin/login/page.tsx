@@ -172,7 +172,7 @@ export default function AdminLoginPage() {
           )}
 
           {/* NEU: Der Skip-Knopf, der nur in Staging/Dev auftaucht */}
-          {process.env.NODE_ENV !== "production" && (
+          {(process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_IS_STAGING === "true") && (
               <div className="mt-8 pt-6 border-t border-border-light">
                 <button
                     onClick={handleSkipLogin}
@@ -183,7 +183,7 @@ export default function AdminLoginPage() {
                   🚀 Skip Login (Staging)
                 </button>
                 <p className="text-center text-[10px] text-base-dark/40 mt-2">
-                  Nur sichtbar in NODE_ENV !== "production"
+                  Sichtbar da NODE_ENV !== "production" oder NEXT_PUBLIC_IS_STAGING="true"
                 </p>
               </div>
           )}

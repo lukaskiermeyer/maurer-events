@@ -125,7 +125,8 @@ export async function verifyOtp(email: string, code: string, turnstileToken: str
 
 
 export async function bypassLoginForStaging() {
-  if (process.env.NODE_ENV === "production") {
+  const isStaging = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_IS_STAGING === "true";
+  if (!isStaging) {
     return { success: false, error: "Bypass in production not allowed." };
   }
 
