@@ -38,7 +38,7 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
   const locale = useLocale();
 
   return (
-      <section id="events" className="relative w-full bg-base-light py-24 md:py-32 overflow-hidden">
+      <section id="events" className="relative w-full bg-base-light py-24 md:py-32 overflow-hidden -mt-[2px] z-10">
 
         {/* 3D Tent Background Elements */}
         {/* SVG ClipPath Definition for Scallops */}
@@ -200,44 +200,52 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
                           viewport={{ once: true }}
                           transition={{ duration: 0.6, delay: index * 0.1 }}
                       >
-                        <Link href={`/termine/${event.id}`} className="group bg-white border border-border-light rounded-2xl flex flex-col md:flex-row md:items-center relative hover:border-accent-green hover:shadow-lg transition-all duration-300 overflow-hidden block">
-                          <div className="md:w-1/4 p-4 md:p-8 bg-border-light/30 group-hover:bg-accent-green group-hover:text-white transition-colors flex flex-col justify-center border-b md:border-b-0 md:border-r border-border-light relative overflow-hidden">
-                            {event.imageUrl && (
-                                <div className="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-20 group-hover:scale-105 transition-all duration-700" style={{ backgroundImage: `url(${event.imageUrl})` }}></div>
+                        <Link href={`/termine/${event.id}`} className="group bg-white border border-border-light rounded-2xl flex flex-col md:flex-row relative hover:border-accent-green hover:shadow-lg transition-all duration-300 overflow-hidden block">
+                          
+                          {/* 16:9 Poster Area */}
+                          <div className="w-full md:w-2/5 aspect-video relative bg-border-light/30 overflow-hidden shrink-0">
+                            {event.imageUrl ? (
+                              <img src={event.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
+                                Kein Plakat
+                              </div>
                             )}
-                            <div className="relative z-10 flex items-baseline gap-2 md:flex-col md:gap-0">
-                              <span className="font-display font-black text-3xl md:text-5xl text-base-dark group-hover:text-white transition-colors">{day}.</span>
-                              <div className="flex md:flex-col items-baseline gap-1 md:gap-0">
-                                <span className="font-display font-bold text-base md:text-xl text-accent-green group-hover:text-white/90 transition-colors">{month}</span>
-                                <span className="font-display text-sm md:text-base text-base-dark/60 group-hover:text-white/80 transition-colors">{year}</span>
+                            
+                            {/* Date Badge */}
+                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md rounded-xl px-4 py-2 flex flex-col items-center justify-center shadow-lg border border-white/50 group-hover:bg-accent-green group-hover:border-accent-green transition-colors">
+                              <span className="font-display font-black text-3xl leading-none text-base-dark group-hover:text-white transition-colors">{day}.</span>
+                              <span className="font-display font-bold text-xs uppercase text-accent-green group-hover:text-white/90 transition-colors mt-1">{month} {year}</span>
+                            </div>
+                          </div>
+
+                          {/* Content Area */}
+                          <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col justify-between">
+                            <div>
+                              <h4 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark group-hover:text-accent-green transition-colors">{title}</h4>
+                              {event.reservable && (
+                                  <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
+                                    {locale === 'en' ? "Tables reservable" : "Tische reservierbar"}
+                                  </span>
+                              )}
+                              <p className="font-sans text-sm md:text-base text-base-dark/70 mb-4 line-clamp-2">{description}</p>
+                              <div className="flex items-center gap-2 text-sm font-bold text-accent-green">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {location}
                               </div>
                             </div>
-                          </div>
 
-                          <div className="md:w-2/4 p-6 md:p-8">
-                            <h4 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark">{title}</h4>
-                            {event.reservable && (
-                                <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md">
-                        {locale === 'en' ? "Tables reservable" : "Tische reservierbar"}
-                      </span>
-                            )}
-                            <p className="font-sans text-sm md:text-base text-base-dark/70 mb-4">{description}</p>
-                            <div className="flex items-center gap-2 text-sm font-bold text-accent-green">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                              {location}
+                            <div className="mt-6 flex justify-end">
+                              <span className="inline-flex items-center gap-2 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest group-hover:bg-base-dark transition-colors shadow-sm">
+                                {t("details_btn")}
+                                <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="md:w-1/4 px-6 pb-6 pt-2 md:p-8 flex flex-col justify-end md:justify-center items-stretch md:items-end transition-colors h-full">
-                            <span className="w-full md:w-12 md:h-12 flex items-center justify-center gap-2 py-3 md:py-0 bg-accent-green text-white md:bg-border-light md:text-base-dark rounded-full font-bold text-sm uppercase tracking-widest group-hover:bg-accent-green group-hover:text-white transition-colors">
-                              <span className="md:hidden">{t("details_btn")}</span>
-                              <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                              </svg>
-                            </span>
                           </div>
                         </Link>
                       </motion.div>

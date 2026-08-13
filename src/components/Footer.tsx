@@ -1,10 +1,16 @@
+"use client";
+
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import MadeByLui from "./MadeByLui";
 
 export default function Footer() {
+  const pathname = usePathname();
   const t = useTranslations("Footer");
   const navT = useTranslations("Navbar"); // Re-use Navbar translations for navigation links
+
+  if (pathname.includes("/admin")) return null;
 
   return (
     <footer className="bg-accent-green text-white">

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
+import parse from 'html-react-parser';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -143,14 +144,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </div>
 
           {event.imageUrl && (
-            <div className="w-full sm:w-[400px] lg:w-[450px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
-              <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border-[12px] border-white/80 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
+            <div className="w-full sm:w-[500px] lg:w-[600px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
+              <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border-8 border-white/90 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
                 <Image 
                   src={event.imageUrl} 
                   alt={title} 
-                  width={800}
-                  height={800}
-                  className="w-full h-auto object-contain" 
+                  fill
+                  className="object-cover" 
                 />
               </div>
             </div>
@@ -166,17 +166,17 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <h2 className="font-display font-bold text-3xl mb-6 text-base-dark">
               {locale === "en" ? "About this Event" : "Über dieses Event"}
             </h2>
-            <div className="prose prose-lg font-sans text-base-dark/80">
-              <p className="text-xl leading-relaxed mb-6">
-                {description}
-              </p>
-              <p>
-                {locale === "en" 
-                  ? "(This is a placeholder for more detailed descriptions, line-ups, menus, or special features of this exact event.)"
-                  : "(Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)"}
-              </p>
+            <div className="prose prose-lg font-sans text-base-dark/80 max-w-none">
+              {/* Parse the HTML output from the rich text editor safely */}
+              {parse(description)}
               
-
+              {!description.includes("<") && ( // Fallback if description is just plain text from old DB entries
+                <p className="mt-4">
+                  {locale === "en" 
+                    ? "(This is a placeholder for more detailed descriptions, line-ups, menus, or special features of this exact event.)"
+                    : "(Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)"}
+                </p>
+              )}
             </div>
           </div>
           

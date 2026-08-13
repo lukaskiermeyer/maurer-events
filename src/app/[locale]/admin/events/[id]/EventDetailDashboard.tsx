@@ -18,13 +18,23 @@ function stringToColor(str: string) {
   return `hsl(${hue}, 70%, 85%)`;
 }
 
-import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
+import { removeGalleryImage, addGalleryImage } from "@/app/actions/gallery";
+import dynamic from "next/dynamic";
+import "react-quill-new/dist/quill.snow.css";
+
+const ReactQuill = dynamic(() => import("react-quill-new"), { 
+  ssr: false,
+  loading: () => <div className="h-40 bg-canvas-light animate-pulse rounded-lg flex items-center justify-center opacity-50 text-sm">Lade Editor...</div>
+});
+
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 
 export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [] }: any) {
   const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist">("edit");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedResId, setSelectedResId] = useState<string | null>(null);
+  const [selectedBulkIds, setSelectedBulkIds] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     title: event.title,
@@ -43,7 +53,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   });
 
   const [file, setFile] = useState<File | null>(null);
-  const [galleryFile, setGalleryFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryUrl, setGalleryUrl] = useState("");
 
   const availableDays = useMemo(() => {
@@ -158,6 +168,15 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(false);
   };
 
+  const handleBulkStatusChange = async (status: string) => {
+    if (selectedBulkIds.length === 0) return;
+    if (!confirm(`Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`)) return;
+    setIsUpdating(true);
+    await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status)));
+    setSelectedBulkIds([]);
+    setIsUpdating(false);
+  };
+
   const handleTableAssign = async (id: string, tableId: string) => {
     setIsUpdating(true);
     await assignTableToReservation(id, tableId === "none" ? null : tableId);
@@ -183,26 +202,73 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleGalleryUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!galleryFile && !galleryUrl) return;
+    if (galleryFiles.length === 0 && !galleryUrl) return;
     
     setIsUpdating(true);
     try {
-      let finalUrl = galleryUrl;
-      if (galleryFile) {
-        const uploadData = new FormData();
-        uploadData.append("file", galleryFile);
-        const res = await uploadImage(uploadData);
-        if (res.success) finalUrl = res.url;
+      if (galleryFiles.length > 0) {
+        // Upload multiple files in parallel
+        await Promise.all(
+          galleryFiles.map(async (file) => {
+            const uploadData = new FormData();
+            uploadData.append("file", file);
+            const res = await uploadImage(uploadData);
+            if (res.success) {
+              await addGalleryImage(event.id, res.url);
+            }
+          })
+        );
+      } else if (galleryUrl) {
+        // Fallback for single external URL
+        await addGalleryImage(event.id, galleryUrl);
       }
-      if (finalUrl) {
-        await addGalleryImage(event.id, finalUrl);
-        setGalleryFile(null);
-        setGalleryUrl("");
-      }
+      
+      setGalleryFiles([]);
+      setGalleryUrl("");
     } catch (err) {
       alert("Fehler beim Bildupload.");
     }
     setIsUpdating(false);
+  };
+
+  const downloadCSV = () => {
+    // We export all currently filtered reservations
+    const rows = initialReservations.filter((row: any) => {
+      const rDate = new Date(row.reservation.reservationDate).toISOString().split('T')[0];
+      if (selectedDate && rDate !== selectedDate) return false;
+      const matchesSearch = row.reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            row.reservation.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = filterStatus === "all" || row.reservation.status === filterStatus;
+      const matchesTable = filterTable === "all" || 
+                           (filterTable === "assigned" && row.reservation.tableId) ||
+                           (filterTable === "unassigned" && !row.reservation.tableId);
+      return matchesSearch && matchesStatus && matchesTable;
+    });
+
+    const csvContent = [
+      ["Name", "Email", "Personen", "Tisch", "Status", "Betrag (€)", "Datum"],
+      ...rows.map((r: any) => {
+        const t = initialTables.find((t: any) => t.id === r.reservation.tableId);
+        return [
+          `"${r.reservation.guestName}"`,
+          `"${r.reservation.email}"`,
+          r.reservation.guestCount,
+          `"${t ? t.name : 'Kein Tisch'}"`,
+          `"${r.reservation.status}"`,
+          (r.reservation.amountTotal / 100).toFixed(2),
+          `"${new Date(r.reservation.reservationDate).toLocaleDateString('de-DE')}"`
+        ].join(",");
+      })
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Reservierungen_${event.title}_${selectedDate || 'Alle'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const renderTableMap = (mode: "edit" | "assign") => {
@@ -270,6 +336,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     createTable({ name, capacity: Number(cap), positionX: x, positionY: y }).finally(() => setIsUpdating(false));
                   }
                 }
+              } else if (mode === "assign" && tableHere && selectedResId) {
+                // Tap-to-assign logic for mobile/touch
+                handleTableAssign(selectedResId, tableHere.id);
+                setSelectedResId(null);
               }
             }}
             title={tooltip}
@@ -336,30 +406,36 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         >
           ✏️ Event Bearbeiten
         </button>
-        <button 
-          onClick={() => setActiveTab("reservations")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "reservations" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          🍽️ Reservierungen ({initialReservations.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab("tables")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "tables" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          ⚙️ Tisch-Stammdaten & Zelt-Plan
-        </button>
-        <button 
-          onClick={() => setActiveTab("gallery")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "gallery" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          📸 Galerie ({initialGallery.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab("waitlist")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "waitlist" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          ⏳ Warteliste ({initialWaitlist.length})
-        </button>
+        {event.type === 'event' && (
+          <>
+            <button 
+              onClick={() => setActiveTab("reservations")}
+              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "reservations" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+            >
+              🍽️ Reservierungen ({initialReservations.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab("tables")}
+              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "tables" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+            >
+              ⚙️ Tisch-Stammdaten & Zelt-Plan
+            </button>
+            <button 
+              onClick={() => setActiveTab("waitlist")}
+              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "waitlist" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+            >
+              ⏳ Warteliste ({initialWaitlist.length})
+            </button>
+          </>
+        )}
+        {event.type === 'gallery' && (
+          <button 
+            onClick={() => setActiveTab("gallery")}
+            className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "gallery" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+          >
+            📸 Galerie ({initialGallery.length})
+          </button>
+        )}
       </div>
 
       <div className="p-6 lg:p-10">
@@ -390,64 +466,73 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               </div>
               <div>
                 <label className="block text-sm font-bold mb-1 opacity-70">Beschreibung</label>
-                <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green min-h-[100px]" />
+                <div className="bg-white rounded-lg overflow-hidden border border-border-light">
+                  <ReactQuill 
+                    theme="snow"
+                    value={formData.description}
+                    onChange={(content) => setFormData({...formData, description: content})}
+                    className="min-h-[150px]"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" />
               </div>
               
-              <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light mt-4">
-                <input type="checkbox" id="resEdit" className="w-5 h-5 accent-accent-green" checked={formData.reservable} 
-                  onChange={e => {
-                    setFormData({
-                      ...formData, 
-                      reservable: e.target.checked,
-                      reservableDates: e.target.checked ? availableDays : []
-                    });
-                  }} 
-                />
-                <label htmlFor="resEdit" className="text-sm font-bold cursor-pointer">Tische reservierbar?</label>
-              </div>
-
-              {formData.reservable && (
-                <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg mt-2 space-y-4">
-                  <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-border-light mb-4">
-                    <input 
-                      type="checkbox" 
-                      id="tableSelEdit" 
-                      className="w-5 h-5 accent-accent-green"
-                      checked={formData.allowTableSelection} 
-                      onChange={e => setFormData({...formData, allowTableSelection: e.target.checked})} 
+              {event.type === 'event' && (
+                <>
+                  <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light mt-4">
+                    <input type="checkbox" id="resEdit" className="w-5 h-5 accent-accent-green" checked={formData.reservable} 
+                      onChange={e => {
+                        setFormData({
+                          ...formData, 
+                          reservable: e.target.checked,
+                          reservableDates: e.target.checked ? availableDays : []
+                        });
+                      }} 
                     />
-                    <label htmlFor="tableSelEdit" className="text-sm font-bold cursor-pointer">Zelt-Layout & Tischauswahl aktivieren?</label>
+                    <label htmlFor="resEdit" className="text-sm font-bold cursor-pointer">Tische reservierbar?</label>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-bold mb-1 opacity-70">Welche Tage sind reservierbar?</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {availableDays.length === 0 ? (
-                        <span className="text-xs opacity-50">Bitte wähle zuerst ein Datum.</span>
-                      ) : (
-                        availableDays.map(day => (
-                          <label key={day} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-border-light text-sm cursor-pointer hover:border-accent-green">
-                            <input 
-                              type="checkbox" 
-                              checked={formData.reservableDates.includes(day)}
-                              onChange={() => toggleReservableDate(day)}
-                              className="accent-accent-green"
-                            />
-                            {new Date(day).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex-1 min-w-[150px]">
-                      <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
-                      <input type="number" min="0" value={formData.minimumConsumption} onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
-                    </div>
+                  {formData.reservable && (
+                    <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg mt-2 space-y-4">
+                      <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-border-light mb-4">
+                        <input 
+                          type="checkbox" 
+                          id="tableSelEdit" 
+                          className="w-5 h-5 accent-accent-green"
+                          checked={formData.allowTableSelection} 
+                          onChange={e => setFormData({...formData, allowTableSelection: e.target.checked})} 
+                        />
+                        <label htmlFor="tableSelEdit" className="text-sm font-bold cursor-pointer">Zelt-Layout & Tischauswahl aktivieren?</label>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold mb-1 opacity-70">Welche Tage sind reservierbar?</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {availableDays.length === 0 ? (
+                            <span className="text-xs opacity-50">Bitte wähle zuerst ein Datum.</span>
+                          ) : (
+                            availableDays.map(day => (
+                              <label key={day} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-border-light text-sm cursor-pointer hover:border-accent-green">
+                                <input 
+                                  type="checkbox" 
+                                  checked={formData.reservableDates.includes(day)}
+                                  onChange={() => toggleReservableDate(day)}
+                                  className="accent-accent-green"
+                                />
+                                {new Date(day).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-4">
+                        <div className="flex-1 min-w-[150px]">
+                          <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
+                          <input type="number" min="0" value={formData.minimumConsumption} onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
+                        </div>
                     <div className="flex-1 min-w-[150px]">
                       <label className="block text-sm font-bold mb-1 opacity-70">Laufkundschaft-Puffer (Pers.)</label>
                       <input type="number" min="0" value={formData.walkInReserve} onChange={e => setFormData({...formData, walkInReserve: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
@@ -459,8 +544,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   </div>
                 </div>
               )}
-              
-              <button disabled={isUpdating} type="submit" className="w-full bg-accent-green text-white font-bold uppercase tracking-widest py-3 rounded-lg mt-6 disabled:opacity-50 hover:bg-base-dark transition-colors">
+            </>
+          )}
+
+          <button disabled={isUpdating} type="submit" className="w-full bg-accent-green text-white font-bold uppercase tracking-widest py-3 rounded-lg mt-6 disabled:opacity-50 hover:bg-base-dark transition-colors">
                 {isUpdating ? "Speichert..." : "Änderungen speichern"}
               </button>
             </form>
@@ -538,6 +625,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   Liste Drucken (PDF)
                 </Link>
                 <button 
+                  onClick={downloadCSV}
+                  className="bg-white border border-border-light text-base-dark text-sm px-4 py-2 rounded-lg hover:border-accent-green transition-colors font-bold flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  CSV Export
+                </button>
+                <button 
                   onClick={() => setShowManualForm(!showManualForm)}
                   className="bg-base-dark text-white text-sm px-4 py-2 rounded-lg hover:bg-accent-green transition-colors font-bold"
                 >
@@ -545,6 +639,19 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </button>
               </div>
             </div>
+
+            {/* Bulk Actions Floating Bar */}
+            {selectedBulkIds.length > 0 && (
+              <div className="bg-base-dark text-white p-4 rounded-xl flex items-center justify-between mb-4 animate-fade-in shadow-xl">
+                <span className="font-bold">{selectedBulkIds.length} ausgewählt</span>
+                <div className="flex gap-2">
+                  <button onClick={() => handleBulkStatusChange("paid")} className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Als Bezahlt</button>
+                  <button onClick={() => handleBulkStatusChange("confirmed")} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Als Bestätigt</button>
+                  <button onClick={() => handleBulkStatusChange("cancelled")} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Stornieren</button>
+                  <button onClick={() => setSelectedBulkIds([])} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Abbrechen</button>
+                </div>
+              </div>
+            )}
 
             {showManualForm && (
               <div className="bg-canvas-light border border-border-light p-6 rounded-xl mb-6 animate-fade-in">
@@ -577,6 +684,31 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   <table className="w-full text-left font-sans text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border-light">
+                        <th className="py-3 w-10">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 accent-accent-green"
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // Select all filtered
+                                const filtered = initialReservations.filter((row: any) => {
+                                  const rDate = new Date(row.reservation.reservationDate).toISOString().split('T')[0];
+                                  if (selectedDate && rDate !== selectedDate) return false;
+                                  const matchesSearch = row.reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                        row.reservation.email.toLowerCase().includes(searchQuery.toLowerCase());
+                                  const matchesStatus = filterStatus === "all" || row.reservation.status === filterStatus;
+                                  const matchesTable = filterTable === "all" || 
+                                                       (filterTable === "assigned" && row.reservation.tableId) ||
+                                                       (filterTable === "unassigned" && !row.reservation.tableId);
+                                  return matchesSearch && matchesStatus && matchesTable;
+                                });
+                                setSelectedBulkIds(filtered.map((r: any) => r.reservation.id));
+                              } else {
+                                setSelectedBulkIds([]);
+                              }
+                            }}
+                          />
+                        </th>
                         <th className="py-3 font-bold opacity-70">Gast</th>
                         <th className="py-3 font-bold opacity-70">Details</th>
                         <th className="py-3 font-bold opacity-70">Status</th>
@@ -605,6 +737,20 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
                         return (
                         <tr key={row.reservation.id} className="border-b border-border-light/50 hover:bg-canvas-light/50 transition-colors">
+                          <td className="py-4">
+                            <input 
+                              type="checkbox"
+                              className="w-4 h-4 accent-accent-green"
+                              checked={selectedBulkIds.includes(row.reservation.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBulkIds([...selectedBulkIds, row.reservation.id]);
+                                } else {
+                                  setSelectedBulkIds(selectedBulkIds.filter(id => id !== row.reservation.id));
+                                }
+                              }}
+                            />
+                          </td>
                           <td className="py-4">
                             <div className="font-bold flex items-center">
                               {row.reservation.guestName}
@@ -752,11 +898,15 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             onDragStart={(e) => {
                               e.dataTransfer.setData("resId", r.reservation.id);
                             }}
-                            className="bg-white p-3 rounded-lg border border-border-light shadow-sm cursor-grab active:cursor-grabbing hover:border-accent-green transition-colors"
+                            onClick={() => setSelectedResId(r.reservation.id)}
+                            className={`bg-white p-3 rounded-lg border shadow-sm cursor-grab active:cursor-grabbing transition-colors ${selectedResId === r.reservation.id ? 'border-accent-green ring-2 ring-accent-green/50' : 'border-border-light hover:border-accent-green'}`}
                             style={{ borderLeftColor: stringToColor(r.reservation.guestName), borderLeftWidth: '4px' }}
                           >
                             <div className="font-bold text-sm leading-tight">{r.reservation.guestName}</div>
                             <div className="text-xs opacity-70 mt-1">{r.reservation.guestCount} Personen</div>
+                            {selectedResId === r.reservation.id && (
+                              <div className="text-[10px] text-accent-green font-bold mt-2 uppercase tracking-widest bg-accent-green/10 rounded px-2 py-1 inline-block">Ausgewählt: Tippe nun auf einen Tisch</div>
+                            )}
                           </div>
                         ))
                       )}
@@ -784,27 +934,57 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               <h4 className="font-bold mb-4">Neues Bild hinzufügen</h4>
               <form onSubmit={handleGalleryUpload} className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full">
-                  <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei</label>
-                  <input type="file" accept="image/*" onChange={e => setGalleryFile(e.target.files ? e.target.files[0] : null)} className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryUrl.length > 0} />
+                  <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei(en)</label>
+                  <input type="file" multiple accept="image/*" onChange={e => setGalleryFiles(e.target.files ? Array.from(e.target.files) : [])} className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryUrl.length > 0} />
                 </div>
                 <div className="font-bold opacity-50 py-2">ODER</div>
                 <div className="flex-1 w-full">
                   <label className="block text-xs font-bold uppercase opacity-70 mb-1">Bild-URL (extern)</label>
-                  <input type="url" value={galleryUrl} onChange={e => setGalleryUrl(e.target.value)} placeholder="https://..." className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryFile !== null} />
+                  <input type="url" value={galleryUrl} onChange={e => setGalleryUrl(e.target.value)} placeholder="https://..." className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryFiles.length > 0} />
                 </div>
-                <button type="submit" disabled={isUpdating || (!galleryFile && !galleryUrl)} className="bg-accent-green text-white font-bold px-6 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-base-dark transition-colors">
+                <button type="submit" disabled={isUpdating || (galleryFiles.length === 0 && !galleryUrl)} className="bg-accent-green text-white font-bold px-6 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-base-dark transition-colors">
                   Hochladen
                 </button>
               </form>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-6">
               {initialGallery.length === 0 ? (
-                <p className="col-span-full text-center opacity-50 py-10">Keine Bilder in der Galerie.</p>
+                <p className="col-span-full text-center opacity-50 py-10 bg-white rounded-xl border border-border-light shadow-sm">Keine Bilder in der Galerie.</p>
               ) : (
                 initialGallery.map((img: any) => (
-                  <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group">
-                    <Image src={img.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-105 transition-transform" />
+                  <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group shadow-sm bg-base-light">
+                    <Image src={img.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-105 transition-transform" />
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    
+                    {/* Current Cover Indicator */}
+                    {event.imageUrl === img.imageUrl && (
+                      <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md z-10" title="Aktuelles Cover-Bild">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Set Cover Button */}
+                    {event.imageUrl !== img.imageUrl && (
+                      <button
+                        onClick={async () => {
+                          if(confirm("Dieses Bild als Cover für das Event festlegen?")) {
+                            setIsUpdating(true);
+                            await updateEvent(event.id, { imageUrl: img.imageUrl });
+                            setIsUpdating(false);
+                            alert("Cover erfolgreich geändert!");
+                          }
+                        }}
+                        className="absolute bottom-2 left-2 right-2 bg-white/90 text-base-dark py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity font-bold text-xs shadow-sm hover:bg-accent-green hover:text-white"
+                        title="Als Cover festlegen"
+                      >
+                        Als Cover
+                      </button>
+                    )}
+
+                    {/* Delete Button */}
                     <button 
                       onClick={async () => {
                         if (confirm("Bild wirklich löschen?")) {
@@ -813,7 +993,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                           setIsUpdating(false);
                         }
                       }}
-                      className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600"
+                      className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
+                      title="Bild löschen"
                     >
                       ×
                     </button>

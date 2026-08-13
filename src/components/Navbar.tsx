@@ -13,6 +13,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const t = useTranslations("Navbar");
 
+  if (pathname.includes("/admin")) return null;
+
   useEffect(() => {
     // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
     // Need to handle locales in pathname, e.g., /en or /de or /

@@ -1,4 +1,5 @@
 "use client";
+"use client";
 
 import { useState, useMemo } from "react";
 import { createEvent, deleteEvent } from "@/app/actions/events";
@@ -160,7 +161,9 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
       {/* Form */}
       <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm h-fit">
-        <h2 className="text-xl font-bold mb-6 font-display">Neues Event anlegen</h2>
+        <h2 className="text-xl font-bold mb-6 font-display">
+          Neues Event anlegen
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4 font-sans">
           <div>
             <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
@@ -209,6 +212,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
               </div>
             </div>
           </div>
+          
           <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">
             <input 
               type="checkbox" 

@@ -124,5 +124,17 @@
     "waitlist_desc": "Sign up and we will inform you immediately if tables become available due to cancellations.",
     "waitlist_success": "Signed up! We will let you know as soon as a table is available.",
     "waitlist_submit": "Join for free"
+  },
+  "Gallery": {
+    "title_1_alt": "Moments in",
+    "title_2_alt": "Pictures",
+    "subtitle": "Discover the most beautiful moments of our past celebrations.",
+    "view_all": "View all albums",
+    "sort_newest": "Newest first",
+    "sort_oldest": "Oldest first",
+    "sort_label": "Sort",
+    "empty_homepage": "No galleries have been selected for the homepage yet.",
+    "images": "Pictures",
+    "back_to_overview": "Back to overview"
   }
 }

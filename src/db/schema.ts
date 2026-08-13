@@ -19,6 +19,9 @@ export const events = pgTable('events', {
   minimumConsumption: integer('minimum_consumption').default(5000), // Default 50€ (in cents)
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
+  type: text('type').default('event').notNull(), // 'event' or 'gallery'
+  isFeaturedGallery: boolean('is_featured_gallery').default(false).notNull(), // To feature on homepage
+  deletedAt: timestamp('deleted_at'), // Soft delete timestamp
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

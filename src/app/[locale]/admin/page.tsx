@@ -1,5 +1,6 @@
-import { getEvents, getAdminStats } from "@/app/actions/events";
-import AdminEventList from "./AdminEventList";
+import { getEvents, getAllEvents, getAdminStats } from "@/app/actions/events";
+import { getAllGalleryImages } from "@/app/actions/gallery";
+import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
 import { requireAdmin } from "@/lib/auth";
@@ -11,9 +12,11 @@ export default async function AdminPage() {
   
   let events = [];
   let stats = null;
+  let galleryImages = [];
   try {
-    events = await getEvents();
+    events = await getAllEvents();
     stats = await getAdminStats();
+    galleryImages = await getAllGalleryImages();
   } catch (error) {
     console.error("Datenbank-Verbindung fehlgeschlagen. Bitte DATABASE_URL prüfen.", error);
   }
@@ -29,7 +32,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminEventList initialEvents={events} stats={stats} />
+        <AdminTabs initialEvents={events} stats={stats} />
       </div>
     </div>
   );

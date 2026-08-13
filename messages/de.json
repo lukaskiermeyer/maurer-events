@@ -124,5 +124,17 @@
     "waitlist_desc": "Trage dich ein und wir informieren dich sofort, wenn durch Stornierungen wieder Tische frei werden.",
     "waitlist_success": "Eingetragen! Du stehst jetzt auf der Warteliste und wir melden uns, sobald ein Platz frei wird.",
     "waitlist_submit": "Kostenlos eintragen"
+  },
+  "Gallery": {
+    "title_1_alt": "Rückblick in",
+    "title_2_alt": "Bildern",
+    "subtitle": "Entdecke die schönsten Momente unserer vergangenen Feste.",
+    "view_all": "Alle Alben ansehen",
+    "sort_newest": "Neueste zuerst",
+    "sort_oldest": "Älteste zuerst",
+    "sort_label": "Sortieren",
+    "empty_homepage": "Es wurden noch keine Galerien für die Startseite markiert.",
+    "images": "Bilder",
+    "back_to_overview": "Zurück zur Übersicht"
   }
 }
