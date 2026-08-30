@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare deploy",
     "start": "next start",
     "lint": "eslint"
   },
@@ -35,6 +38,7 @@
     "stripe": "^22.3.2"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.4",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26.1.1",
     "@types/qrcode": "^1.5.6",
@@ -45,6 +49,6 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^6.0.3",
-    "wrangler": "^4.115.0"
+    "wrangler": "^4.127.1"
   }
 }
