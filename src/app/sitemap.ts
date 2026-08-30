@@ -1,6 +1,8 @@
 import { MetadataRoute } from 'next';
 import { getEvents } from '@/app/actions/events';
 
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const events = await getEvents();
   const baseUrl = "https://maurer-events.com";
