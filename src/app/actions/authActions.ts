@@ -8,7 +8,7 @@ import { Resend } from 'resend';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { takeRateLimit } from '@/lib/rate-limit';
 import { isAdminEmail, otpHash } from '@/lib/admin-identity';
-import { guestDetails, UUID_PATTERN } from '@/lib/reservation-policy';
+import { BookingError, guestDetails, UUID_PATTERN } from '@/lib/reservation-policy';
 import { consumeAdminOtp } from '@/lib/admin-otp';
 import { emailFrom } from '@/lib/email';
 
@@ -26,7 +26,10 @@ export async function requestOtp(email: string, turnstileToken: string) {
     const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Admin Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
     if (result.error) throw new Error('Email unavailable');
     return { success: true };
-  } catch { return { success: false, error: 'Anmeldecode konnte nicht angefordert werden.' }; }
+  } catch (error) {
+    console.error('OTP request failed:', error instanceof BookingError ? `validation:${error.status}` : 'dependency-unavailable');
+    return { success: false, error: 'Anmeldecode konnte nicht angefordert werden.' };
+  }
 }
 
 export async function verifyOtp(email: string, code: string, turnstileToken: string) {

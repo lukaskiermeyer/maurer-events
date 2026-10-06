@@ -149,7 +149,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
     if (canProceed() && currentStep < totalSteps) {
       setDirection(1);
       setCurrentStep(currentStep + 1);
-      window.scrollTo({ top: document.getElementById('reservation-wizard')?.offsetTop! - 100, behavior: 'smooth' });
+      window.scrollTo({ top: Math.max(0, (document.getElementById('reservation-wizard')?.offsetTop ?? 100) - 100), behavior: 'smooth' });
     }
   };
 
@@ -157,7 +157,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
     if (currentStep > 1) {
       setDirection(-1);
       setCurrentStep(currentStep - 1);
-      window.scrollTo({ top: document.getElementById('reservation-wizard')?.offsetTop! - 100, behavior: 'smooth' });
+      window.scrollTo({ top: Math.max(0, (document.getElementById('reservation-wizard')?.offsetTop ?? 100) - 100), behavior: 'smooth' });
     }
   };
 

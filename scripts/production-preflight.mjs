@@ -25,6 +25,9 @@ await check('config.url', async () => {
   record('config.checkout-origin', env.NEXT_PUBLIC_BASE_URL === origin ? 'pass' : 'fail', env.NEXT_PUBLIC_BASE_URL === origin ? 'Checkout-Konfiguration entspricht Prüfziel.' : 'Lokale Checkout-Konfiguration weicht vom Prüfziel ab; entfernte Runtime separat prüfen.');
 });
 for (const name of ['DATABASE_URL', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'RESEND_API_KEY', 'TURNSTILE_SECRET_KEY', 'NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'ADMIN_EMAILS']) record(`config.${name}`, configured(name) ? 'pass' : 'fail', configured(name) ? 'Gesetzt; Wert bleibt verborgen.' : 'Fehlt oder enthält einen Platzhalter.');
+const dummyTurnstile = ['1x00000000000000000000AA', '2x00000000000000000000AB', '3x00000000000000000000FF'].includes(env.TURNSTILE_SECRET_KEY)
+  || /^[123]x00000000000000000000/.test(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '');
+record('config.turnstile-widget', dummyTurnstile ? 'fail' : 'pass', dummyTurnstile ? 'Cloudflare-Testschlüssel: kein Nachweis für Hostname und CAPTCHA-Aktion.' : 'Kein bekannter Cloudflare-Testschlüssel; echten Browserablauf separat prüfen.');
 for (const name of ['AUTH_SECRET', 'CRON_SECRET']) record(`config.${name}`, configured(name) && env[name].length >= 32 ? 'pass' : 'fail', configured(name) && env[name].length >= 32 ? 'Gesetzt, mindestens 32 Zeichen.' : 'Fehlt oder ist zu kurz.');
 record('config.dev-login', env.ALLOW_DEV_LOGIN !== 'true' ? 'pass' : 'fail', env.ALLOW_DEV_LOGIN !== 'true' ? 'Entwicklungsanmeldung nicht aktiviert.' : 'Entwicklungsanmeldung ausdrücklich aktiviert.');
 const stripeTest = env.STRIPE_SECRET_KEY?.startsWith('sk_test_');

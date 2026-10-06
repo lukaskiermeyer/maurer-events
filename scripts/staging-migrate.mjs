@@ -7,8 +7,8 @@ import postgres from 'postgres';
 if (!process.argv.includes('--confirmed-test-database')) throw new Error('Explicit staging-only flag required');
 const env = dotenv.parse(await fs.readFile('.env.local'));
 if (!env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) throw new Error('Stripe test mode required');
-const backup = `test-results/staging-before-security-${Date.now()}.json`;
-await fs.mkdir('test-results', {recursive:true});
+const backup = `.acceptance-backups/staging-before-security-${Date.now()}.json`;
+await fs.mkdir('.acceptance-backups', {recursive:true});
 const staging=postgres(env.DATABASE_URL,{max:1,connect_timeout:10});
 const admin=postgres('postgres://reservation_test@127.0.0.1:55439/postgres',{max:1});
 const localName=`staging_acceptance_${randomUUID().replaceAll('-','')}`;
@@ -42,30 +42,43 @@ try {
     for(const value of baseline.enums['public.reservation_status'].values) if(!enums.some(e=>e.enumlabel===value)) throw new Error(`Missing status: ${value}`);
   };
   await verify(staging);
-  const tableOrder=['admin_auth','admin_sessions','settings','events','tables','event_settings','galleries','reservations','waitlists','stripe_events'];
+  const tableOrder=['admin_auth','admin_sessions','settings','events','tables','event_settings','galleries','reservations','waitlists','stripe_events','security_rate_limits'];
   const existingTables=await staging`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
   if(existingTables.some(t=>!tableOrder.includes(t.tablename)))throw new Error('Unknown public table; cannot guarantee complete application backup');
+  const [{ledger: existingLedger}]=await staging`SELECT to_regclass('drizzle.__drizzle_migrations')::text AS ledger`;
+  const savedLedger=existingLedger?await staging`SELECT id,hash,created_at FROM drizzle.__drizzle_migrations ORDER BY created_at`:[];
   const savedData=await staging.begin('isolation level repeatable read read only',async tx=>{
     const data={};
     for(const table of tableOrder) {
+      if(!existingTables.some(t=>t.tablename===table))continue;
       const [row]=await tx.unsafe(`SELECT coalesce(json_agg(t), '[]'::json) AS rows FROM "public"."${table}" t`);
       data[table]=row.rows;
     }
     return data;
   });
   const schemaSql=[];
-  for(const entry of journal.entries.slice(0,4))schemaSql.push(await fs.readFile(`src/db/migrations/${entry.tag}.sql`,'utf8'));
-  await fs.writeFile(backup,JSON.stringify({format:'application-logical-backup-v1',createdAt:new Date().toISOString(),schemaSql,data:savedData}));
+  const schemaEntries=existingLedger?journal.entries.filter(e=>savedLedger.some(a=>Number(a.created_at)===e.when)):journal.entries.slice(0,4);
+  for(const entry of schemaEntries) {
+    const migration=await fs.readFile(`src/db/migrations/${entry.tag}.sql`,'utf8');
+    if(existingLedger&&savedLedger.find(a=>Number(a.created_at)===entry.when)?.hash!==createHash('sha256').update(migration).digest('hex'))throw new Error('Backup migration checksum mismatch');
+    schemaSql.push(migration);
+  }
+  await fs.writeFile(backup,JSON.stringify({format:'application-logical-backup-v1',createdAt:new Date().toISOString(),schemaSql,data:savedData,migrationLedger:savedLedger}));
   console.log('Consistent application backup created:',backup);
   for(const migration of schemaSql)for(const statement of migration.split('--> statement-breakpoint'))if(statement.trim())await local.unsafe(statement);
   for(const table of tableOrder) {
-    if(!savedData[table].length)continue;
+    if(!savedData[table]?.length)continue;
     const columns=Object.keys(savedData[table][0]);
     if(columns.some(c=>!/^[a-z_]+$/.test(c)))throw new Error('Unexpected column identifier');
     const selection=columns.map(c=>`"${c}"`).join(',');
     await local.unsafe(`INSERT INTO "public"."${table}" (${selection}) SELECT ${selection} FROM json_populate_recordset(NULL::"public"."${table}", $1::json)`,[local.json(savedData[table])]);
     const [{count}]=await local.unsafe(`SELECT count(*)::int AS count FROM "public"."${table}"`);
     if(count!==savedData[table].length)throw new Error(`Restore count mismatch: ${table}`);
+  }
+  if(existingLedger) {
+    await local`CREATE SCHEMA drizzle`;
+    await local`CREATE TABLE drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)`;
+    for(const row of savedLedger)await local`INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES(${row.hash},${row.created_at})`;
   }
   console.log('Every application table restored with matching row count. Backup excludes provider roles and infrastructure.');
   const migrate=async db=>{
@@ -102,7 +115,7 @@ try {
   await migrate(staging);
   const [{count:after}]=await staging`SELECT count(*)::int AS count FROM reservations`;
   console.log('Staging migrated successfully; preserved reservations:',after);
-  await fs.writeFile('test-results/staging-migration.json',JSON.stringify({checkedAt:new Date().toISOString(),backup,rehearsal:true,migrations:[4,5,6],reservationsBefore:count,reservationsAfter:after},null,2));
+  await fs.writeFile('.acceptance-backups/staging-migration.json',JSON.stringify({checkedAt:new Date().toISOString(),backup,rehearsal:true,migrations:journal.entries.map(e=>e.tag),reservationsBefore:count,reservationsAfter:after},null,2));
 } finally {
   if(local)await local.end({timeout:3});
   if(created)await admin.unsafe(`DROP DATABASE "${localName}"`);

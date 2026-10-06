@@ -10,4 +10,5 @@ try {
   console.log('Request OTP button enabled:',await page.getByRole('button',{name:'Code anfordern'}).isEnabled());
   console.log('Captcha/console diagnostics:',JSON.stringify(errors));
   console.log('Login content:',(await page.locator('body').innerText()).slice(0,700));
+  await page.screenshot({path:'test-results/staging-login.png',fullPage:true});
 } finally {await browser.close()}

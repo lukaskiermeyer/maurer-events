@@ -9,21 +9,17 @@ import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [showNavbar, setShowNavbar] = useState(false);
+  const [showNavbarOnHome, setShowNavbar] = useState(false);
   const pathname = usePathname();
   const t = useTranslations("Navbar");
 
-  if (pathname.includes("/admin")) return null;
+  const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
+  const showNavbar = !isHome || showNavbarOnHome;
 
   useEffect(() => {
     // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
     // Need to handle locales in pathname, e.g., /en or /de or /
-    const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
-    
-    if (!isHome) {
-      setShowNavbar(true);
-      return;
-    }
+    if (!isHome) return;
 
     const handleScroll = () => {
       // Show navbar after scrolling past 80% of the viewport height (nur auf Startseite)
@@ -40,7 +36,9 @@ export default function Navbar() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [pathname]);
+  }, [isHome]);
+
+  if (pathname.includes("/admin")) return null;
 
   const navLinks = [
     { name: t("startseite"), href: "/#start" },

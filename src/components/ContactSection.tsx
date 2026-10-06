@@ -10,6 +10,7 @@ export default function ContactSection() {
   const [errorMessage, setErrorMessage] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
+  const [captchaVersion, setCaptchaVersion] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,6 +30,8 @@ export default function ContactSection() {
       message: formData.get("message") as string,
       turnstileToken
     });
+    setTurnstileToken('');
+    setCaptchaVersion(value => value + 1);
 
     if (result.success) {
       setFormStatus("success");
@@ -194,16 +197,19 @@ export default function ContactSection() {
 
                 <div className="py-2">
                   <Turnstile 
+                    key={captchaVersion}
                     siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
                     onSuccess={(token) => setTurnstileToken(token)}
-                    options={{ theme: 'light' }}
+                    onExpire={() => setTurnstileToken('')}
+                    onError={() => setTurnstileToken('')}
+                    options={{ theme: 'light', action: 'contact' }}
                   />
                 </div>
 
                 <div className="relative pt-4 flex justify-between items-end">
                   <button 
                     type="submit" 
-                    disabled={formStatus === "submitting"}
+                    disabled={formStatus === "submitting" || !turnstileToken}
                     className="bg-accent-green text-white px-8 py-4 rounded-xl font-display font-bold text-lg hover:bg-base-dark transition-all disabled:opacity-50 flex items-center gap-3 shadow-lg hover:shadow-xl hover:-translate-y-1"
                   >
                     {formStatus === "submitting" ? "Sende..." : "Anfrage absenden"}

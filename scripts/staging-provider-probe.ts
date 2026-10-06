@@ -11,6 +11,7 @@ import {Resend} from 'resend';
 import * as schema from '../src/db/schema';
 import {createCheckoutService} from '../src/lib/checkout';
 import type {db as appDb} from '../src/db';
+async function main() {
 Object.assign(process.env,dotenv.parse(await fs.readFile('.env.local')));
 if(!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_'))throw new Error('Stripe test mode required');
 const client=postgres(process.env.DATABASE_URL!,{max:1,connect_timeout:10});
@@ -35,3 +36,5 @@ try {
   console.log('Real Resend email accepted for hello@madebylui.net. Inbox delivery remains to be confirmed.');
   await fs.writeFile('test-results/staging-provider-fixture.json',JSON.stringify({eventId:id,reservationId:reservation.id,sessionId:session.id,checkoutUrl:result.url,input,emailId:email.data?.id,scope:'real provider API; CAPTCHA excluded'},null,2));
 }finally{await client.end({timeout:3});}
+}
+main().catch(error=>{console.error('Provider probe failed:',error instanceof Error?error.message:'Unknown error');process.exitCode=1;});

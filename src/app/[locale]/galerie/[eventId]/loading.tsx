@@ -32,7 +32,7 @@ export default function Loading() {
               key={i} 
               className="bg-base-dark/5 rounded-2xl w-full"
               style={{
-                height: `${Math.floor(Math.random() * (400 - 200 + 1) + 200)}px`
+                height: `${240 + (i * 53) % 160}px`
               }}
             />
           ))}
