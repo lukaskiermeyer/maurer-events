@@ -37,6 +37,7 @@ test('Readiness is uncached and security headers are present', async ({ request 
   expect(health.status()).toBe(200);
   expect(health.headers()['cache-control']).toContain('no-store');
   const home = await request.get('/');
+  expect(home.status()).toBe(200);
   expect(home.headers()['x-frame-options']).toBe('DENY');
   expect(home.headers()['x-content-type-options']).toBe('nosniff');
   expect(home.headers()['content-security-policy']).toContain("frame-ancestors 'none'");

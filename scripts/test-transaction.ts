@@ -3,8 +3,8 @@ config({ path: '.env.local' });
 
 // Workaround for Node.js native WebSocket issue in local testing
 import { neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 try {
-  const ws = require('ws');
   neonConfig.webSocketConstructor = ws;
   console.log('Using ws module for local test');
 } catch (e) {

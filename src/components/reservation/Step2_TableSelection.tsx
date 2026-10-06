@@ -95,7 +95,7 @@ export default function Step2_TableSelection({
               const isBooked = bookedTableIds.includes(table.id);
               const isSelected = selectedTableId === table.id;
               
-              let bg = isBooked 
+              const bg = isBooked 
                 ? 'bg-red-50 border-red-200 opacity-60 cursor-not-allowed' 
                 : isSelected 
                   ? 'bg-accent-green/20 border-accent-green ring-1 ring-accent-green shadow-sm z-10 scale-105' 

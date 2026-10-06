@@ -1,0 +1,10 @@
+from pathlib import Path
+import fitz
+
+source = Path('test-results/staging-ticket.pdf')
+document = fitz.open(source)
+assert len(document) == 1
+page = document[0]
+page.get_pixmap(matrix=fitz.Matrix(2, 2)).save('test-results/staging-ticket.png')
+print(page.get_text())
+print('PDF page:', tuple(page.rect), 'images:', len(page.get_images()))

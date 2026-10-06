@@ -266,7 +266,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const packages = eventSettings?.packages || DEFAULT_PACKAGES;
 
   const selectedTableObj = tables.find(t => t.id === selectedTableId);
-  let minimumConsumption = eventSettings?.minConsumptionCents ?? (selectedEventObj?.minimumConsumption || 5000);
+  const minimumConsumption = eventSettings?.minConsumptionCents ?? (selectedEventObj?.minimumConsumption || 5000);
   let amountTotal = (minimumConsumption / 100) * guests;
   if (selectedTableObj?.isVip) {
     amountTotal += (selectedTableObj.vipPrice || 0) / 100;

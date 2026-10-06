@@ -19,6 +19,9 @@ const db=drizzle(client,{schema}) as unknown as typeof appDb;
 const stripe=new Stripe(process.env.STRIPE_SECRET_KEY,{apiVersion:'2026-06-24.dahlia',timeout:15000,maxNetworkRetries:1});
 try {
   const id=randomUUID();
+  await fs.mkdir('test-results',{recursive:true});
+  const previous=await fs.readFile('test-results/staging-provider-fixture.json').catch(()=>null);
+  if(previous)await fs.writeFile(`test-results/staging-provider-fixture-${Date.now()}.json`,previous);
   const date=new Date(Date.now()+7*86400000);date.setUTCHours(0,0,0,0);
   await db.insert(schema.events).values({id,title:'Produktionsabnahme – Stripe-Test',date,location:'Staging',description:'Dediziertes Abnahmeevent mit Stripe-Testzahlungen.',reservable:true,allowTableSelection:false,maxCapacity:4});
   await db.insert(schema.eventSettings).values({eventId:id,requireFullTable:false,maxBookingsPerEmail:10});
@@ -31,7 +34,7 @@ try {
   const [reservation]=await db.select().from(schema.reservations).where(eq(schema.reservations.eventId,id));
   const session=await stripe.checkout.sessions.retrieve(reservation.stripeSessionId!);
   console.log('Real Stripe test checkout created and identical retry succeeded; payment methods:',session.payment_method_types.join(', '));
-  const email=await new Resend(process.env.RESEND_API_KEY).emails.send({from:process.env.EMAIL_FROM!,to:['hello@madebylui.net'],subject:'Maurer Events – Produktionsabnahme: Versandtest',text:'Dies ist der freigegebene Versandtest für die Produktionsabnahme. Bitte bestätige den Empfang.'},{idempotencyKey:`acceptance:${id}`});
+  const email=process.argv.includes('--no-email')?{data:{id:null},error:null}:await new Resend(process.env.RESEND_API_KEY).emails.send({from:process.env.EMAIL_FROM!,to:['hello@madebylui.net'],subject:'Maurer Events – Produktionsabnahme: Versandtest',text:'Dies ist der freigegebene Versandtest für die Produktionsabnahme. Bitte bestätige den Empfang.'},{idempotencyKey:`acceptance:${id}`});
   if(email.error)throw new Error('Resend delivery request rejected');
   console.log('Real Resend email accepted for hello@madebylui.net. Inbox delivery remains to be confirmed.');
   await fs.writeFile('test-results/staging-provider-fixture.json',JSON.stringify({eventId:id,reservationId:reservation.id,sessionId:session.id,checkoutUrl:result.url,input,emailId:email.data?.id,scope:'real provider API; CAPTCHA excluded'},null,2));

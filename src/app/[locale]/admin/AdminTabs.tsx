@@ -112,7 +112,7 @@ export default function AdminTabs({
                   </button>
                 </div>
               ) : (
-                <p className="opacity-80">Aktuell ist kein zukünftiges Fest geplant. Wechsle zu "Aktuelle & Zukünftige Feste", um eines zu erstellen.</p>
+                <p className="opacity-80">Aktuell ist kein zukünftiges Fest geplant. Wechsle zu &quot;Aktuelle &amp; Zukünftige Feste&quot;, um eines zu erstellen.</p>
               )}
             </div>
             

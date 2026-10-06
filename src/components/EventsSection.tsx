@@ -174,7 +174,7 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="font-display font-black text-3xl md:text-5xl text-base-dark mb-4">Bald gibt's was zu <span className="text-accent-green">feiern!</span></h3>
+                  <h3 className="font-display font-black text-3xl md:text-5xl text-base-dark mb-4">Bald gibt&apos;s was zu <span className="text-accent-green">feiern!</span></h3>
                   <p className="font-sans text-base-dark/70 max-w-lg mx-auto text-lg leading-relaxed">
                     Der Wirt feilt gerade noch am Programm. Sobald die nächsten Termine feststehen, findest du sie genau hier. Schau bald wieder vorbei!
                   </p>

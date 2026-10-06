@@ -786,7 +786,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                         })
                         .map((row: any) => {
                         // Generate color circle for assigned guest
-                        let colorBadge = null;
+                        const colorBadge = null;
                         const assignedTable = initialTables.find((t:any) => t.id === row.reservation.tableId);
 
                         return (
@@ -1211,7 +1211,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                         <div><label className="text-xs font-bold uppercase">Preis (€)</label><input type="number" value={pkg.price} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].price = parseFloat(e.target.value); setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
                       </div>
                       <div className="mb-3"><label className="text-xs font-bold uppercase">Beschreibung</label><input type="text" value={pkg.description} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].description = e.target.value; setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
-                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={pkg.popular} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].popular = e.target.checked; setSettingsData(p => ({ ...p, packages: newP })); }} className="text-accent-green rounded" /> <span className="text-sm font-bold">Als "Beliebt" markieren</span></label>
+                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={pkg.popular} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].popular = e.target.checked; setSettingsData(p => ({ ...p, packages: newP })); }} className="text-accent-green rounded" /> <span className="text-sm font-bold">Als &quot;Beliebt&quot; markieren</span></label>
                     </div>
                   ))}
                 </div>

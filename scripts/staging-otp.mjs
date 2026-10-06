@@ -3,8 +3,15 @@ import readline from 'node:readline/promises';
 const browser=await chromium.launch({headless:true});
 try {
   const page=await browser.newPage();
-  await page.goto('https://maurer-events.madebylui.net/admin/login');
+  await page.goto(process.argv[2] || 'https://maurer-events.madebylui.net/admin/login',{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'Admin Login'}).waitFor({timeout:30000});
   await page.locator('input[type=email]').fill('hello@madebylui.net');
+  await page.locator('iframe[src*="challenges.cloudflare.com"]').waitFor({state:'attached',timeout:20000});
+  for(const frame of page.frames()) {
+    if(frame.url().startsWith('https://challenges.cloudflare.com/')) {
+      await frame.getByRole('checkbox').check({timeout:3000}).catch(()=>{});
+    }
+  }
   await page.waitForFunction(()=>!!document.querySelector('input[name="cf-turnstile-response"]')?.value,{},{timeout:20000});
   await page.getByRole('button',{name:'Code anfordern'}).click();
   await Promise.race([page.locator('input[maxlength="6"]').waitFor({timeout:20000}),page.getByText('Anmeldecode konnte nicht angefordert werden.').waitFor({timeout:20000}).then(()=>{throw new Error('OTP request failed; verify runtime AUTH_SECRET and EMAIL_FROM')})]);

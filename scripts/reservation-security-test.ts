@@ -403,6 +403,9 @@ test('A confirmed expiry permits a new attempt, and the old key never creates an
 test('Reservation wizard renders single-day events with actual RSC Date values', async () => {
   const f = await fixture({ table: false });
   const messages = JSON.parse(await readFile('messages/de.json', 'utf8'));
+  // The provider declares children as required, so React's createElement overload
+  // requires it in props even though JSX ordinarily supplies it implicitly.
+  // eslint-disable-next-line react/no-children-prop
   const html = renderToString(createElement(NextIntlClientProvider, { locale: 'de', messages, timeZone: 'Europe/Berlin', now: new Date(), children:
     createElement(ReservationSection, { initialEvents: [f.event], initialSelectedEvent: f.event.id }) }));
   assert.ok(html.includes('reservation-wizard'));
