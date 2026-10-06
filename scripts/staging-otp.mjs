@@ -6,7 +6,7 @@ try {
   await page.goto(process.argv[2] || 'https://maurer-events.madebylui.net/admin/login',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Admin Login'}).waitFor({timeout:30000});
   await page.locator('input[type=email]').fill('hello@madebylui.net');
-  await page.locator('iframe[src*="challenges.cloudflare.com"]').waitFor({state:'attached',timeout:20000});
+  await page.waitForTimeout(1000);
   for(const frame of page.frames()) {
     if(frame.url().startsWith('https://challenges.cloudflare.com/')) {
       await frame.getByRole('checkbox').check({timeout:3000}).catch(()=>{});

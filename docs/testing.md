@@ -32,19 +32,38 @@ npx tsc --noEmit --incremental false
 npm run build
 ```
 
-Die vorhandene ESLint-Konfiguration ignoriert TypeScript-Dateien. Ein erfolgreicher
-Lint-Aufruf ist deshalb derzeit kein Nachweis für die Reservierungslogik.
+`npm.cmd run lint` prüft jetzt auch TypeScript, Next.js und React. Bestehende
+`any`-Typen und direkte State-Updates in Effekten bleiben Warnungen. Korrektheitsregeln
+wie Hook-Reihenfolge sind Fehler. Der Produktionsbuild führt zusätzlich Typechecking aus.
+
+## Browser- und Provider-Abnahme
+
+`npm.cmd run test:browser` führt acht Desktop-/Mobilprüfungen aus. Standardziel ist
+`http://localhost:3100`; mit `ACCEPTANCE_URL` wird Staging geprüft. Getrennte parallele
+Läufe benötigen eigene `ACCEPTANCE_ARTIFACTS` und `ACCEPTANCE_REPORT`.
+Playwright löscht ausschließlich sein Artefakt-Unterverzeichnis. DB-Sicherungen
+liegen getrennt in `.acceptance-backups/`, sensible Provider-/Sessionartefakte in
+Git-ignorierten Verzeichnissen.
+
+`npm.cmd run check:production` prüft Konfiguration, Datenbank und Provider lesend.
+Die Provider-Skripte `staging-provider-probe.ts`, `staging-payment.mjs --pay-test`,
+`staging-webhook-probe.mjs`, `staging-ticket-refund.ts` und `staging-otp.mjs` sind
+ausdrücklich manuelle Abnahmewerkzeuge: Sie greifen auf die freigegebene
+Staging-Datenbank und echte Provider-Testdienste zu; sie können Testzahlungen,
+E-Mails und Statusänderungen auslösen. Sie gehören nicht in die isolierte CI-Suite.
+Der Provider-Probe schließt CAPTCHA bewusst aus. Ein Diensttest ersetzt weder
+den echten Wizard noch die authentifizierte Scanner-UI.
 
 ## Vor Inbetriebnahme der Sicherheitsänderungen
 
-- Migrationen `0004_reservation_security`, `0005_ticket_delivery` und
-  `0006_waitlist_uniqueness` in Reihenfolge anwenden. Die Test-Suite prüft die gesamte
+- Migrationen `0004_reservation_security`, `0005_ticket_delivery`,
+  `0006_waitlist_uniqueness` und `0007_explicit_public_schema` in Reihenfolge anwenden. Die Test-Suite prüft die gesamte
   Migrationskette in einer leeren Datenbank.
 - `AUTH_SECRET` mit mindestens 32 zufälligen Zeichen setzen. Alte Klartext-OTPs
   funktionieren nach dem Update nicht mehr; neue Codes anfordern.
 - `NEXT_PUBLIC_BASE_URL` auf den tatsächlichen HTTPS-Ursprung setzen. Turnstile muss
   für dessen Hostname konfiguriert sein. CAPTCHA-Aktionen: `checkout`, `waitlist`,
-  `admin-login`.
+  `admin-login`, `contact`.
 - `/api/cron/cleanup` regelmäßig mit `Authorization: Bearer <CRON_SECRET>` aufrufen.
   Die Route gleicht abgelaufene Zahlungs-Holds mit Stripe ab und wiederholt
   fehlgeschlagenen Ticketversand. Ohne Abgleich werden unklare Holds weiterhin als

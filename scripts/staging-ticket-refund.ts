@@ -31,7 +31,7 @@ async function main() {
     const refund=await stripe.refunds.create({payment_intent:session.payment_intent},{idempotencyKey:`acceptance-refund:${fixture.reservationId}`});
     const chargeId=typeof refund.charge==='string'?refund.charge:refund.charge?.id;
     const recent=await stripe.events.list({type:'charge.refunded',limit:100});
-    const event=recent.data.find(e=>e.data.object.id===chargeId);
+    const event=recent.data.find(e=>e.type==='charge.refunded' && (e.data.object as Stripe.Charge).id===chargeId);
     if(!event)throw new Error('Refund event not visible yet; repeat webhook verification');
     const body=JSON.stringify(event);
     const signature=stripe.webhooks.generateTestHeaderString({payload:body,secret:process.env.STRIPE_WEBHOOK_SECRET!});

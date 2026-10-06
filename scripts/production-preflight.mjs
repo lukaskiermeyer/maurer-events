@@ -102,7 +102,8 @@ if (origin) {
     const login = route !== '/admin' || new URL(response.url).pathname.endsWith('/admin/login') || (html.includes('NEXT_REDIRECT') && html.includes('/admin/login'));
     record(`http.${route}`, response.status === 200 && login ? 'pass' : 'fail', `HTTP ${response.status}${route === '/admin' ? `; Login-Weiterleitung: ${login}` : ''}.`);
     if (route === '/' || route === '/en') {
-      record(`http.render.${route}`, !html.includes('Da ist etwas schiefgelaufen.') ? 'pass' : 'fail', html.includes('Da ist etwas schiefgelaufen.') ? 'Serverfehleransicht trotz HTTP 200.' : 'Keine Serverfehleransicht erkannt; Hydrierung separat im Browser prüfen.');
+      const renderFailed = response.status !== 200 || html.includes('Da ist etwas schiefgelaufen.') || html.includes('Internal Server Error');
+      record(`http.render.${route}`, renderFailed ? 'fail' : 'pass', renderFailed ? 'HTTP- oder Serverrenderfehler.' : 'Keine Serverfehleransicht erkannt; Hydrierung separat im Browser prüfen.');
     }
     if (route === '/api/health') record('http.health-cache', /no-store/.test(response.headers.get('cache-control') || '') ? 'pass' : 'fail', 'Readiness muss aktuellen Datenbankzustand ohne Cache melden.');
     if (route === '/') for (const [header, expectedValue] of [['x-frame-options', 'DENY'], ['x-content-type-options', 'nosniff'], ['referrer-policy', 'strict-origin-when-cross-origin']]) record(`http.header.${header}`, response.headers.get(header) === expectedValue ? 'pass' : 'fail', `Erwarteter Header ${expectedValue}.`);

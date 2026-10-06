@@ -36,7 +36,7 @@ try {
   console.log('Real Stripe test checkout created and identical retry succeeded; payment methods:',session.payment_method_types.join(', '));
   const email=process.argv.includes('--no-email')?{data:{id:null},error:null}:await new Resend(process.env.RESEND_API_KEY).emails.send({from:process.env.EMAIL_FROM!,to:['hello@madebylui.net'],subject:'Maurer Events – Produktionsabnahme: Versandtest',text:'Dies ist der freigegebene Versandtest für die Produktionsabnahme. Bitte bestätige den Empfang.'},{idempotencyKey:`acceptance:${id}`});
   if(email.error)throw new Error('Resend delivery request rejected');
-  console.log('Real Resend email accepted for hello@madebylui.net. Inbox delivery remains to be confirmed.');
+  if(!process.argv.includes('--no-email'))console.log('Real Resend email accepted for hello@madebylui.net. Inbox delivery remains to be confirmed.');
   await fs.writeFile('test-results/staging-provider-fixture.json',JSON.stringify({eventId:id,reservationId:reservation.id,sessionId:session.id,checkoutUrl:result.url,input,emailId:email.data?.id,scope:'real provider API; CAPTCHA excluded'},null,2));
 }finally{await client.end({timeout:3});}
 }
