@@ -4,6 +4,12 @@ Die Prüfung erfolgt iterativ: Befund dokumentieren, beheben, Regression prüfen
 anschließend Buchungs-, Zahlungs- und Administrationspfade erneut untersuchen.
 Bestehende Änderungen im Arbeitsverzeichnis bleiben erhalten.
 
+**Aktualisierung:** Die anschließende reale Staging-Abnahme, zusätzliche Befunde,
+44 Regressionen, aktives TypeScript-/React-Linting und angewendete Migrationen
+0000–0007 sind in [production-acceptance.md](production-acceptance.md) dokumentiert.
+Der Status am Ende dieses ursprünglichen Berichts beschreibt den früheren,
+ausschließlich lokalen Prüfstand und wird durch den neuen Bericht ergänzt.
+
 ## Runde 1 – Befunde
 
 | Nr. | Priorität | Befund | Behebung / Nachweis |

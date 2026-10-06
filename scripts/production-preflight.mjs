@@ -112,7 +112,7 @@ if (origin) {
     ['cron-auth', '/api/cron/cleanup', {}, 401],
     ['webhook-signature', '/api/webhooks/stripe', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': 'invalid' } }, 400],
     ['checkout-origin', '/api/checkout', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', Origin: 'https://invalid.example' } }, 403],
-    ['checkout-input', '/api/checkout', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json' } }, 400],
+    ['checkout-input', '/api/checkout', { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', Origin: origin } }, 400],
   ]) await check(`http.${id}`, async () => {
     const response = await get(`${origin}${route}`, init);
     record(`http.${id}`, response.status === status ? 'pass' : 'fail', `HTTP ${response.status}; erwartet ${status}.`);

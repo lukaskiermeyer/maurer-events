@@ -54,6 +54,21 @@ E-Mails und Statusänderungen auslösen. Sie gehören nicht in die isolierte CI-
 Der Provider-Probe schließt CAPTCHA bewusst aus. Ein Diensttest ersetzt weder
 den echten Wizard noch die authentifizierte Scanner-UI.
 
+`staging-otp.mjs --interactive` öffnet einen sichtbaren Browser für echten CAPTCHA-
+und OTP-Abschluss durch den Betreiber. Automatisierte Browser können von Turnstile
+abgelehnt werden; dies ist kein Anlass für einen Produktions-CAPTCHA-Bypass.
+`staging-turnstile-check.mjs` prüft das öffentliche Widget lesend, ohne Schlüssel
+oder Tokens auszugeben. `staging-wizard.mjs [URL]` prüft Vor-/Zurücknavigation am
+dedizierten Testevent; es führt keine Buchung aus.
+`staging-auth-storage-check.ts` prüft den nativen Neon-Treiber und OTP-/Rate-Limit-
+Schreibpfade in einer zurückgerollten Diagnose-Transaktion. Es erzeugt weder
+reale Login-Codes noch Sessions oder E-Mails.
+
+`tsx scripts/ticket-layout-check.ts` erzeugt ausschließlich zwei lokale PDF-Fixtures.
+`python scripts/verify-ticket-layout.py` benötigt PyMuPDF und prüft vollständige
+Angaben, Seitenbegrenzung und Abstand zur QR-Fläche. Die gerenderten PNGs zusätzlich
+visuell prüfen. Es werden weder Datenbank noch Versanddienste angesprochen.
+
 ## Vor Inbetriebnahme der Sicherheitsänderungen
 
 - Migrationen `0004_reservation_security`, `0005_ticket_delivery`,

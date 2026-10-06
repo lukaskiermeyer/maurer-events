@@ -3,14 +3,16 @@ import {chromium} from '@playwright/test';
 const fixture=JSON.parse(await fs.readFile('test-results/staging-provider-fixture.json','utf8'));
 const base=process.argv[2]||'https://maurer-events.madebylui.net';
 const browser=await chromium.launch({headless:true});
+let page;
 try {
-  const page=await browser.newPage();
+  page=await browser.newPage();
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`${base}/termine/${fixture.eventId}`,{waitUntil:'domcontentloaded'});
   const wizard=page.locator('#reservation-wizard');
   await wizard.waitFor({timeout:30000});
   await wizard.getByRole('heading',{name:'Event & Datum',exact:true}).waitFor({timeout:15000});
+  await page.waitForFunction(()=>document.querySelector('#reservation-wizard button[role="radio"][aria-checked="true"]'));
   const next=wizard.getByRole('button',{name:'Weiter',exact:true}).first();
   await next.click();
   await wizard.getByRole('heading',{name:'Uhrzeit & Paket',exact:true}).waitFor();
@@ -36,4 +38,7 @@ try {
   console.log('Wizard forward/back navigation retained date, time, package and contact details.');
   console.log('Runtime errors:',JSON.stringify(errors));
   await page.screenshot({path:'test-results/staging-wizard.png',fullPage:true});
+}catch(error){
+  if(page)await page.screenshot({path:'test-results/wizard-failure.png',fullPage:true}).catch(()=>{});
+  throw error;
 }finally{await browser.close()}

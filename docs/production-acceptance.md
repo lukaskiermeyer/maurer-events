@@ -15,20 +15,22 @@ bestandene Codeprüfung allein ist keine Produktionsfreigabe.
 
 | Bereich | Ergebnis | Konkreter Nachweis und Grenze |
 | --- | --- | --- |
-| Produktionsbuild / TypeScript | bestanden | Vollständiger `npm.cmd run build` nach Korrektur der Stripe-Ereignistypprüfung; Next.js 16.3.8 |
+| Produktionsbuild / TypeScript | bestanden | Vollständiger `npm.cmd run build` mit Stripe-Typprüfung, PDF-Umbruch, Wizard-Rückwärtsnavigation und gezielter OTP-Diagnose; Next.js 16.3.8 |
 | ESLint | bestanden mit Warnungen | TypeScript, Next.js, React aktiv; 0 Fehler, 147 Warnungen. Breite `any`-Typen und direkte State-Updates in Effekten sind ausdrücklich Warnungen |
 | Sicherheitsregressionen | 44/44 bestanden | Isolierte PostgreSQL-Datenbank: 50 parallele Buchungen für acht Plätze ergeben acht Holds; Volltischbuchungen genau einen Gewinner; 20 Wiederholungen erzeugen eine Buchung/Session |
 | Autorisierung | bestanden im geprüften Umfang | Admin, Eventdashboard und beide Scanner leiten anonym zum Login; Mutation-Services durch Server-Auth geschützt; Entwicklungslogin in Produktion deaktiviert |
 | OTP-Codeverarbeitung | lokale Regression bestanden | Gehashte Codes, Ablauf, Versuchslimit und atomarer Einmalverbrauch; reale Browseranmeldung steht noch aus |
 | Browser lokal | 8/8 bestanden | Desktop Chromium und Pixel 7, deutscher/englischer Render, Login-Schutz, ungültige API-Aufrufe, aktueller Healthcheck und Sicherheitsheader; Listener und Ziel konsistent `localhost` |
-| Browser Staging | früherer korrigierter Stand 8/8 | Nachfolgendes Deployment einer zurückgenommenen Proxy-Änderung lieferte HTTP 500 auf deutschen Routen; erneuter Smoke-Test des finalen Deploys steht aus |
+| Browser Staging | 8/8 bestanden | Nach Rücknahme der fehlerhaften Proxy-Änderung bestehen deutsche/englische Seiten und geschützte Adminrouten; Preflight vollständig bestanden |
+| Buchungswizard | Navigation lokal und Staging geprüft | Vorwärts bis Kontakt/Zahlung sowie zurück zu Event/Datum und wieder vorwärts; Datum, Uhrzeit, Paket und Kontaktdaten erhalten; echte CAPTCHA-Übermittlung/Zahlung über diesen Pfad noch offen |
+| Native OTP-Datenbankschritte | bestanden mit lokaler Konfiguration | Echter Neon-Anwendungstreiber: Rate-Limit, OTP-Upsert/Wiederholung/Lesen in vollständig zurückgerollter Transaktion. Lokale Admin-Allowlist und AUTH_SECRET gültig; kein Nachweis für Vercels abweichende Runtime-Werte |
 | Datenbankschema | bestanden | Migrationen 0000–0007 im Ledger, erforderliche Felder/Enums/Unique-Indizes; keine doppelten QR-/Wartelistengruppen, keine Überkapazität |
 | Sicherung / Wiederherstellung | bestanden für Anwendungstabellen | Konsistenter logischer Snapshot in `.acceptance-backups/`, alle Tabellen lokal restauriert, Zeilenzahlen übereinstimmend, 23 Reservierungen beim zweiten Sicherungslauf erhalten |
 | Stripe Checkout | bestanden für Providerpfad | Echter Sandbox-Checkout; identischer Wiederholungsaufruf liefert dieselbe Session; angebotene Zahlungsarten von Stripe akzeptiert. Dieser Provider-Test schließt Anwendungs-CAPTCHA bewusst aus |
 | Stripe Kartenzahlung | bestanden | Offizielle Testkarte 4242, 25,63 EUR, Session `complete/paid`, Rückkehr nach Staging, Reservierung `confirmed` |
-| Zahlungswebhook | bestanden | Echtes Stripe-Ereignis mit gültiger Signatur dreimal zugestellt, dreimal HTTP 200, genau ein Ledger-Eintrag, Bestätigung bleibt stabil |
+| Zahlungswebhook | bestanden | Echtes Stripe-Ereignis mit gültiger Signatur dreimal zugestellt, dreimal HTTP 200, genau ein Ledger-Eintrag; weitere drei Zustellungen nach Erstattung belassen `refunded` |
 | Ticketversand | bestanden | `ticket_sent_at` gespeichert, Betreiber bestätigt tatsächlichen Mailempfang und öffnungsfähigen PDF-Anhang |
-| PDF-Ticket | geprüft | Einseitiges Ticket gerendert und visuell geprüft, Datum/Gast/Gästezahl/Tisch/QR lesbar; kein Nachweis für alle möglichen überlangen Inhalte |
+| PDF-Ticket | Layoutfehler behoben und geprüft | Normalfall sowie 300 Zeichen Veranstaltungstitel und je 100 Zeichen Gast-/Tischname gerendert; vollständiger Text, klare QR-Fläche, kein Abschneiden. Tickethöhe wächst bei langen Angaben |
 | Check-in | Dienstprüfung bestanden | Gegen die echte Staging-Buchung einmal angenommen, zweiter Scan abgewiesen; authentifizierte Scanner-UI und physische Kamera noch offen |
 | Rückerstattung | bestanden | Echte vollständige Stripe-Testerstattung `succeeded`, signierter Refund-Webhook HTTP 200, Reservierung `refunded`, QR entfernt, alter Code abgewiesen |
 | Alte Test-Holds | bereinigt | Vier unzugeordnete Legacy-Testbuchungen; 54 Stripe-Testsessions durchsucht, keine Zuordnung, Originaldaten gesichert und Einträge storniert. Keine echten Kundendaten betroffen |
@@ -50,31 +52,35 @@ bestandene Codeprüfung allein ist keine Produktionsfreigabe.
 | Playwright löscht Datenbanksicherungen | Eigener Browser-Artefaktordner; Sicherungen getrennt und Git-/Docker-ignoriert. Die ursprüngliche Vor-Migrationssicherung wurde dabei verloren; eine zweite konsistente Sicherung wurde erstellt und restauriert |
 | TypeScript-Lint wurde vollständig übersprungen | Aktuelle Flat Config; Korrektheitsfehler behoben, verbleibende Migration-Warnungen sichtbar |
 | Veraltete Cloudflare-Deploymentanleitung | Vercel-/Node-Betrieb dokumentiert, riskanter `drizzle push`-Produktionspfad entfernt |
+| PDF schneidet erlaubte lange Angaben ab und überlagert QR | Text auf eigene Spalte umbrechen, Tickethöhe anpassen; normaler und maximaler Text lokal gerendert und auf Seiten-/QR-Grenzen geprüft |
+| Wizard löscht Uhrzeit beim Zurückgehen zu unverändertem Einzeltermin | Automatisches Datum nur bei Änderung setzen; erneute Auswahl desselben Events/Tages behält Folgedaten; vorher auf Staging reproduziert, korrigierter lokaler Build und neuer Deploy geprüft |
+| OTP-Fehler ohne zuordenbaren Schritt | Feste, nicht sensitive Diagnose für CAPTCHA, Rate-Limit, Hash, Speicherung und Mailversand; CAPTCHA-Ablehnung, ungültiges Secret und Host-/Aktionsabweichung getrennt |
 
 ## Freigabeblocker und Abschlusskriterien
 
-1. **Aktuellen Code deployen und Staging erneut prüfen.** Letzte deutsche Aufrufe
-   `/`, `/admin`, `/admin/login` lieferten HTTP 500. Die fehlerhafte Proxy-Änderung
-   ist zurückgenommen. Der zuletzt gemeldete Vercel-Buildfehler im Abnahmeskript
-   ist korrigiert und der gesamte aktuelle lokale Build bestanden. Abschluss:
-   finaler Deploy, acht Browserprüfungen und Preflight ohne Renderfehler.
-2. **Echter OTP-Login und Buchungswizard mit Turnstile.** Der alte Testschlüssel
+1. **Echter OTP-Login und Buchungswizard mit Turnstile.** Der alte Testschlüssel
    lieferte `example.com` ohne Aktion und wurde korrekt abgewiesen. Ein echtes
-   Widget wurde anschließend eingerichtet; der positive Abschluss durch den
-   Browser steht noch aus. Abschluss: OTP-Mail, Einmalcode, sichere Session,
+   Widget wurde anschließend eingerichtet. Im normalen Browser bestätigt der
+   Betreiber erfolgreiches CAPTCHA, danach jedoch weiterhin „Anmeldecode konnte
+   nicht angefordert werden“. Automatisierter Chromium-Browser erhält keinen Token.
+   Der öffentliche Buildschlüssel stimmt mit `.env.local` überein; das beweist nicht
+   die richtige Secret-Konfiguration zur Laufzeit. Neuer Deploy enthält gezielte
+   OTP-Diagnose; dessen Fehlerzeile steht noch aus. Abschluss: OTP-Mail, Einmalcode, sichere Session,
    Adminnavigation, vollständiger Gast-Wizard bis Testzahlung, Warteliste und
    authentifizierter Scan. Kein CAPTCHA-Bypass zur Erteilung der Freigabe.
-3. **Vertrags- und Stornobedingungen.** `/agb` und `/widerruf` liefern 404;
+2. **Vertrags- und Stornobedingungen.** `/agb` und `/widerruf` liefern 404;
    Betreiber hat noch keine freigegebenen Texte. Bedingungen für Vertragspartner,
    Leistung/Mindestverzehr, Zahlung, Gäste-Storno und Veranstalter-Absage festlegen
    und für das konkrete Angebot rechtlich prüfen lassen. Eine mögliche Ausnahme
    vom Widerrufsrecht bei termingebundenen Freizeitveranstaltungen ersetzt keine
-   Stornoregelung. Keine aus den Code-Defaults erfundenen Vertragsversprechen.
-4. **Betrieb nachweisen.** Authentifizierter regelmäßiger Cleanup, Alarmierung
+   Stornoregelung. Ein konkretes Entscheidungsblatt steht in
+   [booking-terms-decisions.md](booking-terms-decisions.md); es ist kein freigegebener
+   Vertragstext. Keine aus den Code-Defaults erfundenen Vertragsversprechen.
+3. **Betrieb nachweisen.** Authentifizierter regelmäßiger Cleanup, Alarmierung
    bei Webhook-/Mail-/DB-Ausfällen, Backup/PITR und Wiederherstellungsplan auf dem
    tatsächlichen Zielsystem. Kein Scheduler im Repository konfiguriert; realer
    geplanter Lauf ist bislang nicht nachgewiesen.
-5. **Live-Konfiguration gesondert abnehmen.** Eigene Produktionsdatenbank,
+4. **Live-Konfiguration gesondert abnehmen.** Eigene Produktionsdatenbank,
    Liveschlüssel/-webhook, passende verifizierte Absenderdomain und korrektes
    Kontaktpostfach. Staging verwendet Vercel-Environment `Production`, aber
    Stripe-Testmodus. Wechsel zum Livebetrieb erst nach Abschluss dieser Punkte.
@@ -95,5 +101,7 @@ Git-ignoriert: `test-results/staging-browser-report.json`,
 `staging-webhook-probe.json`, `staging-ticket-refund.json`, `staging-legacy-release.json`.
 Sensitive Session-/Providerartefakte nicht veröffentlichen. Logische Sicherungen
 und Originaldaten der vier stornierten Test-Holds liegen in `.acceptance-backups/`.
-Der PDF-Anhang wurde ausschließlich zur Sichtprüfung aus dem eingefrorenen
-Versandpayload extrahiert. Es wurden keine realen Zahlungen ausgelöst.
+Der versandte PDF-Anhang wurde zur Sichtprüfung aus dem eingefrorenen Versandpayload
+extrahiert; zusätzliche Layout-Fixtures wurden ausschließlich lokal erzeugt.
+`wizard-report.json` und `staging-turnstile-report.json` ergänzen die Browsernachweise.
+Alle Zahlungen und Erstattungen erfolgten im Stripe-Testmodus; kein echtes Geld.

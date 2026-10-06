@@ -4,6 +4,9 @@ Der aktuelle Abnahmestand steht in [production-acceptance.md](production-accepta
 
 - Freigegebene AGB und Stornobedingungen fehlen; `/agb` und `/widerruf` liefern 404.
 - Die echten OTP-/CAPTCHA- und authentifizierten Scanner-UI-Abläufe sind noch offen.
+  CAPTCHA klappt laut Betreiber im normalen Browser, die OTP-Anforderung scheitert
+  danach. Der aktuelle Deploy protokolliert ausschließlich feste `stage`-/`reason`-
+  Diagnoselabels. Alte `Invalid URL /de`-Logs betreffen den bereits korrigierten Proxy.
 - Der lokale Standalone-Smoke-Test verwendet konsistent `localhost`. Ein Listener
   auf `127.0.0.1` verursachte mit Next.js-URL-Normalisierung eine Locale-Redirectschleife.
 - Docker, produktives Backup/PITR, Monitoring und Scheduler sind auf dem tatsächlichen
