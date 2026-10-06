@@ -28,6 +28,7 @@ export default function ImpressumPage() {
 
         <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">Kontakt</h2>
         <p>
+          {/* TODO: Telefon: Wird zeitnah ergänzt */}
           E-Mail: servus@maurer-events.com<br />
           Internet: maurer-events.com
         </p>

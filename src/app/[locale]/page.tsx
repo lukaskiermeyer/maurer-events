@@ -13,11 +13,13 @@ const ContactSection = nextDynamic(() => import("@/components/ContactSection"), 
 
 
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Home() {
-  const events = await getEvents();
-  const galleryAlbums = await getGalleryAlbums();
+  const [events, galleryAlbums] = await Promise.all([
+    getEvents(),
+    getGalleryAlbums()
+  ]);
 
   return (
     <>

@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { adminSessions } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { UUID_PATTERN } from './reservation-policy';
+import { isAdminEmail } from './admin-identity';
 
 export async function requireAdmin(redirectOnFailure = false) {
   const cookieStore = await cookies();
@@ -10,7 +12,7 @@ export async function requireAdmin(redirectOnFailure = false) {
 
   let isValid = false;
 
-  if (sessionId) {
+  if (sessionId && UUID_PATTERN.test(sessionId)) {
     try {
       const [session] = await db.select()
         .from(adminSessions)
@@ -21,17 +23,13 @@ export async function requireAdmin(redirectOnFailure = false) {
           )
         );
       
-      if (session) {
+      if (session && isAdminEmail(session.email)) {
         isValid = true;
       }
     } catch (err) {
-      // Catch UUID parsing errors etc.
+      console.error("Auth check database error:", err);
+      // Fail closed: isValid remains false
     }
-  }
-
-  if (!isValid && !process.env.ADMIN_EMAILS && process.env.NODE_ENV !== 'production') {
-    console.warn("ADMIN_EMAILS is not set. Bypassing auth check for development.");
-    return;
   }
 
   if (!isValid) {

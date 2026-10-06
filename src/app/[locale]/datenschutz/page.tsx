@@ -37,10 +37,10 @@ export default function DatenschutzPage() {
           <p className="mt-2 bg-canvas-light p-4 rounded-xl border border-border-light inline-block">
             Florian Maurer<br />
             Maurer Events<br />
-            Musterstraße 1<br />
-            80331 München<br /><br />
-            Telefon: +49 (0) 123 456 789<br />
-            E-Mail: info@maurer-events.de
+            Schwaiger Str. 6<br />
+            85126 Müchsmünster<br /><br />
+            {/* TODO: Telefon: Wird zeitnah ergänzt */}
+            E-Mail: servus@maurer-events.com
           </p>
         </div>
 
@@ -50,6 +50,30 @@ export default function DatenschutzPage() {
           <p>
             Wenn Sie uns per Kontaktformular Anfragen zukommen lassen, werden Ihre Angaben aus dem Anfrageformular inklusive der von Ihnen dort angegebenen Kontaktdaten zwecks Bearbeitung der Anfrage und für den Fall von Anschlussfragen bei uns gespeichert. Diese Daten geben wir nicht ohne Ihre Einwilligung weiter.
           </p>
+        </div>
+
+        <div>
+          <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">4. Speicherdauer von Reservierungen und Tickets</h2>
+          <p>
+            Wenn Sie über unsere Plattform eine Tischreservierung tätigen oder Tickets für eine Veranstaltung erwerben, speichern wir die von Ihnen eingegebenen Daten (insb. Name, E-Mail-Adresse, Anzahl der Gäste, Reservierungszeitpunkt, Zahlungsstatus) zur Erfüllung des Vertrags gem. Art. 6 Abs. 1 lit. b DSGVO.
+          </p>
+          <p className="mt-2">
+            Nach Abschluss der Veranstaltung werden Ihre Reservierungs- und Ticketdaten noch im Rahmen der gesetzlichen Aufbewahrungsfristen (insb. steuer- und handelsrechtliche Aufbewahrungsfristen, z.B. 10 Jahre für Rechnungsbelege) gespeichert und anschließend gelöscht, sofern Sie nicht in eine längere Speicherung eingewilligt haben.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="font-display font-bold text-2xl text-base-dark mt-8 mb-4">5. Eingesetzte Dienste und Subprozessoren</h2>
+          <p>
+            Zur Bereitstellung unserer Webseite und Dienstleistungen nutzen wir folgende Drittanbieter (Subprozessoren), an die im Rahmen der Auftragsverarbeitung oder Vertragserfüllung Daten übermittelt werden können:
+          </p>
+          <ul className="list-disc pl-6 space-y-2 mt-4">
+            <li><strong>Cloudflare:</strong> Hosting, Content Delivery Network (CDN), DDoS-Schutz und Spam-Schutz durch Cloudflare Turnstile.</li>
+            <li><strong>Neon:</strong> Hosting unserer PostgreSQL Datenbank zur sicheren Speicherung von Reservierungsdaten.</li>
+            <li><strong>Stripe:</strong> Sichere Abwicklung von Zahlungen bei kostenpflichtigen Reservierungen.</li>
+            <li><strong>Resend:</strong> Versand von Transaktions-E-Mails (z.B. Reservierungsbestätigungen und digitale Tickets).</li>
+            <li><strong>Vercel Blob:</strong> Cloud-Speicherung für hochgeladene Medien und Bilder.</li>
+          </ul>
         </div>
 
       </div>

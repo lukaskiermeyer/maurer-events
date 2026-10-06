@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { requestOtp, verifyOtp, bypassLoginForStaging } from "@/app/actions/authActions"; // <-- Neue Action importiert
+import { requestOtp, verifyOtp, devBypassLogin } from "@/app/actions/authActions";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [captchaVersion, setCaptchaVersion] = useState(0);
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      const res = await requestOtp(email);
+      const res = await requestOtp(email, turnstileToken);
       if (res.success) {
         setStep("code");
       } else {
@@ -30,7 +31,7 @@ export default function AdminLoginPage() {
     } catch (err) {
       setError("Verbindungsfehler.");
     } finally {
-      setLoading(false);
+      setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
     }
   };
 
@@ -41,7 +42,7 @@ export default function AdminLoginPage() {
 
     if (!turnstileToken) {
       setError("Bitte bestätige, dass du kein Roboter bist.");
-      setLoading(false);
+      setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
       return;
     }
 
@@ -55,24 +56,23 @@ export default function AdminLoginPage() {
     } catch (err) {
       setError("Verbindungsfehler.");
     } finally {
-      setLoading(false);
+      setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
     }
   };
 
-  // NEU: Die Funktion für den Skip-Knopf
-  const handleSkipLogin = async () => {
+  const handleDevBypass = async () => {
     setLoading(true);
     try {
-      const res = await bypassLoginForStaging();
+      const res = await devBypassLogin();
       if (res.success) {
         router.push("/admin");
       } else {
-        setError(res.error || "Bypass fehlgeschlagen.");
+        setError(res.error || "Bypass failed.");
       }
     } catch (err) {
-      setError("Verbindungsfehler beim Bypass.");
+      setError("Dev Bypass error.");
     } finally {
-      setLoading(false);
+      setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
     }
   };
 
@@ -90,6 +90,11 @@ export default function AdminLoginPage() {
               </div>
           )}
 
+          <div className="flex justify-center mb-6">
+            <Turnstile key={captchaVersion} siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+              onSuccess={setTurnstileToken} onExpire={() => setTurnstileToken('')} onError={() => setTurnstileToken('')}
+              options={{ action: 'admin-login' }} />
+          </div>
           {step === "email" && (
               <motion.form
                   initial={{ opacity: 0, x: -20 }}
@@ -113,7 +118,7 @@ export default function AdminLoginPage() {
 
                 <button
                     type="submit"
-                    disabled={loading || !email}
+                    disabled={loading || !email || !turnstileToken}
                     className="w-full bg-accent-green text-white font-black uppercase tracking-widest py-4 rounded-xl hover:bg-base-dark transition-colors disabled:opacity-50"
                 >
                   {loading ? "Wird gesendet..." : "Code anfordern"}
@@ -146,12 +151,7 @@ export default function AdminLoginPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-center">
-                  <Turnstile
-                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
-                      onSuccess={(token) => setTurnstileToken(token)}
-                  />
-                </div>
+
 
                 <button
                     type="submit"
@@ -171,24 +171,19 @@ export default function AdminLoginPage() {
               </motion.form>
           )}
 
-          {/* NEU: Der Skip-Knopf, der nur in Staging/Dev auftaucht */}
-          {(process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_IS_STAGING === "true") && (
-              <div className="mt-8 pt-6 border-t border-border-light">
-                <button
-                    onClick={handleSkipLogin}
-                    type="button"
-                    disabled={loading}
-                    className="w-full bg-yellow-400 text-yellow-900 font-bold uppercase tracking-widest py-3 rounded-xl hover:bg-yellow-500 transition-colors flex items-center justify-center gap-2"
-                >
-                  🚀 Skip Login (Staging)
-                </button>
-                <p className="text-center text-[10px] text-base-dark/40 mt-2">
-                  Sichtbar da NODE_ENV !== "production" oder NEXT_PUBLIC_IS_STAGING="true"
-                </p>
-              </div>
-          )}
-
-        </div>
+          {process.env.NODE_ENV === "development" && (
+            <div className="mt-8 pt-6 border-t border-border-light text-center">
+              <p className="text-xs text-base-dark/50 mb-3">🛠 Development Mode</p>
+              <button
+                type="button"
+                onClick={handleDevBypass}
+                disabled={loading}
+                className="w-full bg-base-dark text-white font-bold py-3 rounded-xl hover:bg-black transition-colors"
+              >
+                Admin Login Skip (DEV ONLY)
+              </button>
+            </div>
+          )}        </div>
       </div>
   );
 }

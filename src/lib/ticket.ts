@@ -1,10 +1,9 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import QRCode from 'qrcode';
-import fs from 'fs/promises';
-import path from 'path';
+import { robotoBase64 } from './robotoBase64';
 
-let cachedFontBytes: Uint8Array | Buffer | null = null;
+let cachedFontBytes: Uint8Array | null = null;
 
 export async function generateTicketPdf(data: {
   eventName: string;
@@ -14,19 +13,25 @@ export async function generateTicketPdf(data: {
   tableName: string;
   qrCodeText: string;
 }) {
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
+  try {
+    const pdfDoc = await PDFDocument.create();
+    pdfDoc.registerFontkit(fontkit);
 
-  const page = pdfDoc.addPage([600, 400]); // Ticket size
-  const { width, height } = page.getSize();
+    const page = pdfDoc.addPage([600, 400]); // Ticket size
+    const { width, height } = page.getSize();
 
-  if (!cachedFontBytes) {
-    const fontPath = path.join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf');
-    cachedFontBytes = await fs.readFile(fontPath);
-  }
-  
-  const font = await pdfDoc.embedFont(cachedFontBytes);
-  const fontBold = font; // Using regular as fallback for bold to ensure all characters are supported
+    if (!cachedFontBytes) {
+      const binaryString = atob(robotoBase64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      cachedFontBytes = bytes;
+    }
+    
+    const font = await pdfDoc.embedFont(cachedFontBytes);
+    const fontBold = font; // Using regular as fallback for bold to ensure all characters are supported
 
   // Background
   page.drawRectangle({
@@ -113,4 +118,9 @@ export async function generateTicketPdf(data: {
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
+  } catch (error) {
+    console.error("PDF Generation failed:", error);
+    // Mark as failed for retry logic if used by webhook later
+    return null;
+  }
 }

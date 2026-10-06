@@ -3,11 +3,13 @@ import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import PrintLayout from "./PrintLayout";
 
 export const dynamic = "force-dynamic";
 
 export default async function PrintReservationsPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin(true);
   const resolvedParams = await params;
   
   const [eventData] = await db.select().from(events).where(eq(events.id, resolvedParams.id));

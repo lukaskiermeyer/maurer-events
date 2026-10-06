@@ -1,0 +1,24 @@
+# Environment variables and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.cer
+id_rsa*
+
+# Configuration with potential credentials
+config/secrets.yml
+credentials.json
+auth.json
+
+# Databases and dumps
+*.sql
+*.sqlite
+*.db
+*.dump
+
+# Sensitive directories
+keys/
+secrets/
+credentials/

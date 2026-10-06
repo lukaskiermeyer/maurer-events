@@ -3,16 +3,19 @@ import { getTables } from "@/app/actions/tables";
 import { getTentSettings } from "@/app/actions/settings";
 import { getGalleryImages } from "@/app/actions/gallery";
 import { getWaitlist } from "@/app/actions/waitlist";
+import { getEventSettings } from "@/app/actions/eventSettings";
 import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import EventDetailDashboard from "./EventDetailDashboard";
 import { Link } from "@/i18n/routing";
+import { requireAdmin } from "@/lib/auth";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin(true);
   const resolvedParams = await params;
   const [eventData] = await db.select().from(events).where(eq(events.id, resolvedParams.id));
   
@@ -20,12 +23,13 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const [reservations, tables, tentSettings, galleryImages, waitlistEntries] = await Promise.all([
+  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings] = await Promise.all([
     getReservationsByEvent(resolvedParams.id),
     getTables(),
     getTentSettings(),
     getGalleryImages(resolvedParams.id),
-    getWaitlist(resolvedParams.id)
+    getWaitlist(resolvedParams.id),
+    getEventSettings(resolvedParams.id)
   ]);
 
   return (
@@ -49,6 +53,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           tentSettings={tentSettings}
           initialGallery={galleryImages}
           initialWaitlist={waitlistEntries}
+          initialEventSettings={eventSettings}
         />
       </div>
     </div>

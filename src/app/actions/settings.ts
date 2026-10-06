@@ -4,6 +4,10 @@ import { db } from "@/db";
 import { settings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+import { requireAdmin } from "@/lib/auth";
+import { lockLayout } from '@/lib/reservation-db';
+import { BookingError } from '@/lib/reservation-policy';
+
 export async function getTentSettings() {
   const result = await db.select().from(settings).where(eq(settings.key, "tent_dimensions"));
   if (result.length > 0) {
@@ -14,12 +18,11 @@ export async function getTentSettings() {
 }
 
 export async function saveTentSettings(width: number, height: number) {
+  await requireAdmin();
+  if (![width, height].every(value => Number.isInteger(value) && value >= 1 && value <= 10000)) throw new BookingError('Ungültige Zeltdimensionen.');
   const value = JSON.stringify({ width, height });
-  
-  const existing = await db.select().from(settings).where(eq(settings.key, "tent_dimensions"));
-  if (existing.length > 0) {
-    await db.update(settings).set({ value }).where(eq(settings.key, "tent_dimensions"));
-  } else {
-    await db.insert(settings).values({ key: "tent_dimensions", value });
-  }
+  await db.transaction(async tx => {
+    await lockLayout(tx, true);
+    await tx.insert(settings).values({ key: 'tent_dimensions', value }).onConflictDoUpdate({ target: settings.key, set: { value } });
+  });
 }

@@ -1,14 +1,14 @@
 import React from "react";
-import { getEvents } from "@/app/actions/events";
+import { getEvents, getEventById } from "@/app/actions/events";
 import { getGalleryImages } from "@/app/actions/gallery";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
 import parse from 'html-react-parser';
+import sanitizeHtml from 'sanitize-html';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 
 const ReservationSection = dynamicComponent(() => import("@/components/ReservationSection"), {
   loading: () => <div className="animate-pulse h-96 bg-white/5 rounded-3xl mt-32"></div>
@@ -18,8 +18,7 @@ const ReservationSection = dynamicComponent(() => import("@/components/Reservati
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
-  const upcomingEvents = await getEvents();
-  const event = upcomingEvents.find(e => e.id === id);
+  const event = await getEventById(id);
   if (!event) return { title: "Event nicht gefunden" };
   
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
@@ -44,8 +43,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
-  const upcomingEvents = await getEvents();
-  const event = upcomingEvents.find(e => e.id === id);
+  
+  const [event, galleryImages, upcomingEvents] = await Promise.all([
+    getEventById(id),
+    getGalleryImages(id),
+    getEvents()
+  ]);
 
   if (!event) {
     notFound();
@@ -54,8 +57,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
-
-  const galleryImages = await getGalleryImages(event.id);
 
   const dateObj = new Date(event.date);
   const dateStr = dateObj.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', {
@@ -91,7 +92,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     <div className="min-h-screen bg-base-light">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema).replace(/</g, '\\u003c') }}
       />
       {/* Event Header Banner */}
       <div className="bg-canvas-light border-b border-border-light pt-32 pb-20 relative overflow-hidden">
@@ -168,15 +169,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </h2>
             <div className="prose prose-lg font-sans text-base-dark/80 max-w-none">
               {/* Parse the HTML output from the rich text editor safely */}
-              {parse(description)}
+              {parse(sanitizeHtml(description || '', {
+                allowedTags: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h2', 'h3'],
+                allowedAttributes: {
+                  'a': ['href', 'target', 'rel']
+                }
+              }))}
               
-              {!description.includes("<") && ( // Fallback if description is just plain text from old DB entries
-                <p className="mt-4">
-                  {locale === "en" 
-                    ? "(This is a placeholder for more detailed descriptions, line-ups, menus, or special features of this exact event.)"
-                    : "(Hier ist Platz für ausführlichere Beschreibungen, Line-ups, Menükarten oder Besonderheiten zu genau dieser Veranstaltung. Da die Texte dynamisch über das CMS oder die Datenstruktur geladen werden können, bietet dieses Layout die perfekte Bühne für alle wichtigen Details.)"}
-                </p>
-              )}
+
             </div>
           </div>
           
@@ -208,6 +208,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       {/* Reservation Section */}
       {event.reservable && (
         <div className="mt-32">
+          {/* ReservationSection loaded dynamically */}
           <ReservationSection initialEvents={upcomingEvents} initialSelectedEvent={event.id} />
         </div>
       )}

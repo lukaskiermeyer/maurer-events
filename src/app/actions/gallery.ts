@@ -4,8 +4,10 @@ import { db } from "@/db";
 import { galleries, events } from "@/db/schema";
 import { eq, sql, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth";
 
 export async function addGalleryImage(eventId: string, imageUrl: string) {
+  await requireAdmin();
   await db.insert(galleries).values({
     eventId,
     imageUrl,
@@ -15,6 +17,7 @@ export async function addGalleryImage(eventId: string, imageUrl: string) {
 }
 
 export async function removeGalleryImage(imageId: string) {
+  await requireAdmin();
   await db.delete(galleries).where(eq(galleries.id, imageId));
   revalidatePath("/admin/events/[id]", "page");
 }

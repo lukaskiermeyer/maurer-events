@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getGalleryImages } from "@/app/actions/gallery";
+import { getEventById } from "@/app/actions/events";
 import GalleryGrid from "@/components/GalleryGrid";
 import { Link } from "@/i18n/routing";
 import { notFound } from "next/navigation";
@@ -42,16 +43,18 @@ export async function generateMetadata({ params }: { params: Promise<{ eventId: 
 
 export default async function AlbumPage({ params }: { params: Promise<{ eventId: string, locale: string }> }) {
   const { eventId, locale } = await params;
-  const t = await getTranslations("Gallery");
+  
+  const [t, event, images] = await Promise.all([
+    getTranslations("Gallery"),
+    getEventById(eventId),
+    getGalleryImages(eventId)
+  ]);
 
-  const [event] = await db.select().from(events).where(eq(events.id, eventId));
   if (!event) notFound();
 
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
-
-  const images = await getGalleryImages(eventId);
 
   return (
     <div className="bg-base-light min-h-screen pt-24 pb-32">

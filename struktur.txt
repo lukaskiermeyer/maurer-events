@@ -1,0 +1,213 @@
+# Projektstruktur: maurer-events
+Pfad: maurer-events
+Stand: 2026-08-30
+Typ: Next.js 16 App Router (i18n mit next-intl) - Event-Management Plattform für Maurer Events
+Deployment: Cloudflare Workers via OpenNext (@opennextjs/cloudflare) — **FUNKTIONIERT**
+
+## Kurzbeschreibung
+Vollständige Event-Management Plattform für "Maurer Events" (Veranstaltungsagentur). Next.js 16 mit App Router, next-intl für DE/EN i18n. Features: Öffentliche Website (Events, Galerie, Reservation, Karriere), Admin-Bereich (Event-CRUD, Scanner-Check-in, Tisch-Zuweisung, Warteliste, Druck-Layouts), Stripe Payment Integration, Vercel Blob Storage für Bilder, Neon PostgreSQL + Drizzle ORM, Rive Animationen, QR-Scanner für Check-in, PDF-Ticket Generierung, Resend E-Mails, Cron Jobs für Cleanup.
+**Deployment:** Cloudflare Workers via OpenNext (@opennextjs/cloudflare v1.20.4). Build auf Linux (keine Windows-Pfade). Single Worker Function (handler.mjs ~2.6 MB gzipped) + Assets (4.1 MB gzipped). Middleware gebündelt. Images Binding für @vercel/og WASM. D1/KV nicht genutzt (Neon DB direkt via Hyperdrive-kompatiblen Treiber).
+
+## Relevante Struktur
+maurer-events/
+├── .gitignore
+├── .npmrc
+├── AGENTS.md / CLAUDE.md
+├── README.md
+├── drizzle.config.ts
+├── eslint.config.mjs
+├── next.config.mjs
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── tsconfig.json
+├── seed_tables.ts               # DB Seeding Script
+├── update_events.ts             # Event Update Script
+├── download-font.js / replace-link.js # Utility Scripts
+├── open-next.config.ts          # OpenNext Cloudflare Config
+├── wrangler.jsonc               # Cloudflare Workers Config
+├── public/
+├── .wrangler/                   # Cloudflare Workers (Cache, Preview)
+├── .open-next/                  # OpenNext Build Output (generiert)
+│   ├── worker.js                # Worker Entry Point (746 bytes gzipped)
+│   ├── assets/                  # Static Assets (für ASSETS Binding)
+│   ├── middleware/              # Gebündelte Middleware (next-intl)
+│   ├── server-functions/        # Server Functions (einzige: default/handler.mjs)
+│   └── cloudflare/              # Cloudflare-spezifische Files (images.js, init.js, etc.)
+├── src/
+│   ├── proxy.ts                 # i18n Middleware (Locale Detection, Routing)
+│   ├── app/
+│   │   ├── layout.tsx           # Root Layout (Providers)
+│   │   ├── page.tsx             # Redirect zu /[locale]
+│   │   ├── globals.css          # Tailwind v4 + Global Styles
+│   │   ├── robots.ts            # Robots.txt Generation
+│   │   ├── sitemap.ts           # Sitemap Generation
+│   │   ├── manifest.ts          # PWA Manifest
+│   │   ├── api/
+│   │   │   ├── checkout/route.ts      # Stripe Checkout Session
+│   │   │   ├── cron/cleanup/route.ts  # Cleanup Cron Job
+│   │   │   ├── update/route.ts        # Event Update Webhook
+│   │   │   └── webhooks/stripe/route.ts # Stripe Webhooks
+│   │   ├── actions/             # Server Actions (Mutations)
+│   │   │   ├── tables.ts            # Tisch-Management
+│   │   │   ├── contact.ts           # Kontakt Formular
+│   │   │   ├── events.ts            # Event CRUD
+│   │   │   ├── scanner.ts           # Check-in Scanner Logik
+│   │   │   ├── assignTable.ts       # Tisch-Zuweisung
+│   │   │   ├── waitlist.ts          # Wartelisten-Management
+│   │   │   ├── upload.ts            # Bild Upload (Vercel Blob)
+│   │   │   ├── authActions.ts       # Auth (Admin Login)
+│   │   │   ├── reservations.ts      # Reservierungs-Logik
+│   │   │   ├── gallery.ts           # Galerie Management
+│   │   │   └── settings.ts          # Settings
+│   │   └── [locale]/            # i18n Routes (de, en)
+│   │       ├── layout.tsx           # Locale Layout (Fonts, SEO)
+│   │       ├── page.tsx             # Startseite (Hero, Events, Services)
+│   │       ├── error.tsx / loading.tsx
+│   │       ├── galerie/
+│   │       │   ├── page.tsx         # Galerie Übersicht
+│   │       │   └── [eventId]/page.tsx # Event-spezifische Galerie
+│   │       ├── termine/
+│   │       │   ├── page.tsx         # Termin-Kalender
+│   │       │   └── [id]/page.tsx    # Event Detail + Buchung
+│   │       ├── karriere/page.tsx    # Karriere/Jobs
+│   │       ├── impressum/page.tsx
+│   │       ├── datenschutz/page.tsx
+│   │       └── admin/               # Admin-Bereich (geschützt)
+│   │           ├── page.tsx         # Admin Dashboard
+│   │           ├── login/page.tsx   # Admin Login
+│   │           ├── scan/page.tsx    # QR Scanner Check-in
+│   │           ├── AdminTabs.tsx    # Tab Navigation
+│   │           ├── AdminEventList.tsx
+│   │           ├── AdminGalleryTab.tsx
+│   │           ├── AdminGlobalGallery.tsx
+│   │           └── events/[id]/
+│   │               ├── page.tsx           # Event Admin Detail
+│   │               ├── EventDetailDashboard.tsx
+│   │               ├── scanner/page.tsx   # Event Scanner
+│   │               ├── print/page.tsx     # Druck-Layout (Tischplan, Tickets)
+│   │               └── PrintLayout.tsx
+│   ├── components/
+│   │   ├── HeroSection.tsx        # Hero mit Rive Animation
+│   │   ├── EventsSection.tsx      # Event Teaser Cards
+│   │   ├── GallerySection.tsx / GalleryGrid.tsx
+│   │   ├── AboutSection.tsx
+│   │   ├── ServicesSection.tsx
+│   │   ├── ReservationSection.tsx # Buchungs-Formular
+│   │   ├── ContactSection.tsx
+│   │   ├── FestzeltBanner.tsx     # Promo Banner
+│   │   ├── Navbar.tsx / LanguageSwitcher.tsx
+│   │   ├── Footer.tsx
+│   │   ├── MadeByLui.tsx
+│   │   ├── SignatureLogo.tsx
+│   │   ├── AnimatedLogo.tsx       # Rive Animation Logo
+│   │   └── ImageWithSkeleton.tsx  # Lazy Load mit Skeleton
+│   ├── db/
+│   │   ├── index.ts               # Neon Serverless Connection
+│   │   └── schema.ts              # Drizzle Schema (Events, Tables, Reservations, Tickets, Users, Gallery, Settings)
+│   ├── i18n/
+│   │   ├── routing.ts             # Locale Config, Pathnames
+│   │   └── request.ts             # Request Helpers (getLocale, etc.)
+│   └── lib/
+│       ├── auth.ts                # Auth Utilities (Session, Cookies)
+│       ├── ticket.ts              # PDF Ticket Generierung (pdf-lib + fontkit)
+│       └── translate.ts           # Translation Helpers
+
+## Wichtige Dateien
+- src/proxy.ts: i18n Routing, Locale Prefix Handling, Protected Routes (wird zu Middleware gebündelt)
+- src/app/[locale]/layout.tsx: Locale-spezifisches Layout, Fonts (Roboto), SEO
+- src/app/[locale]/page.tsx: Landing Page Assembly
+- src/app/[locale]/termine/[id]/page.tsx: Event Detail mit Stripe Checkout Integration
+- src/app/[locale]/admin/events/[id]/page.tsx: Event Admin Dashboard (CRUD, Stats)
+- src/app/[locale]/admin/events/[id]/scanner/page.tsx: QR Code Check-in Scanner (React QR Scanner)
+- src/app/[locale]/admin/events/[id]/print/PrintLayout.tsx: Druck-Layouts (Tischplan, Tickets, Listen)
+- src/app/actions/scanner.ts: Check-in Logik (Validierung, Status Updates)
+- src/app/actions/tables.ts: Tisch-Planung & Zuweisung Algorithmus
+- src/app/actions/reservations.ts: Reservierungs-Workflow (Pending → Confirmed → Checked-in)
+- src/app/actions/waitlist.ts: Wartelisten-Management (Auto-Promotion)
+- src/app/api/checkout/route.ts: Stripe Payment Intent / Checkout Session
+- src/app/api/webhooks/stripe/route.ts: Stripe Event Handling (Payment Success → Ticket Gen)
+- src/db/schema.ts: Drizzle Schema - Kern: events, tables, reservations, tickets, users, gallery_images, settings
+- src/lib/ticket.ts: PDF Ticket Generierung mit QR Code, Sitzplatz, Event-Info
+- src/lib/auth.ts: Admin Session Management (HttpOnly Cookies, CSRF)
+- src/components/AnimatedLogo.tsx: Rive Animation Integration (@rive-app/react-canvas)
+- next.config.mjs: Next.js Config (output: standalone, Images: remotePatterns, Security Headers, i18n via next-intl)
+- open-next.config.ts: OpenNext Config (R2 Incremental Cache optional, Images Binding)
+- wrangler.jsonc: Workers Config (ASSETS, IMAGES, WORKER_SELF_REFERENCE, nodejs_compat)
+- drizzle.config.ts: Drizzle Kit Config (PostgreSQL, Neon)
+- package.json: Next.js 16, React 19, next-intl 4, Drizzle, Neon, Stripe, Rive, Resend, Vercel Blob, @opennextjs/cloudflare
+
+## Ausgeschlossene Bereiche
+- node_modules/
+- .next/ (Next.js Build Output, wird von OpenNext verwendet)
+- .wrangler/ (Wrangler Cache/Preview)
+- .open-next/ (OpenNext Build Output, generiert bei build:worker)
+- .idea/
+- .vscode/
+- public/ (statische Assets, aber relevant für Vercel Blob Uploads)
+- package-lock.json (nur generiert)
+- tsconfig.tsbuildinfo
+- build/ (falls vorhanden)
+
+## OpenNext Build Output Struktur (.open-next/)
+.open-next/
+├── worker.js                    # Worker Entry Point (~746 bytes gzipped)
+├── assets/                      # Static Assets (für ASSETS Binding, ~4.1 MB gzipped)
+│   ├── _next/static/            # Next.js Chunks (immutable, cached)
+│   └── media/                   # Public folder assets
+├── middleware/                  # Gebündelte Middleware (next-intl i18n)
+│   └── handler.mjs              # ~2.9 MB gzipped (mit @vercel/og WASM)
+├── server-functions/            # Server Functions (Single Function Pattern)
+│   └── default/
+│       ├── handler.mjs          # Haupt-Handler (~2.6 MB gzipped)
+│       ├── index.mjs            # Entry Point
+│       ├── open-next.config.mjs # Generierte Config
+│       └── .next/               # Next.js Server Bundle (Chunks, Manifests)
+└── cloudflare/                  # Cloudflare-spezifische Runtime Files
+    ├── images.js                # Image Optimization Handler (@vercel/og)
+    ├── init.js                  # Initialisierung
+    ├── skew-protection.js       # Cache Skew Protection
+    └── cache-assets-manifest.sql
+
+## Deployment Commands (OpenNext / Cloudflare Workers)
+```bash
+# Lokale Entwicklung (Next.js Dev Server)
+npm run dev                      # next dev (Port 3000)
+
+# OpenNext Build für Cloudflare
+npm run build:worker             # opennextjs-cloudflare build → .open-next/
+
+# Lokale Preview (Cloudflare Simulator)
+npm run preview                  # opennextjs-cloudflare preview (Port 8787)
+
+# Type Generation
+npx wrangler types               # worker-configuration.d.ts
+
+# Deploy (Dry-Run zur Validierung)
+npm run deploy -- --dry-run      # wrangler deploy --dry-run
+
+# Production Deploy
+npm run deploy                   # wrangler deploy
+
+# Logs & Debugging
+npx wrangler tail                # Live Logs
+```
+
+## Environment / Secrets (Production - via wrangler secret put)
+```bash
+wrangler secret put DATABASE_URL           # Neon PostgreSQL Connection String
+wrangler secret put STRIPE_SECRET_KEY      # Stripe Secret Key
+wrangler secret put STRIPE_WEBHOOK_SECRET  # Stripe Webhook Signing Secret
+wrangler secret put RESEND_API_KEY         # Resend E-Mail API Key
+wrangler secret put BLOB_READ_WRITE_TOKEN  # Vercel Blob Token (für Uploads)
+wrangler secret put NEXTAUTH_SECRET        # NextAuth / Session Secret
+wrangler secret put ADMIN_EMAIL            # Admin Login E-Mail
+```
+
+## Migration Historie (OpenNext auf Cloudflare Workers)
+- **2026-08-24**: Projekt Setup Next.js 16 + OpenNext (@opennextjs/cloudflare)
+- **2026-08-30**: Build auf Linux (CI/CD) → Windows-Pfade Problem gelöst (@vercel/og WASM)
+- **2026-08-30**: Dry-Run Deploy erfolgreich (Worker 0.7 KB, Handler 2.6 MB, Assets 4.1 MB gzipped)
+- **Aktuell**: Bereit für Production Deploy auf Cloudflare Workers (Custom Domain, TLS)
+- **Limit Check**: Worker Script < 1 MB ✅, Total Bundle < 10 MB ✅, Assets < 25 MB ✅
