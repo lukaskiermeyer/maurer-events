@@ -4,6 +4,7 @@ import { events, reservations, tables } from '@/db/schema';
 import { generateTicketPdf } from './ticket';
 import { escapeHtml } from './escape';
 import { Resend } from 'resend';
+import { emailFrom } from './email';
 
 import type { CreateEmailOptions } from 'resend';
 
@@ -21,7 +22,7 @@ export async function deliverTicket(reservationId: string, connection = db, send
       const [table] = reservation.tableId ? await connection.select().from(tables).where(eq(tables.id, reservation.tableId)) : [];
       const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: table?.name || 'Kein Tisch zugewiesen', qrCodeText: reservation.qrCodeText });
       if (!pdf) throw new Error('PDF unavailable');
-      const payload = { from: 'Maurer Events <servus@maurer-events.com>', to: [reservation.email], subject: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
+      const payload = { from: emailFrom(), to: [reservation.email], subject: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
         html: `<p>Hallo ${escapeHtml(reservation.guestName)},</p><p>Im Anhang findest du dein Ticket mit QR-Code.</p>`, attachments: [{ filename: 'ticket.pdf', content: pdf.toString('base64') }] };
       // Freeze the full email, including PDF bytes, before calling the provider.
       await connection.update(reservations).set({ ticketEmailPayload: payload }).where(and(eq(reservations.id, reservation.id), eq(reservations.qrCodeText, reservation.qrCodeText), eq(reservations.status, 'confirmed'), isNull(reservations.ticketEmailPayload)));

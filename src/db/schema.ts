@@ -1,7 +1,11 @@
-import { pgTable, text, timestamp, boolean, uuid, integer, json, jsonb, index, check, unique, uniqueIndex, pgEnum, real } from 'drizzle-orm/pg-core';
+import { PgSchema, text, timestamp, boolean, uuid, integer, json, jsonb, index, check, unique, uniqueIndex, real } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const reservationStatusEnum = pgEnum('reservation_status', ['pending', 'paid', 'confirmed', 'checked_in', 'cancelled', 'expired', 'refunded', 'disputed', 'payment_review', 'payment_pending']);
+// Qualify every table and enum, even when a pooled session has an empty search_path.
+// PgSchema's constructor supports explicit public qualification; pgSchema() rejects it.
+const publicSchema = new PgSchema('public');
+const pgTable = publicSchema.table;
+export const reservationStatusEnum = publicSchema.enum('reservation_status', ['pending', 'paid', 'confirmed', 'checked_in', 'cancelled', 'expired', 'refunded', 'disputed', 'payment_review', 'payment_pending']);
 
 export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),

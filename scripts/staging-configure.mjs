@@ -1,0 +1,30 @@
+import fs from 'node:fs/promises';
+import {randomBytes} from 'node:crypto';
+import dotenv from 'dotenv';
+import Stripe from 'stripe';
+let contents=await fs.readFile('.env.local','utf8');
+const env=dotenv.parse(contents);
+if(!env.STRIPE_SECRET_KEY?.startsWith('sk_test_'))throw new Error('Stripe test mode required');
+const set=(key,value)=>{
+  const line=`${key}=${JSON.stringify(value)}`;
+  const pattern=new RegExp(`^${key}=.*$`,'m');
+  contents=pattern.test(contents)?contents.replace(pattern,()=>line):`${contents.trimEnd()}\n${line}\n`;
+};
+const origin='https://maurer-events.madebylui.net';
+set('NEXT_PUBLIC_BASE_URL',origin);
+set('EMAIL_FROM','Maurer Events <noreply@travellui.com>');
+if(!env.AUTH_SECRET||env.AUTH_SECRET.length<32)set('AUTH_SECRET',randomBytes(48).toString('base64url'));
+set('ALLOW_DEV_LOGIN','false');
+const stripe=new Stripe(env.STRIPE_SECRET_KEY,{apiVersion:'2026-06-24.dahlia',timeout:10000,maxNetworkRetries:1});
+const url=`${origin}/api/webhooks/stripe`;
+const events=['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired','charge.refunded','charge.dispute.created'];
+const {data}=await stripe.webhookEndpoints.list({limit:100});
+let endpoint=data.find(e=>e.url===url&&e.status==='enabled');
+if(!endpoint) {
+  endpoint=await stripe.webhookEndpoints.create({url,enabled_events:events,api_version:'2026-06-24.dahlia',description:'Maurer Events staging acceptance; test mode only'});
+  set('STRIPE_WEBHOOK_SECRET',endpoint.secret);
+  console.log('Stripe test webhook created. Signing secret saved to .env.local; set this same value in Vercel before testing delivery.');
+} else console.log('Existing active staging test webhook retained. Verify its signing secret in Vercel.');
+await fs.writeFile('.env.local',contents);
+await fs.writeFile('test-results/staging-webhook.json',JSON.stringify({url,id:endpoint.id,mode:'test',events},null,2));
+console.log('Local staging configuration prepared: HTTPS origin, verified sender, AUTH_SECRET and disabled development login. Secret values remain hidden.');

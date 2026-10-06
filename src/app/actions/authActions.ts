@@ -10,6 +10,7 @@ import { takeRateLimit } from '@/lib/rate-limit';
 import { isAdminEmail, otpHash } from '@/lib/admin-identity';
 import { guestDetails, UUID_PATTERN } from '@/lib/reservation-policy';
 import { consumeAdminOtp } from '@/lib/admin-otp';
+import { emailFrom } from '@/lib/email';
 
 export async function requestOtp(email: string, turnstileToken: string) {
   try {
@@ -22,7 +23,7 @@ export async function requestOtp(email: string, turnstileToken: string) {
     const hashed = otpHash(normalizedEmail, code);
     await db.insert(adminAuth).values({ email: normalizedEmail, otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) })
       .onConflictDoUpdate({ target: adminAuth.email, set: { otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) } });
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: 'Maurer Events Admin <servus@maurer-events.com>', to: [normalizedEmail], subject: 'Dein Admin Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Admin Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
     if (result.error) throw new Error('Email unavailable');
     return { success: true };
   } catch { return { success: false, error: 'Anmeldecode konnte nicht angefordert werden.' }; }

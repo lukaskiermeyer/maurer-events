@@ -107,6 +107,16 @@ test('Settings reject mass assignment, fractional cents and duplicate IDs', () =
   assert.throws(() => validateEventSettings({ timeSlots: ['18:00', '18:00 Uhr'] }));
   assert.throws(() => validateEventSettings({ packages: [{ id: 'x', name: 'X', description: '', price: 0.001 }] }));
 });
+
+test('Application queries use public schema when pooled search_path is empty', async () => {
+  await connection.transaction(async tx => {
+    await tx.execute(sql`SET LOCAL search_path = ''`);
+    await tx.select().from(schema.events).limit(1);
+    await tx.select().from(schema.galleries).limit(1);
+    await tx.select().from(schema.reservations).limit(1);
+    await tx.select().from(schema.adminAuth).limit(1);
+  });
+});
 test('50 simultaneous bookings for 8 seats create exactly 8 holds', async () => {
   const f = await fixture({ capacity: 8 }); const fake = fakeStripe();
   const checkout = createCheckoutService(connection, fake.stripe, captcha);

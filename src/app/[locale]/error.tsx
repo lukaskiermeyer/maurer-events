@@ -65,7 +65,7 @@ export default function Error({
             Da ist etwas schiefgelaufen.
           </h2>
           <p className="text-lg md:text-xl text-white/60 mb-10 max-w-lg mx-auto font-sans">
-            Ein unerwarteter Fehler ist aufgetreten. Aus Sicherheitsgründen zeigen wir hier keine technischen Details – aber unser Team wurde im Hintergrund bereits informiert.
+            Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut. Wenn der Fehler bestehen bleibt, kontaktiere uns.
           </p>
         </motion.div>
 
