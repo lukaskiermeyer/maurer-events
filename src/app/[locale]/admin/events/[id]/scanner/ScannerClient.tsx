@@ -1,32 +1,36 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef } from "react";
 import { checkInGuestByQR } from "@/app/actions/reservations";
-import { Scanner } from "@yudiel/react-qr-scanner";
+import TicketQrScanner from "@/components/admin/TicketQrScanner";
 import { Link } from "@/i18n/routing";
 
 export default function ScannerClient({ eventId }: { eventId: string }) {
   const [resultMessage, setResultMessage] = useState<{ type: "success" | "error" | "info", text: string, details?: string } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
-  const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const scanLocked = useRef(false);
+
+  const resumeScanning = () => {
+    scanLocked.current = false;
+    setResultMessage(null);
+    setIsScanning(true);
+  };
 
   // We want to re-enable scanning a few seconds after a successful/error scan
   useEffect(() => {
     if (resultMessage && (resultMessage.type === "success" || resultMessage.type === "error")) {
       const timer = setTimeout(() => {
-        setResultMessage(null);
-        setIsScanning(true);
+        resumeScanning();
       }, 5000); // 5 seconds cooldown
       return () => clearTimeout(timer);
     }
   }, [resultMessage]);
 
   const handleScan = async (text: string) => {
-    if (!isScanning) return; // Prevent double scans
-    if (text === lastScanned && resultMessage) return; // Don't scan the exact same code immediately again if we have a result
+    if (scanLocked.current) return;
+    scanLocked.current = true;
     
     setIsScanning(false);
-    setLastScanned(text);
     setResultMessage({ type: "info", text: "Verarbeite..." });
 
     try {
@@ -43,7 +47,7 @@ export default function ScannerClient({ eventId }: { eventId: string }) {
           text: res.error || "Unbekannter Fehler"
         });
       }
-    } catch (e) {
+    } catch {
       setResultMessage({ type: "error", text: "Netzwerkfehler beim Scannen" });
     }
   };
@@ -61,14 +65,7 @@ export default function ScannerClient({ eventId }: { eventId: string }) {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Scanner Window */}
         <div className="w-full max-w-md aspect-square bg-black rounded-3xl overflow-hidden relative border-4 border-base-light/10 shadow-2xl">
-          <Scanner 
-            onScan={(result) => {
-              if (result && result.length > 0) {
-                handleScan(result[0].rawValue);
-              }
-            }}
-            formats={["qr_code"]}
-          />
+          <TicketQrScanner onScan={handleScan} paused={!isScanning} />
           
           {/* Overlay when processing or showing result */}
           {resultMessage && (
@@ -87,7 +84,7 @@ export default function ScannerClient({ eventId }: { eventId: string }) {
               
               {(resultMessage.type === "success" || resultMessage.type === "error") && (
                 <button 
-                  onClick={() => { setResultMessage(null); setIsScanning(true); }}
+                  onClick={resumeScanning}
                   className="mt-8 px-6 py-3 bg-black/40 hover:bg-black/60 rounded-full font-bold uppercase tracking-wider text-sm transition-colors text-white"
                 >
                   Weiter scannen

@@ -468,7 +468,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
         <div className="fixed z-50 bottom-0 left-0 right-0 bg-white border-t border-border-light p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:hidden">
           <div className="flex gap-3 max-w-[1400px] mx-auto">
             {currentStep > 1 && (
-              <button onClick={handleBack} className="w-14 shrink-0 flex items-center justify-center border border-border-light active:bg-canvas-light transition-colors rounded-xl font-bold">
+              <button onClick={handleBack} aria-label="Zurück" className="w-14 shrink-0 flex items-center justify-center border border-border-light active:bg-canvas-light transition-colors rounded-xl font-bold">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>

@@ -12,6 +12,15 @@ Node.js 22 verwenden, Abhängigkeiten mit `npm ci` installieren und `npm run bui
 ausführen. Die Variablen müssen zur tatsächlich verwendeten Vercel-Umgebung passen.
 Nach Änderungen neu deployen; öffentliche Werte werden in den Build eingebettet.
 
+`npm run build` führt automatisch `scripts/prepare-scanner.mjs` aus. Das Skript
+kopiert den zur installierten Scanner-Bibliothek gehörenden WASM-Decoder nach
+`public/scanner/zxing_reader.wasm` und prüft dessen Bibliotheks-Prüfsumme. Die Datei
+ist generiert und Git-ignoriert; bei Direktaufruf von `next build` vorher das Skript
+ausführen. Nach dem Deploy muss `/scanner/zxing_reader.wasm` mit HTTP 200 und
+`application/wasm` ausgeliefert werden. Die CSP erlaubt `wasm-unsafe-eval` für diesen
+Decoder; zusätzliche externe Decoder-CDNs sind nicht erforderlich. Bei Standalone-
+Betrieb wie unten beschrieben den erzeugten `public`-Ordner mitkopieren.
+
 | Variable | Zeitpunkt und Zweck |
 | --- | --- |
 | `NEXT_PUBLIC_BASE_URL` | Build und Laufzeit; tatsächlicher HTTPS-Ursprung ohne abschließenden Slash |
@@ -76,6 +85,15 @@ Ein echtes Turnstile-Widget für die Domain verwenden. Erwartete Aktionen:
 `checkout`, `waitlist`, `admin-login`, `contact`. Cloudflare-Testschlüssel liefern
 keinen belastbaren Nachweis für Hostname oder Aktion und sind für diese Abnahme
 ungeeignet. CAPTCHA-Prüfungen bleiben geschlossen, wenn der Dienst ausfällt.
+
+Bei `OTP request failed` helfen die festen `stage`-/`reason`-Label im Runtime-Log:
+`captcha-secret-missing` bedeutet fehlendes Runtime-Secret, `captcha-url-invalid`
+eine ungültige Basis-URL, `captcha-service-timeout` einen Timeout und
+`captcha-service-http-…` einen HTTP-Fehler des Prüfdienstes. `captcha-rejected`
+bezeichnet einen abgewiesenen Token; `captcha-hostname-mismatch` und
+`captcha-action-mismatch` eine unpassende Widget-/Domain-Konfiguration.
+Bei `captcha-secret-invalid` das Secret des tatsächlich eingebetteten Widgets
+überprüfen. Keine Token-/Secret-Werte zur Diagnose veröffentlichen.
 
 ## Cleanup, Monitoring und Wiederherstellung
 

@@ -209,7 +209,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       {event.reservable && (
         <div className="mt-32">
           {/* ReservationSection loaded dynamically */}
-          <ReservationSection initialEvents={upcomingEvents} initialSelectedEvent={event.id} />
+          <ReservationSection
+            initialEvents={[event, ...upcomingEvents.filter(upcoming => upcoming.id !== event.id)]}
+            initialSelectedEvent={event.id}
+          />
         </div>
       )}
 

@@ -23,6 +23,7 @@
 
 # production
 /build
+/public/scanner/
 
 # misc
 .DS_Store

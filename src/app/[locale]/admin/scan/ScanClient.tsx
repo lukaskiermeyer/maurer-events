@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Scanner } from '@yudiel/react-qr-scanner';
+import React, { useState, useEffect, useRef } from "react";
+import TicketQrScanner from "@/components/admin/TicketQrScanner";
 import { scanTicket } from "@/app/actions/scanner";
 import { Link } from "@/i18n/routing";
 
@@ -9,22 +9,28 @@ export default function AdminScanClient() {
   const [scanResult, setScanResult] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const scanLocked = useRef(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const handleScan = async (result: any) => {
-    if (!result || !result[0] || !result[0].rawValue || isProcessing) return;
-    const qrCodeText = result[0].rawValue;
+  const handleScan = async (qrCodeText: string) => {
+    if (scanLocked.current) return;
+    scanLocked.current = true;
     
     setIsProcessing(true);
-    const res = await scanTicket(qrCodeText);
-    setScanResult(res);
-    setIsProcessing(false);
+    try {
+      setScanResult(await scanTicket(qrCodeText));
+    } catch {
+      setScanResult({ success: false, error: "Netzwerkfehler beim Scannen. Bitte versuche es erneut." });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const resetScanner = () => {
+    scanLocked.current = false;
     setScanResult(null);
   };
 
@@ -97,7 +103,7 @@ export default function AdminScanClient() {
               </div>
             )}
             <div className="rounded-2xl overflow-hidden aspect-square md:aspect-[4/3] bg-black">
-              <Scanner onScan={handleScan} />
+              <TicketQrScanner onScan={handleScan} paused={isProcessing} />
             </div>
             <p className="text-center text-base-dark/70 font-bold mt-4 mb-2 text-sm">
               Halte den QR Code in die Kamera, um das Ticket zu entwerten.

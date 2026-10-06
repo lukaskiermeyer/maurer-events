@@ -63,11 +63,34 @@ dedizierten Testevent; es führt keine Buchung aus.
 `staging-auth-storage-check.ts` prüft den nativen Neon-Treiber und OTP-/Rate-Limit-
 Schreibpfade in einer zurückgerollten Diagnose-Transaktion. Es erzeugt weder
 reale Login-Codes noch Sessions oder E-Mails.
+`staging-captcha-config-check.mjs` weist leere/absichtlich ungültige CAPTCHA-Tokens
+ab, prüft die Checkout-Origin-Konfiguration und meldet ausschließlich feste
+Diagnosecodes. Es erzeugt keine Buchung und keine E-Mail; der ungültige Token wird
+zum Prüfen der Verbindung an Turnstile gesendet.
+`staging-wizard-payment-check.mjs` liest anschließend ausschließlich die vom Betreiber
+im normalen Browser erzeugten Testbuchungen des dedizierten Events sowie den
+zugehörigen Stripe-Teststatus und Webhook-Nachweis. Kein Checkout wird erzeugt,
+bezahlt oder erstattet, keine E-Mail versendet und kein QR-Code protokolliert.
 
 `tsx scripts/ticket-layout-check.ts` erzeugt ausschließlich zwei lokale PDF-Fixtures.
 `python scripts/verify-ticket-layout.py` benötigt PyMuPDF und prüft vollständige
 Angaben, Seitenbegrenzung und Abstand zur QR-Fläche. Die gerenderten PNGs zusätzlich
 visuell prüfen. Es werden weder Datenbank noch Versanddienste angesprochen.
+
+`node scripts/staging-scanner-ticket.mjs` extrahiert ausschließlich das bereits
+versendete PDF der freigegebenen Testbuchung für die Scanner-Diagnose. PDF und
+QR-Vergleichswert bleiben in `test-results`; keine Ausgabe des QR-Werts und kein
+Check-in. `python scripts/prepare-scanner-camera.py` erzeugt daraus die Y4M-Datei
+mit PyMuPDF, Pillow und NumPy. `scanner-browser-check.mjs` prüft beide tatsächlichen Scanner-Clients mit
+einer daraus erzeugten Y4M-Kamerafixture und der Produktions-CSP: ursprüngliche
+CDN-Blockade bei sichtbarem Video, Decoder von eigener Domain, wiederholter Scan
+nach Fortsetzen, Fehleranzeige/Neustart bei Decoder-Ausfall und Server-Ausnahme.
+Die Server-Aktionen werden ausschließlich im lokalen Harness ersetzt. Die Prüfung
+ersetzt weder die echte Authentifizierung noch einen Scan mit physischer Kamera.
+`scanner-deployment-check.mjs [Basis-URL]` prüft HTTP-Status, MIME-Typ, exakte
+Decoder-Datei und WASM-Freigabe der tatsächlichen Deployment-Antwort nur lesend.
+`staging-table-navigation.mjs [Basis-URL]` prüft am separaten Testevent die Tisch-,
+Uhrzeit- und Kontakt-Auswahl beim Vor-/Zurückgehen; keine Buchung oder E-Mail.
 
 ## Vor Inbetriebnahme der Sicherheitsänderungen
 
