@@ -24,18 +24,20 @@ export default function Step1_EventDate({
 
   // Auto-select date when event has no reservableDates (use event.date) or exactly one date
   useEffect(() => {
+    let automaticDate = '';
     if (selectedEventObj && (!selectedEventObj.reservableDates || selectedEventObj.reservableDates.length === 0)) {
       // No selectable dates — auto-fill with the event's own date
       if (selectedEventObj.date) {
         const dateStr = typeof selectedEventObj.date === 'string' 
           ? selectedEventObj.date.split('T')[0] 
           : new Date(selectedEventObj.date).toISOString().split('T')[0];
-        setSelectedDate(dateStr);
+        automaticDate = dateStr;
       }
     } else if (selectedEventObj?.reservableDates?.length === 1) {
-      setSelectedDate(selectedEventObj.reservableDates[0]);
+      automaticDate = selectedEventObj.reservableDates[0];
     }
-  }, [selectedEventObj, setSelectedDate]);
+    if (automaticDate && automaticDate !== selectedDate) setSelectedDate(automaticDate);
+  }, [selectedEventObj, selectedDate, setSelectedDate]);
 
   if (reservableEvents.length === 0) {
     return (

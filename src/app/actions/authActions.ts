@@ -13,21 +13,28 @@ import { consumeAdminOtp } from '@/lib/admin-otp';
 import { emailFrom } from '@/lib/email';
 
 export async function requestOtp(email: string, turnstileToken: string) {
+  let stage = 'input';
   try {
     const normalizedEmail = guestDetails('Admin', email, 1).email;
+    stage = 'captcha';
     await verifyTurnstile(turnstileToken, 'admin-login');
+    stage = 'rate-limit';
     if (!await takeRateLimit(`otp-request:${normalizedEmail}`, 5, 15 * 60000)) return { success: false, error: 'Zu viele Anfragen. Bitte warte 15 Minuten.' };
     if (!isAdminEmail(normalizedEmail)) return { success: true };
     if (!process.env.RESEND_API_KEY) return { success: false, error: 'E-Mail-Versand ist nicht konfiguriert.' };
     const code = randomInt(100000, 1000000).toString();
+    stage = 'otp-hash';
     const hashed = otpHash(normalizedEmail, code);
+    stage = 'otp-save';
     await db.insert(adminAuth).values({ email: normalizedEmail, otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) })
       .onConflictDoUpdate({ target: adminAuth.email, set: { otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) } });
+    stage = 'email-send';
     const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Admin Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
     if (result.error) throw new Error('Email unavailable');
     return { success: true };
   } catch (error) {
-    console.error('OTP request failed:', error instanceof BookingError ? `validation:${error.status}` : 'dependency-unavailable');
+    // Fixed stage/code labels only: never log provider objects, queries, email or OTP.
+    console.error('OTP request failed:', { stage, reason: error instanceof BookingError ? error.code || `validation:${error.status}` : 'dependency-unavailable' });
     return { success: false, error: 'Anmeldecode konnte nicht angefordert werden.' };
   }
 }

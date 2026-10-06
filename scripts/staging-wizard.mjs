@@ -20,7 +20,20 @@ try {
   await wizard.locator('#guestName').waitFor();
   await wizard.locator('#guestName').fill('Produktionsabnahme');
   await wizard.locator('#guestEmail').fill('hello@madebylui.net');
-  console.log('Wizard reached contact/payment step with date, time and package retained.');
+  await wizard.getByRole('button',{name:'Zurück',exact:true}).first().click();
+  await wizard.getByRole('heading',{name:'Uhrzeit & Paket',exact:true}).waitFor();
+  await wizard.getByRole('button',{name:'Zurück',exact:true}).first().click();
+  await wizard.getByRole('heading',{name:'Event & Datum',exact:true}).waitFor();
+  await next.click();
+  await wizard.getByRole('heading',{name:'Uhrzeit & Paket',exact:true}).waitFor();
+  const retainedTime=await wizard.getByRole('radio',{name:'18:00',exact:true}).getAttribute('aria-checked');
+  if(retainedTime!=='true')throw new Error('Returning to the unchanged event/date erased the selected time');
+  await next.click();
+  await wizard.locator('#guestName').waitFor();
+  if(await wizard.locator('#guestName').inputValue()!=='Produktionsabnahme' || await wizard.locator('#guestEmail').inputValue()!=='hello@madebylui.net')throw new Error('Returning through the wizard erased the contact details');
+  if(errors.length)throw new Error('Wizard produced browser runtime errors');
+  await fs.writeFile('test-results/wizard-report.json',JSON.stringify({checkedAt:new Date().toISOString(),target:base,scope:'forward and back navigation; no CAPTCHA, booking or payment',retainedTime:true,retainedContacts:true,runtimeErrors:errors},null,2));
+  console.log('Wizard forward/back navigation retained date, time, package and contact details.');
   console.log('Runtime errors:',JSON.stringify(errors));
   await page.screenshot({path:'test-results/staging-wizard.png',fullPage:true});
 }finally{await browser.close()}

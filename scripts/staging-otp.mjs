@@ -1,11 +1,21 @@
 import {chromium} from '@playwright/test';
 import readline from 'node:readline/promises';
-const browser=await chromium.launch({headless:true});
+const interactive=process.argv.includes('--interactive');
+const target=process.argv.slice(2).find(arg=>arg.startsWith('http')) || 'https://maurer-events.madebylui.net/admin/login';
+const browser=await chromium.launch({headless:!interactive});
 try {
   const page=await browser.newPage();
-  await page.goto(process.argv[2] || 'https://maurer-events.madebylui.net/admin/login',{waitUntil:'domcontentloaded'});
+  await page.goto(target,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Admin Login'}).waitFor({timeout:30000});
   await page.locator('input[type=email]').fill('hello@madebylui.net');
+  if(interactive) {
+    console.log('Visible acceptance browser ready. Complete the real CAPTCHA and email-code login in this window.');
+    await page.waitForURL(/\/admin$/,{timeout:600000});
+    const token=(await page.context().cookies()).find(cookie=>cookie.name==='admin_token');
+    if(!token?.httpOnly || !token.secure || token.sameSite!=='Strict') throw new Error('Missing secure admin session flags');
+    await page.context().storageState({path:'test-results/staging-admin-session.json'});
+    console.log('Real OTP login complete. Secure session saved for authenticated acceptance checks.');
+  } else {
   await page.waitForTimeout(1000);
   for(const frame of page.frames()) {
     if(frame.url().startsWith('https://challenges.cloudflare.com/')) {
@@ -29,4 +39,5 @@ try {
   console.log('Session flags:',JSON.stringify({httpOnly:token?.httpOnly,secure:token?.secure,sameSite:token?.sameSite}));
   await page.context().storageState({path:'test-results/staging-admin-session.json'});
   console.log('Admin page:',(await page.locator('body').innerText()).slice(0,500));
+  }
 } finally {await browser.close()}

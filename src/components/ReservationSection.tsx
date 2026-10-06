@@ -112,6 +112,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
 
   // Handle cascading resets when changing earlier steps
   const handleEventChange = (id: string) => {
+    if (id === selectedEvent) return;
     setSelectedEvent(id);
     setSelectedDate("");
     setSelectedTableId("");
@@ -121,6 +122,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   };
 
   const handleDateChange = (date: string) => {
+    if (date === selectedDate) return;
     setSelectedDate(date);
     setSelectedTableId("");
     setSelectedTime("");
