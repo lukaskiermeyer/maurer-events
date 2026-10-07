@@ -42,7 +42,7 @@ try {
     for(const value of baseline.enums['public.reservation_status'].values) if(!enums.some(e=>e.enumlabel===value)) throw new Error(`Missing status: ${value}`);
   };
   await verify(staging);
-  const tableOrder=['admin_auth','admin_sessions','settings','events','tables','event_settings','galleries','reservations','waitlists','stripe_events','security_rate_limits'];
+  const tableOrder=['admin_auth','admin_sessions','settings','events','tables','event_settings','galleries','reservations','waitlists','stripe_events','security_rate_limits','scanner_access'];
   const existingTables=await staging`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
   if(existingTables.some(t=>!tableOrder.includes(t.tablename)))throw new Error('Unknown public table; cannot guarantee complete application backup');
   const [{ledger: existingLedger}]=await staging`SELECT to_regclass('drizzle.__drizzle_migrations')::text AS ledger`;

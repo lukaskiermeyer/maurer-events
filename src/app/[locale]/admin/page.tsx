@@ -1,9 +1,9 @@
-import { getEvents, getAllEvents, getAdminStats } from "@/app/actions/events";
-import { getAllGalleryImages } from "@/app/actions/gallery";
+import { getAllEvents, getAdminStats } from "@/app/actions/events";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
 import { requireAdmin } from "@/lib/auth";
+import StaffHeader from '@/components/admin/StaffHeader';
 
 export const dynamic = "force-dynamic";
 
@@ -12,23 +12,27 @@ export default async function AdminPage() {
   
   let events = [];
   let stats = null;
-  let galleryImages = [];
+  let loadFailed = false;
   try {
     events = await getAllEvents();
     stats = await getAdminStats();
-    galleryImages = await getAllGalleryImages();
-  } catch (error) {
-    console.error("Datenbank-Verbindung fehlgeschlagen. Bitte DATABASE_URL prüfen.", error);
+  } catch {
+    loadFailed = true;
+    console.error("Admin overview unavailable");
   }
 
   return (
-    <div className="min-h-screen bg-base-light pt-24 pb-12">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <h1 className="text-4xl font-display font-black text-base-dark mb-8">Admin <span className="text-accent-green">Panel</span></h1>
+    <div className="min-h-screen bg-base-light pb-12">
+      <StaffHeader />
+      <div className="max-w-[1200px] mx-auto px-4 pt-6 sm:pt-10">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 className="text-3xl sm:text-4xl font-display font-black text-base-dark">Deine Veranstaltungen</h1><p className="mt-2 text-base-dark/60">Buchungen verwalten, Helfer freigeben und den Einlass starten.</p></div>
+          <Link href="/admin/scan" className="min-h-12 inline-flex items-center px-5 rounded-xl bg-accent-green text-white font-bold">Tickets scannen</Link>
+        </div>
         
-        {events.length === 0 && (
+        {loadFailed && (
           <div className="bg-yellow-100 border border-yellow-200 text-yellow-800 p-4 rounded-xl mb-8 font-sans text-sm">
-            Hinweis: Keine Events gefunden oder Datenbank nicht verbunden. Hast du die DATABASE_URL in die .env.local eingetragen und <code>npx drizzle-kit push</code> ausgeführt?
+            Die Übersicht konnte nicht geladen werden. Bitte lade die Seite erneut.
           </div>
         )}
 

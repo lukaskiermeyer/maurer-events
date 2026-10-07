@@ -1,8 +1,8 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireScanner } from "@/lib/auth";
 import AdminScanClient from "./ScanClient";
 
 export default async function AdminScanPage() {
-  await requireAdmin(true);
+  const staff = await requireScanner(undefined, true);
   
-  return <AdminScanClient />;
+  return <AdminScanClient scannerOnly={staff.role === 'scanner'} />;
 }

@@ -21,6 +21,7 @@ import { takeRateLimit } from '../src/lib/rate-limit';
 import { assertEventUpdate, validateEventUpdate } from '../src/lib/event-policy';
 import { consumeAdminOtp } from '../src/lib/admin-otp';
 import { isAdminEmail, otpHash } from '../src/lib/admin-identity';
+import { assertStaffPermission, grantScannerAccess, revokeScannerAccess, resolveStaffAccess, staffSession, scanForStaff } from '../src/lib/staff-access';
 import { deliverTicket } from '../src/lib/ticket-delivery';
 import { boundedBody } from '../src/lib/request-body';
 import { verifyTurnstile } from '../src/lib/turnstile';
@@ -324,6 +325,51 @@ test('Ticket retry keeps identical PDF/email payload and marks provider errors u
   assert.equal(await deliverTicket(r.id, connection, sender), undefined);
   assert.equal(deliveries.length, 2); assert.equal(deliveries[0], deliveries[1]);
   await deliverTicket(r.id, connection, sender); assert.equal(deliveries.length, 2);
+});
+
+test('Scanner role signs in with one-use OTP but cannot manage events or scan another event', async () => {
+  const previous = { admins: process.env.ADMIN_EMAILS, secret: process.env.AUTH_SECRET };
+  process.env.ADMIN_EMAILS = 'owner@example.com'; process.env.AUTH_SECRET = 'a'.repeat(64);
+  try {
+    const f = await fixture(); const other = await fixture();
+    const owner = { email: 'owner@example.com', role: 'admin' as const, eventIds: [] };
+    const email = 'helper@example.com';
+    await grantScannerAccess(connection, owner, { eventId: f.event.id, email: ' HELPER@example.com ', validUntil: new Date(Date.now() + 86400000).toISOString() });
+    const helper = await resolveStaffAccess(connection, email); assert.ok(helper); assert.equal(helper.role, 'scanner');
+    assert.throws(() => assertStaffPermission(helper, 'admin'));
+    assert.throws(() => assertStaffPermission(helper, 'scan', other.event.id));
+    await assert.rejects(grantScannerAccess(connection, helper, { eventId: f.event.id, email: 'new@example.com', validUntil: new Date(Date.now() + 86400000).toISOString() }));
+    await connection.insert(schema.adminAuth).values({ email, otpCode: otpHash(email, '123456'), expiresAt: new Date(Date.now() + 60000) });
+    const session = await consumeAdminOtp(connection, email, '123456'); assert.ok(session);
+    assert.equal((await staffSession(connection, session.id))?.role, 'scanner');
+    assert.equal(await consumeAdminOtp(connection, email, '123456'), null);
+    const allowed = await booked(f, { status: 'confirmed', qrCodeText: randomUUID() });
+    const denied = await booked(other, { status: 'confirmed', qrCodeText: randomUUID() });
+    await assert.rejects(scanForStaff(connection, helper, denied.qrCodeText!));
+    assert.equal((await rows(other.event.id))[0].status, 'confirmed');
+    await scanForStaff(connection, helper, allowed.qrCodeText!);
+    await assert.rejects(scanForStaff(connection, helper, allowed.qrCodeText!));
+    const [grant] = await connection.select().from(schema.scannerAccess).where(eq(schema.scannerAccess.email, email));
+    await revokeScannerAccess(connection, owner, f.event.id, grant.id);
+    assert.equal(await staffSession(connection, session.id), null);
+    const unscanned = await booked(f, { status: 'confirmed', qrCodeText: randomUUID() });
+    await assert.rejects(scanForStaff(connection, helper, unscanned.qrCodeText!));
+    assert.equal((await connection.select().from(schema.reservations).where(eq(schema.reservations.id, unscanned.id)))[0].status, 'confirmed');
+  } finally {
+    if (previous.admins === undefined) delete process.env.ADMIN_EMAILS; else process.env.ADMIN_EMAILS = previous.admins;
+    if (previous.secret === undefined) delete process.env.AUTH_SECRET; else process.env.AUTH_SECRET = previous.secret;
+  }
+});
+
+test('Expired scanner access, deleted events and expired sessions fail closed', async () => {
+  const f = await fixture(); const email = `${randomUUID()}@example.com`;
+  await connection.insert(schema.scannerAccess).values({ eventId: f.event.id, email, createdBy: 'owner@example.com', validUntil: new Date(Date.now() - 1000) });
+  assert.equal(await resolveStaffAccess(connection, email), null);
+  await connection.update(schema.scannerAccess).set({ validUntil: new Date(Date.now() + 86400000) }).where(eq(schema.scannerAccess.email, email));
+  const [expired] = await connection.insert(schema.adminSessions).values({ email, validUntil: new Date(Date.now() - 1000) }).returning();
+  assert.equal(await staffSession(connection, expired.id), null);
+  await connection.update(schema.events).set({ deletedAt: new Date() }).where(eq(schema.events.id, f.event.id));
+  assert.equal(await resolveStaffAccess(connection, email), null);
 });
 test('Moving a confirmed reservation rotates and invalidates the old ticket code', async () => {
   const f = await fixture(); const r = await booked(f, { status: 'confirmed', qrCodeText: randomUUID() });

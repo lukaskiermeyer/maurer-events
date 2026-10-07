@@ -160,6 +160,18 @@ export const stripeEvents = pgTable('stripe_events', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const scannerAccess = pgTable('scanner_access', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
+  email: text('email').notNull(),
+  validUntil: timestamp('valid_until').notNull(),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, table => ({
+  eventEmailUnique: uniqueIndex('scanner_event_email_unique').on(table.eventId, sql`lower(trim(${table.email}))`),
+  emailIdx: index('scanner_email_idx').on(table.email),
+}));
+
 
 export const eventSettings = pgTable('event_settings', {
   id: uuid('id').primaryKey().defaultRandom(),

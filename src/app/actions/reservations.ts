@@ -6,7 +6,8 @@ import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { reservationAdmin } from "@/lib/reservation-admin";
 import { deliverTicket } from "@/lib/ticket-delivery";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireScanner } from "@/lib/auth";
+import { scanForStaff } from '@/lib/staff-access';
 import { uuid } from '@/lib/reservation-policy';
 
 const service = reservationAdmin(db);
@@ -58,9 +59,9 @@ export async function createManualReservation(data: { eventId: string; guestName
 }
 
 export async function checkInGuestByQR(eventId: string, qrCodeText: string) {
-  await requireAdmin();
+  const staff = await requireScanner(eventId);
   try {
-    const { reservation, tableName } = await service.scan(qrCodeText, eventId);
+    const { reservation, tableName } = await scanForStaff(db, staff, qrCodeText, eventId);
     revalidatePath('/[locale]/admin', 'layout');
     return { success: true, guestName: reservation.guestName, guestCount: reservation.guestCount, tableName };
   } catch (error) {

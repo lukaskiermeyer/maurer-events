@@ -11,6 +11,7 @@ import { isAdminEmail, otpHash } from '@/lib/admin-identity';
 import { BookingError, guestDetails, UUID_PATTERN } from '@/lib/reservation-policy';
 import { consumeAdminOtp } from '@/lib/admin-otp';
 import { emailFrom } from '@/lib/email';
+import { resolveStaffAccess } from '@/lib/staff-access';
 
 export async function requestOtp(email: string, turnstileToken: string) {
   let stage = 'input';
@@ -20,7 +21,7 @@ export async function requestOtp(email: string, turnstileToken: string) {
     await verifyTurnstile(turnstileToken, 'admin-login');
     stage = 'rate-limit';
     if (!await takeRateLimit(`otp-request:${normalizedEmail}`, 5, 15 * 60000)) return { success: false, error: 'Zu viele Anfragen. Bitte warte 15 Minuten.' };
-    if (!isAdminEmail(normalizedEmail)) return { success: true };
+    if (!await resolveStaffAccess(db, normalizedEmail)) return { success: true };
     if (!process.env.RESEND_API_KEY) return { success: false, error: 'E-Mail-Versand ist nicht konfiguriert.' };
     const code = randomInt(100000, 1000000).toString();
     stage = 'otp-hash';
@@ -29,7 +30,7 @@ export async function requestOtp(email: string, turnstileToken: string) {
     await db.insert(adminAuth).values({ email: normalizedEmail, otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) })
       .onConflictDoUpdate({ target: adminAuth.email, set: { otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) } });
     stage = 'email-send';
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Admin Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Team Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
     if (result.error) throw new Error('Email unavailable');
     return { success: true };
   } catch (error) {
@@ -45,11 +46,12 @@ export async function verifyOtp(email: string, code: string, turnstileToken: str
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) return { success: false, error: 'Ungültiger Code.' };
     await verifyTurnstile(turnstileToken, 'admin-login');
     if (!await takeRateLimit(`otp-verify:${normalizedEmail}`, 10, 15 * 60000)) return { success: false, error: 'Zu viele Versuche. Bitte später erneut versuchen.' };
-    if (!isAdminEmail(normalizedEmail)) return { success: false, error: 'Code ungültig oder abgelaufen.' };
+    if (!await resolveStaffAccess(db, normalizedEmail)) return { success: false, error: 'Code ungültig oder abgelaufen.' };
     const session = await consumeAdminOtp(db, normalizedEmail, code);
     if (!session) return { success: false, error: 'Code ungültig, abgelaufen oder bereits verwendet.' };
     (await cookies()).set('admin_token', session.id, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', expires: session.validUntil, path: '/' });
-    return { success: true };
+    const access = await resolveStaffAccess(db, normalizedEmail);
+    return { success: true, destination: access?.role === 'admin' ? '/admin' : '/admin/scan' };
   } catch { return { success: false, error: 'Anmeldung vorübergehend nicht verfügbar.' }; }
 }
 

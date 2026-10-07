@@ -20,7 +20,7 @@ export async function deliverTicket(reservationId: string, connection = db, send
     if (!reservation.ticketEmailPayload) {
       const [event] = await connection.select().from(events).where(eq(events.id, reservation.eventId));
       const [table] = reservation.tableId ? await connection.select().from(tables).where(eq(tables.id, reservation.tableId)) : [];
-      const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: table?.name || 'Kein Tisch zugewiesen', qrCodeText: reservation.qrCodeText });
+      const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), time: reservation.selectedTime, location: event?.location, guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: table?.name || 'Freie Platzwahl', qrCodeText: reservation.qrCodeText });
       if (!pdf) throw new Error('PDF unavailable');
       const payload = { from: emailFrom(), to: [reservation.email], subject: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
         html: `<p>Hallo ${escapeHtml(reservation.guestName)},</p><p>Im Anhang findest du dein Ticket mit QR-Code.</p>`, attachments: [{ filename: 'ticket.pdf', content: pdf.toString('base64') }] };

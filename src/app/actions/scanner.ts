@@ -1,13 +1,13 @@
 "use server";
 import { db } from '@/db';
-import { requireAdmin } from '@/lib/auth';
-import { reservationAdmin } from '@/lib/reservation-admin';
+import { requireScanner } from '@/lib/auth';
+import { scanForStaff } from '@/lib/staff-access';
 import { revalidatePath } from 'next/cache';
 
 export async function scanTicket(qrCodeText: string) {
-  await requireAdmin();
+  const staff = await requireScanner();
   try {
-    const { reservation, tableName, eventTitle } = await reservationAdmin(db).scan(qrCodeText);
+    const { reservation, tableName, eventTitle } = await scanForStaff(db, staff, qrCodeText);
     revalidatePath('/[locale]/admin', 'layout');
     return { success: true, message: 'Ticket erfolgreich entwertet!', data: { guestName: reservation.guestName, guestCount: reservation.guestCount, tableName, eventTitle } };
   } catch (error) {

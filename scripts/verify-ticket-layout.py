@@ -9,7 +9,7 @@ for fixture in fixtures:
     assert len(document) == 1
     page = document[0]
     page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(source.with_suffix('.png'))
-    qr = pymupdf.Rect(400, 100, 550, 250)
+    qr = pymupdf.Rect(374, 172, 562, 360)
     spans = [span for block in page.get_text('dict')['blocks'] if 'lines' in block for line in block['lines'] for span in line['spans']]
     for span in spans:
         box = pymupdf.Rect(span['bbox'])

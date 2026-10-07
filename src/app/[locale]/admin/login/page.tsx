@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
     try {
       const res = await verifyOtp(email, code, turnstileToken);
       if (res.success) {
-        router.push("/admin");
+        router.push(res.destination || "/admin");
       } else {
         setError(res.error || "Ungültiger Code.");
       }
@@ -79,9 +79,9 @@ export default function AdminLoginPage() {
   return (
       <div className="min-h-screen bg-base-light flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl border border-border-light">
-          <h1 className="text-3xl font-black text-center mb-2">Admin <span className="text-accent-green">Login</span></h1>
+          <h1 className="text-3xl font-black text-center mb-2">Team <span className="text-accent-green">Login</span></h1>
           <p className="text-center text-sm text-base-dark/70 mb-8">
-            Sicherer Zugang für Administratoren
+            Sicherer Zugang für Festwirt und Einlass-Team
           </p>
 
           {error && (

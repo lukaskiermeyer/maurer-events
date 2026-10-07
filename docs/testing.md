@@ -72,10 +72,25 @@ im normalen Browser erzeugten Testbuchungen des dedizierten Events sowie den
 zugehörigen Stripe-Teststatus und Webhook-Nachweis. Kein Checkout wird erzeugt,
 bezahlt oder erstattet, keine E-Mail versendet und kein QR-Code protokolliert.
 
-`tsx scripts/ticket-layout-check.ts` erzeugt ausschließlich zwei lokale PDF-Fixtures.
+`tsx scripts/ticket-layout-check.ts` erzeugt ausschließlich zwei lokale PDF-Fixtures
+und die Vorschau `output/pdf/ticket-vorschau.pdf` mit fiktiven Gastdaten.
 `python scripts/verify-ticket-layout.py` benötigt PyMuPDF und prüft vollständige
 Angaben, Seitenbegrenzung und Abstand zur QR-Fläche. Die gerenderten PNGs zusätzlich
 visuell prüfen. Es werden weder Datenbank noch Versanddienste angesprochen.
+`node scripts/ticket-decoder-check.mjs` decodiert die vollständigen gerenderten
+normalen und langen Tickets mit dem lokalen WASM-Decoder und vergleicht den
+fiktiven QR-Wert. Es sendet keine Check-in-Anfrage.
+
+`node --env-file=.env.local scripts/admin-role-browser-check.mjs --confirmed-test-database`
+prüft den lokalen Produktionsserver auf `localhost:3100` mit der ausdrücklich
+freigegebenen Testdatenbank: 360/390-Pixel-Gästekarten, Desktop-Tabelle, Formulare,
+Anlegen/Widerrufen einer Scanner-Freigabe, Helfer-Redirects, direkte geschützte
+Server-Aktionen, Scan nur im freigegebenen Event, einmalige Entwertung und Sperre
+der bestehenden Sitzung nach Widerruf. Das Skript erzeugt eigene temporäre
+Events, Reservierungen, Freigaben und Testsitzungen und entfernt sie danach.
+Es versendet keine Mails, erzeugt keine Zahlung und ersetzt weder einen echten
+OTP-Login noch einen physischen Kameratest. Die isolierte Sicherheitssuite prüft
+zusätzlich Helfer-OTP, Ablauf, Widerruf und gelöschte Veranstaltungen.
 
 `node scripts/staging-scanner-ticket.mjs` extrahiert ausschließlich das bereits
 versendete PDF der freigegebenen Testbuchung für die Scanner-Diagnose. PDF und
@@ -95,7 +110,8 @@ Uhrzeit- und Kontakt-Auswahl beim Vor-/Zurückgehen; keine Buchung oder E-Mail.
 ## Vor Inbetriebnahme der Sicherheitsänderungen
 
 - Migrationen `0004_reservation_security`, `0005_ticket_delivery`,
-  `0006_waitlist_uniqueness` und `0007_explicit_public_schema` in Reihenfolge anwenden. Die Test-Suite prüft die gesamte
+  `0006_waitlist_uniqueness`, `0007_explicit_public_schema` und `0008_scanner_access`
+  in Reihenfolge anwenden. Die Test-Suite prüft die gesamte
   Migrationskette in einer leeren Datenbank.
 - `AUTH_SECRET` mit mindestens 32 zufälligen Zeichen setzen. Alte Klartext-OTPs
   funktionieren nach dem Update nicht mehr; neue Codes anfordern.

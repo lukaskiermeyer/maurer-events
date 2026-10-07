@@ -9,8 +9,9 @@ export async function GET() {
     try {
         // A connected database with missing booking migrations is not ready.
         await db.execute(sql`SELECT r.request_hash, r.checkout_params, r.ticket_email_payload, r.ticket_sent_at,
-          a.attempts, l.reset_at, 'payment_pending'::public.reservation_status
-          FROM public.reservations r CROSS JOIN public.admin_auth a CROSS JOIN public.security_rate_limits l LIMIT 0`);
+          a.attempts, l.reset_at, s.event_id, s.email, s.valid_until, 'payment_pending'::public.reservation_status
+          FROM public.reservations r CROSS JOIN public.admin_auth a CROSS JOIN public.security_rate_limits l
+          CROSS JOIN public.scanner_access s LIMIT 0`);
         return NextResponse.json({ status: 'ok', timestamp: new Date().toISOString() }, { headers });
     } catch {
         return NextResponse.json(

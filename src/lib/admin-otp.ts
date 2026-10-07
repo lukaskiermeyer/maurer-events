@@ -2,10 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { adminAuth, adminSessions } from '@/db/schema';
-import { isAdminEmail, otpHash } from './admin-identity';
+import { otpHash } from './admin-identity';
+import { resolveStaffAccess } from './staff-access';
 
 export async function consumeAdminOtp(connection: typeof db, email: string, code: string) {
-  if (!isAdminEmail(email)) return null;
+  if (!await resolveStaffAccess(connection, email)) return null;
   const hash = otpHash(email, code);
   return connection.transaction(async tx => {
     const [otp] = await tx.update(adminAuth).set({ attempts: sql`${adminAuth.attempts} + 1` }).where(and(eq(adminAuth.email, email), gt(adminAuth.expiresAt, new Date()), sql`${adminAuth.attempts} < 5`)).returning();

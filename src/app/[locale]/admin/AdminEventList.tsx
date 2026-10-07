@@ -1,5 +1,4 @@
 "use client";
-"use client";
 
 import { useState, useMemo } from "react";
 import { createEvent, deleteEvent } from "@/app/actions/events";
@@ -90,7 +89,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 min-w-0 [&>div]:min-w-0">
       {/* List */}
       <div className="lg:col-span-2 space-y-4">
         
@@ -121,21 +120,18 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
         <h2 className="text-2xl font-bold mb-4 font-display">Aktuelle Termine</h2>
         {initialEvents.map(event => (
-          <Link key={event.id} href={`/admin/events/${event.id}`} className="group block bg-white p-6 rounded-2xl border border-border-light shadow-sm hover:border-accent-green hover:shadow-md transition-all relative">
-            <div className="flex justify-between items-center pr-12">
-              <div>
-                <h3 className="font-bold text-lg font-display group-hover:text-accent-green transition-colors">{event.title}</h3>
-                <p className="text-sm opacity-70 font-sans">
+          <div key={event.id} className="group bg-white rounded-2xl border border-border-light shadow-sm hover:border-accent-green hover:shadow-md transition-all relative">
+            <Link href={`/admin/events/${event.id}`} className="block p-5 pr-16">
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg font-display group-hover:text-accent-green transition-colors break-words">{event.title}</h3>
+                <p className="text-sm opacity-70 font-sans break-words">
                   {new Date(event.date).toLocaleDateString('de-DE')} 
                   {event.endDate && event.endDate !== event.date && ` - ${new Date(event.endDate).toLocaleDateString('de-DE')}`}
                   {' | '}{event.location}
                 </p>
                 {event.reservable && <span className="inline-block mt-2 text-xs font-bold uppercase tracking-widest bg-base-dark text-white px-3 py-1">Reservierbar</span>}
               </div>
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-accent-green font-bold text-2xl">→</span>
-              </div>
-            </div>
+            </Link>
             
             <div className="absolute top-4 right-4 z-10">
               <button 
@@ -147,15 +143,16 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                     window.location.reload();
                   }
                 }}
-                className="text-red-500 hover:text-red-700 bg-white/80 p-2 rounded-full opacity-50 hover:opacity-100 transition-opacity"
+                className="text-red-500 hover:text-red-700 bg-white/80 min-h-11 min-w-11 flex items-center justify-center rounded-full"
                 title="Event löschen"
+                aria-label={`${event.title} löschen`}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
 
@@ -169,12 +166,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
             <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
             <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Sommerfest" />
           </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-w-0">
               <label className="block text-sm font-bold mb-1 opacity-70">Start-Datum</label>
               <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
             </div>
-            <div className="flex-1">
+            <div className="min-w-0">
               <label className="block text-sm font-bold mb-1 opacity-70">End-Datum (Optional)</label>
               <input type="date" min={formData.date} value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
             </div>
@@ -189,8 +186,8 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-bold mb-1 opacity-70">Bild / Flyer</label>
-            <div className="flex gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 min-w-0">
                 <input 
                   type="file" 
                   accept="image/*"
@@ -200,7 +197,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                 <p className="text-xs opacity-50 mt-1">Lokal hochladen</p>
               </div>
               <div className="flex items-center text-sm font-bold opacity-50">ODER</div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <input 
                   type="url" 
                   value={formData.imageUrl} 
@@ -266,8 +263,8 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                 </div>
               </div>
               
-              <div className="flex gap-4">
-                <div className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
                   <input 
                     type="number" 
@@ -277,7 +274,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                     className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" 
                   />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Laufkundschaft-Puffer (Pers.)</label>
                   <input 
                     type="number" 

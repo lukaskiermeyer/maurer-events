@@ -30,9 +30,14 @@ const ReactQuill = dynamic(() => import("react-quill-new"), {
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 
 import { updateEventSettings } from "@/app/actions/eventSettings";
+import ScannerAccessPanel from '@/components/admin/ScannerAccessPanel';
+import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings }: any) {
-  const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist" | "settings">("edit");
+const statusNames: Record<string, string> = { pending: 'Ausstehend', paid: 'Bezahlt', confirmed: 'Bestätigt', checked_in: 'Eingecheckt', cancelled: 'Storniert', expired: 'Abgelaufen', refunded: 'Erstattet', payment_pending: 'Zahlung wird verarbeitet', payment_review: 'Zahlung prüfen', disputed: 'Zahlung angefochten' };
+const statusOptions = (status: string) => [status, ...(ADMIN_TRANSITIONS[status] || [])].filter(next => next !== 'checked_in' || next === status);
+
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, scannerGrants = [] }: any) {
+  const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist" | "settings" | "team">(event.type === 'event' ? 'reservations' : 'edit');
   const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedResId, setSelectedResId] = useState<string | null>(null);
@@ -447,18 +452,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-border-light overflow-hidden mt-8">
       {/* Tabs */}
-      <div className="flex overflow-x-auto border-b border-border-light hide-scrollbar">
+      <div className="grid grid-cols-2 sm:grid-cols-3 border-b border-border-light [&>button]:px-3 [&>button]:py-3 [&>button]:min-h-12 [&>button]:text-sm [&>button]:whitespace-normal">
         <button
           onClick={() => setActiveTab("edit")}
           className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "edit" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
         >
-          ✏️ Event Bearbeiten
+          Event bearbeiten
         </button>
         <button
           onClick={() => setActiveTab("settings")}
           className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "settings" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
         >
-          ⚙️ Einstellungen
+          Einstellungen
         </button>
         {event.type === 'event' && (
           <>
@@ -466,20 +471,21 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               onClick={() => setActiveTab("reservations")}
               className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "reservations" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
             >
-              🍽️ Reservierungen ({initialReservations.length})
+              Gäste ({initialReservations.length})
             </button>
             <button
               onClick={() => setActiveTab("tables")}
               className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "tables" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
             >
-              ⚙️ Tisch-Stammdaten & Zelt-Plan
+              Tische & Zeltplan
             </button>
             <button
               onClick={() => setActiveTab("waitlist")}
               className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "waitlist" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
             >
-              ⏳ Warteliste ({initialWaitlist.length})
+              Warteliste ({initialWaitlist.length})
             </button>
+            <button onClick={() => setActiveTab('team')} className={`font-bold transition-colors ${activeTab === 'team' ? 'bg-accent-green text-white' : 'bg-base-light text-base-dark'}`}>Einlass-Team</button>
           </>
         )}
         {event.type === 'gallery' && (
@@ -492,7 +498,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         )}
       </div>
 
-      <div className="p-6 lg:p-10">
+      <div className="p-4 sm:p-6 lg:p-10 min-w-0">
+        {activeTab === 'team' && <ScannerAccessPanel eventId={event.id} eventDate={event.endDate || event.date} grants={scannerGrants} />}
 
         {/* EDIT TAB */}
         {activeTab === "edit" && (
@@ -504,12 +511,12 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
                 <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Start-Datum</label>
                   <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">End-Datum (Optional)</label>
                   <input type="date" min={formData.date} value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
                 </div>
@@ -637,7 +644,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   className="w-full p-2 rounded border border-border-light text-sm"
                 />
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto [&>select]:min-w-0 [&>select]:min-h-11">
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
@@ -646,6 +653,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   <option value="all">Alle Status</option>
                   <option value="pending">Ausstehend</option>
                   <option value="paid">Bezahlt</option>
+                  <option value="confirmed">Bestätigt</option>
+                  <option value="checked_in">Eingecheckt</option>
                   <option value="cancelled">Storniert</option>
                 </select>
                 <select
@@ -696,9 +705,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
             {/* Bulk Actions Floating Bar */}
             {selectedBulkIds.length > 0 && (
-              <div className="bg-base-dark text-white p-4 rounded-xl flex items-center justify-between mb-4 animate-fade-in shadow-xl">
+              <div className="bg-base-dark text-white p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 animate-fade-in shadow-xl">
                 <span className="font-bold">{selectedBulkIds.length} ausgewählt</span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button onClick={() => handleBulkStatusChange("paid")} className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Als Bezahlt</button>
                   <button onClick={() => handleBulkStatusChange("confirmed")} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Als Bestätigt</button>
                   <button onClick={() => handleBulkStatusChange("cancelled")} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Stornieren</button>
@@ -734,7 +743,31 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               {initialReservations.length === 0 ? (
                 <p className="text-center opacity-50 py-10 bg-canvas-light rounded-xl">Noch keine Reservierungen vorhanden.</p>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 md:hidden">
+                  {initialReservations.filter((row: any) => {
+                    const reservation = row.reservation;
+                    return (!selectedDate || new Date(reservation.reservationDate).toISOString().slice(0, 10) === selectedDate) &&
+                      (reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) || reservation.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
+                      (filterStatus === 'all' || reservation.status === filterStatus) &&
+                      (filterTable === 'all' || (filterTable === 'assigned' ? !!reservation.tableId : !reservation.tableId));
+                  }).map((row: any) => {
+                    const reservation = row.reservation;
+                    return <article key={reservation.id} className="rounded-2xl border border-border-light p-4 bg-canvas-light/40">
+                      <div className="flex items-start gap-3"><input aria-label={`Buchung von ${reservation.guestName} auswählen`} type="checkbox" className="h-5 w-5 mt-1 shrink-0 accent-accent-green" checked={selectedBulkIds.includes(reservation.id)} onChange={e => setSelectedBulkIds(ids => e.target.checked ? [...ids, reservation.id] : ids.filter(id => id !== reservation.id))} />
+                        <div className="min-w-0"><h4 className="font-black break-words">{reservation.guestName}</h4><p className="text-sm text-base-dark/60 break-all">{reservation.email}</p></div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-sm font-bold mt-3"><span>{reservation.guestCount} {reservation.guestCount === 1 ? 'Person' : 'Personen'}</span><span>· {reservation.selectedTime || 'Keine Uhrzeit'}</span><span>· {(reservation.amountTotal / 100).toFixed(2)} €</span></div>
+                      <div className="grid gap-3 mt-4">
+                        <div><label htmlFor={`status-${reservation.id}`} className="block text-xs font-bold mb-1">Status</label><select id={`status-${reservation.id}`} value={reservation.status} onChange={e => handleStatusChange(reservation.id, e.target.value)} disabled={isUpdating} className="w-full min-h-12 border border-border-light rounded-lg bg-white px-3 text-sm">
+                          {statusOptions(reservation.status).map(status => <option key={status} value={status}>{statusNames[status] || status}</option>)}
+                        </select></div>
+                        <div><label htmlFor={`table-${reservation.id}`} className="block text-xs font-bold mb-1">Tisch</label><select id={`table-${reservation.id}`} value={reservation.tableId || 'none'} onChange={e => handleTableAssign(reservation.id, e.target.value)} disabled={isUpdating || !['paid', 'confirmed'].includes(reservation.status)} className="w-full min-h-12 border border-border-light rounded-lg bg-white px-3 text-sm disabled:opacity-60"><option value="none">Kein Tisch</option>{initialTables.map((table: any) => <option key={table.id} value={table.id}>{table.name} · {table.capacity} Plätze</option>)}</select></div>
+                      </div>
+                    </article>;
+                  })}
+                </div>
+                <div className="overflow-x-auto hidden md:block">
                   <table className="w-full text-left font-sans text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border-light">
@@ -829,23 +862,14 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                               disabled={isUpdating}
                               className={`border rounded p-1 text-xs font-bold ${row.reservation.status === 'confirmed' ? 'bg-blue-100 text-blue-800 border-blue-200' : row.reservation.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : row.reservation.status === 'cancelled' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}
                             >
-                              <option value="pending">Ausstehend</option>
-                              <option value="paid">Bezahlt</option>
-                              <option value="confirmed">Bestätigt (Ticket PDF gesendet)</option>
-                              <option value="cancelled">Storniert</option>
-                              <option value="payment_pending" disabled>Zahlung wird verarbeitet</option>
-                              <option value="payment_review" disabled>Zahlung prüfen</option>
-                              <option value="checked_in" disabled>Eingecheckt</option>
-                              <option value="expired" disabled>Abgelaufen</option>
-                              <option value="refunded" disabled>Erstattet</option>
-                              <option value="disputed" disabled>Zahlung angefochten</option>
+                              {statusOptions(row.reservation.status).map(status => <option key={status} value={status}>{statusNames[status] || status}</option>)}
                             </select>
                           </td>
                           <td className="py-4">
                             <select
                               value={row.reservation.tableId || "none"}
                               onChange={(e) => handleTableAssign(row.reservation.id, e.target.value)}
-                              disabled={isUpdating}
+                              disabled={isUpdating || !['paid', 'confirmed'].includes(row.reservation.status)}
                               className="border border-border-light rounded p-2 text-sm bg-white"
                             >
                               <option value="none">-- Kein Tisch --</option>
@@ -868,6 +892,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           </div>
@@ -878,16 +903,16 @@ export default function EventDetailDashboard({ event, initialReservations, initi
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="font-display font-bold text-2xl">Zelt-Generator & Bearbeitung</h3>
-              <div className="flex bg-canvas-light p-1 rounded-lg border border-border-light">
+              <div className="grid grid-cols-2 w-full sm:w-auto bg-canvas-light p-1 rounded-lg border border-border-light">
                 <button
                   onClick={() => setTableMode("edit")}
-                  className={`px-4 py-2 rounded-md font-bold text-sm transition-colors ${tableMode === "edit" ? 'bg-white shadow-sm text-base-dark' : 'text-base-dark/50 hover:text-base-dark'}`}
+                  className={`px-2 sm:px-4 min-h-12 rounded-md font-bold text-sm transition-colors ${tableMode === "edit" ? 'bg-white shadow-sm text-base-dark' : 'text-base-dark/50 hover:text-base-dark'}`}
                 >
                   🛠️ Layout bearbeiten
                 </button>
                 <button
                   onClick={() => setTableMode("assign")}
-                  className={`px-4 py-2 rounded-md font-bold text-sm transition-colors ${tableMode === "assign" ? 'bg-white shadow-sm text-base-dark' : 'text-base-dark/50 hover:text-base-dark'}`}
+                  className={`px-2 sm:px-4 min-h-12 rounded-md font-bold text-sm transition-colors ${tableMode === "assign" ? 'bg-white shadow-sm text-base-dark' : 'text-base-dark/50 hover:text-base-dark'}`}
                 >
                   🎯 Gäste zuweisen
                 </button>
@@ -1142,7 +1167,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
         {/* Einstellungen Tab */}
         {activeTab === "settings" && (
-          <div className="p-8">
+          <div className="sm:p-2 lg:p-8">
             <h2 className="text-2xl font-display font-black text-base-dark mb-6">Event-Einstellungen</h2>
             <form onSubmit={handleSettingsUpdate} className="space-y-12">
 
@@ -1191,7 +1216,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   ))}
                 </div>
                 <div className="flex gap-2 max-w-xs">
-                  <input type="time" id="newTimeSlot" className="bg-canvas-light border border-border-light rounded-xl p-2 flex-1" />
+                  <input type="time" id="newTimeSlot" className="bg-canvas-light border border-border-light rounded-xl p-2 flex-1 min-w-0 min-h-12" />
                   <button type="button" onClick={() => {
                     const val = (document.getElementById('newTimeSlot') as HTMLInputElement).value;
                     if (val && !settingsData.timeSlots.includes(val)) setSettingsData(p => ({ ...p, timeSlots: [...p.timeSlots, val].sort() }));
@@ -1206,7 +1231,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   {settingsData.packages.map((pkg, i) => (
                     <div key={pkg.id} className="bg-canvas-light p-4 rounded-xl border border-border-light relative">
                       <button type="button" onClick={() => setSettingsData(p => ({ ...p, packages: p.packages.filter((_, idx) => idx !== i) }))} className="absolute top-4 right-4 text-red-500 font-bold text-xl hover:text-red-700">×</button>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pr-6 [&>div]:min-w-0">
                         <div><label className="text-xs font-bold uppercase">Name</label><input type="text" value={pkg.name} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].name = e.target.value; setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
                         <div><label className="text-xs font-bold uppercase">Preis (€)</label><input type="number" value={pkg.price} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].price = parseFloat(e.target.value); setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
                       </div>
@@ -1221,7 +1246,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               {/* E) Storno-Bedingungen */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Storno-Bedingungen</h3>
-                <div className="max-w-sm flex items-center gap-3">
+                <div className="max-w-sm flex flex-wrap items-center gap-3">
                   <span>Kostenlose Stornierung bis</span>
                   <input type="number" min="0" value={settingsData.cancellationDays} onChange={(e) => setSettingsData(p => ({ ...p, cancellationDays: parseInt(e.target.value) }))} className="w-20 bg-canvas-light border border-border-light rounded-xl p-2 text-center font-bold" />
                   <span>Tage vor Event</span>
@@ -1283,7 +1308,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               </section>
 
               <div className="pt-8 border-t border-border-light flex justify-end">
-                <button type="submit" disabled={isUpdating} className="bg-accent-green text-white px-10 py-4 rounded-xl font-black text-lg hover:bg-base-dark transition-colors shadow-lg disabled:opacity-50">
+                <button type="submit" disabled={isUpdating} className="w-full sm:w-auto bg-accent-green text-white px-4 sm:px-10 py-4 rounded-xl font-black text-base sm:text-lg hover:bg-base-dark transition-colors shadow-lg disabled:opacity-50">
                   {isUpdating ? "Speichern..." : "Einstellungen speichern"}
                 </button>
               </div>

@@ -29,6 +29,7 @@ const fixedBundle = await build({ ...common, stdin: { resolveDir: process.cwd(),
 `, loader: 'tsx' }, plugins: [{ name: 'local-action-stubs', setup(builder) {
   builder.onResolve({ filter: /@\/app\/actions\/(reservations|scanner)$/ }, args => ({ path: args.path, namespace: 'local-action-stub' }));
   builder.onLoad({ filter: /.*/, namespace: 'local-action-stub' }, () => ({ contents: `
+    export const logout = async () => ({success:true});
     async function check(value) {
       window.scanCount++; window.valueMatched = value === window.expectedQr;
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -40,7 +41,8 @@ const fixedBundle = await build({ ...common, stdin: { resolveDir: process.cwd(),
     export const scanTicket = check;
   `, loader: 'js' }));
   builder.onResolve({ filter: /^@\/i18n\/routing$/ }, () => ({ path: 'local-link', namespace: 'local-link-stub' }));
-  builder.onLoad({ filter: /.*/, namespace: 'local-link-stub' }, () => ({ contents: 'export const Link = ({children,...props}) => <a {...props}>{children}</a>;', loader: 'jsx', resolveDir: process.cwd() }));
+  builder.onLoad({ filter: /.*/, namespace: 'local-link-stub' }, () => ({ contents: 'export const Link = ({children,...props}) => <a {...props}>{children}</a>; export const useRouter=()=>({replace(){},refresh(){}});', loader: 'jsx', resolveDir: process.cwd() }));
+  builder.onResolve({ filter: /^@\/app\/actions\/authActions$/ }, args => ({ path: args.path, namespace: 'local-action-stub' }));
 } }] });
 
 const server = http.createServer(async (req, res) => {

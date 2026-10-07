@@ -41,7 +41,7 @@ await check('database', async () => {
       await tx`SET LOCAL statement_timeout = '15000ms'`;
       const columns = await tx`SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'`;
       const has = (table, column) => columns.some(c => c.table_name === table && c.column_name === column);
-      const required = [['reservations', 'request_hash'], ['reservations', 'checkout_params'], ['reservations', 'ticket_email_payload'], ['reservations', 'ticket_sent_at'], ['admin_auth', 'attempts'], ['security_rate_limits', 'reset_at']];
+      const required = [['reservations', 'request_hash'], ['reservations', 'checkout_params'], ['reservations', 'ticket_email_payload'], ['reservations', 'ticket_sent_at'], ['admin_auth', 'attempts'], ['security_rate_limits', 'reset_at'], ['scanner_access', 'event_id'], ['scanner_access', 'email'], ['scanner_access', 'valid_until']];
       const missing = required.filter(([table, column]) => !has(table, column)).map(([table, column]) => `${table}.${column}`);
       const enums = await tx`SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_type.oid = pg_enum.enumtypid WHERE typname = 'reservation_status'`;
       if (!enums.some(v => v.enumlabel === 'payment_pending')) missing.push('reservation_status.payment_pending');

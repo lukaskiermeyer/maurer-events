@@ -5,7 +5,7 @@ import { checkInGuestByQR } from "@/app/actions/reservations";
 import TicketQrScanner from "@/components/admin/TicketQrScanner";
 import { Link } from "@/i18n/routing";
 
-export default function ScannerClient({ eventId }: { eventId: string }) {
+export default function ScannerClient({ eventId, scannerOnly = false }: { eventId: string; scannerOnly?: boolean }) {
   const [resultMessage, setResultMessage] = useState<{ type: "success" | "error" | "info", text: string, details?: string } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const scanLocked = useRef(false);
@@ -55,7 +55,7 @@ export default function ScannerClient({ eventId }: { eventId: string }) {
   return (
     <div className="min-h-screen bg-base-dark text-white flex flex-col">
       <div className="p-4 bg-black/50 flex items-center justify-between">
-        <Link href={`/admin/events/${eventId}`} className="text-accent-green font-bold">
+        <Link href={scannerOnly ? '/admin/scan' : `/admin/events/${eventId}`} className="text-accent-green font-bold">
           &larr; Zurück
         </Link>
         <h1 className="text-lg font-black tracking-wider uppercase">Einlass Scanner</h1>

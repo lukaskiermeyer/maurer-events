@@ -64,6 +64,21 @@ Qualifizierung. Neon-Pooling kann einen leeren `search_path` liefern; alle ORM-
 Tabellen und Enums sind deshalb qualifiziert. Keine `search_path`-Startup-Option
 an den gepoolten Neon-Endpunkt senden.
 
+Migration **0008_scanner_access** muss vor dem neuen Admin-Deployment angewendet
+sein. Sie ergänzt veranstaltungsbezogene Helferfreigaben mit Ablaufdatum.
+Auf der bestätigten Staging-Datenbank wurde sie am 7. Oktober 2026 nach Sicherung
+und lokalem Wiederherstellungstest angewendet; alle 25 Reservierungen blieben
+erhalten. Für eine getrennte Produktionsdatenbank dieselbe Migration nach deren
+eigener Sicherung anwenden. Healthcheck und Preflight prüfen die neuen Felder.
+Es werden keine zusätzlichen Umgebungsvariablen benötigt. Die Bedienung steht
+in [admin-guide.md](admin-guide.md).
+
+Die Ticketgrafik ist aus `public/maennchen.svg` als Vektorpfade in
+`src/lib/ticket-logo.json` eingebettet. Nach einer Änderung dieses SVGs
+`python scripts/prepare-ticket-logo.py` ausführen und das Ergebnis mit deployen.
+Die PDF-Erzeugung lädt keine externen Logo-Dateien. Neue Tickets erhalten das
+Layout; bereits gespeicherte Versandpayloads bleiben unverändert.
+
 ## Stripe und CAPTCHA
 
 Endpoint: `<NEXT_PUBLIC_BASE_URL>/api/webhooks/stripe`. Diese sechs Ereignisse

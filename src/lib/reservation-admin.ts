@@ -66,11 +66,12 @@ export function reservationAdmin(connection: typeof db) {
         return created;
       });
     },
-    async scan(qrCodeText: string, eventId?: string) {
+    async scan(qrCodeText: string, eventId?: string, allowedEventIds?: string[]) {
       if (typeof qrCodeText !== 'string' || !qrCodeText || qrCodeText.length > 200) throw new BookingError('Ungültiger Ticket-Code.');
       if (eventId) uuid(eventId);
       const [updated] = await connection.update(reservations).set({ status: 'checked_in', scannedAt: new Date(), updatedAt: new Date() }).where(and(
         eq(reservations.qrCodeText, qrCodeText), eventId ? eq(reservations.eventId, eventId) : undefined,
+        allowedEventIds ? inArray(reservations.eventId, allowedEventIds) : undefined,
         inArray(reservations.status, ['paid', 'confirmed']), isNull(reservations.scannedAt),
       )).returning();
       if (!updated) throw new BookingError('Ticket ungültig, storniert oder bereits eingecheckt.');

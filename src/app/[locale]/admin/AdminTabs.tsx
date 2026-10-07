@@ -22,24 +22,27 @@ export default function AdminTabs({
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="flex bg-white p-1 rounded-xl border border-border-light shadow-sm w-fit mb-8 overflow-x-auto">
+      <div className="grid grid-cols-3 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
         <button 
           onClick={() => setActiveTab("dashboard")}
-          className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-colors whitespace-nowrap ${activeTab === "dashboard" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
+          aria-pressed={activeTab === 'dashboard'}
+          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "dashboard" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
         >
-          📊 Dashboard
+          Übersicht
         </button>
         <button 
           onClick={() => setActiveTab("events")}
-          className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-colors whitespace-nowrap ${activeTab === "events" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
+          aria-pressed={activeTab === 'events'}
+          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "events" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
         >
-          Aktuelle & Zukünftige Feste
+          Veranstaltungen
         </button>
         <button 
           onClick={() => setActiveTab("gallery")}
-          className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-colors ${activeTab === "gallery" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
+          aria-pressed={activeTab === 'gallery'}
+          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "gallery" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
         >
-          Gallerie
+          Galerie
         </button>
       </div>
 
@@ -48,7 +51,7 @@ export default function AdminTabs({
         <div className="animate-fade-in space-y-8">
           
           {/* Top KPI row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 [&>div]:p-4 sm:[&>div]:p-6 [&_.text-4xl]:text-2xl sm:[&_.text-4xl]:text-4xl [&>div]:min-w-0">
             <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
               <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Bestätigte Gäste (Total)</div>
@@ -80,7 +83,7 @@ export default function AdminTabs({
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Next Event Widget */}
-            <div className="lg:col-span-2 bg-canvas-light p-8 rounded-3xl border border-border-light relative overflow-hidden">
+            <div className="lg:col-span-2 bg-canvas-light p-5 sm:p-8 rounded-3xl border border-border-light relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-accent-green/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
               
               <h2 className="text-2xl font-display font-bold mb-6 text-base-dark">Nächstes Fest im Fokus 🎯</h2>

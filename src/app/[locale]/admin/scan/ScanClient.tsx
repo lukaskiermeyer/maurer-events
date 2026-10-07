@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import TicketQrScanner from "@/components/admin/TicketQrScanner";
 import { scanTicket } from "@/app/actions/scanner";
 import { Link } from "@/i18n/routing";
+import StaffHeader from '@/components/admin/StaffHeader';
 
-export default function AdminScanClient() {
+export default function AdminScanClient({ scannerOnly = false }: { scannerOnly?: boolean }) {
   const [scanResult, setScanResult] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -37,14 +38,16 @@ export default function AdminScanClient() {
   if (!isClient) return null; // Avoid hydration mismatch on camera render
 
   return (
-    <div className="min-h-screen bg-base-dark text-white flex flex-col pt-24 pb-12 px-4">
+    <div className="min-h-screen bg-base-dark text-white flex flex-col">
+      <StaffHeader scannerOnly={scannerOnly} />
+      <div className="py-6 px-4">
       <div className="max-w-[600px] w-full mx-auto">
         
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-display font-black text-white">Ticket <span className="text-accent-green">Scanner</span></h1>
-          <Link href="/admin" className="text-sm font-bold bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20 transition-colors">
+          {!scannerOnly && <Link href="/admin" className="text-sm font-bold bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20 transition-colors">
             Zurück
-          </Link>
+          </Link>}
         </div>
 
         {scanResult ? (
@@ -110,6 +113,7 @@ export default function AdminScanClient() {
             </p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

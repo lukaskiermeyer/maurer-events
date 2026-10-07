@@ -4,6 +4,7 @@ node_modules
 !.env.example
 .reservation-test-db
 test-results
+output
 .acceptance-backups
 playwright-report
 .git
