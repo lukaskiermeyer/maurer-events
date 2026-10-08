@@ -17,5 +17,6 @@ credentials
 *.dump
 *.pem
 *.key
+*.log
 README.md
 *.md

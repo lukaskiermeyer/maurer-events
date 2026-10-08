@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image';
 
 import { useState, useEffect } from "react";
 import { Link } from "@/i18n/routing";
@@ -59,7 +60,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-24">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/#start" className="flex items-center gap-3 group">
-                <img src="/Logo.png" alt="Maurer Events Logo" className="h-12 w-auto object-contain transition-transform group-hover:scale-105" />
+                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 w-auto object-contain transition-transform group-hover:scale-105" />
               </Link>
             </div>
 
@@ -68,7 +69,7 @@ export default function Navbar() {
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
-                  href={link.href as any}
+                  href={link.href}
                   className="text-base-dark hover:text-accent-green font-sans text-sm font-bold tracking-wide transition-colors"
                 >
                   {link.name}
@@ -115,7 +116,7 @@ export default function Navbar() {
                 {navLinks.map((link) => (
                   <Link
                     key={link.name}
-                    href={link.href as any}
+                    href={link.href}
                     onClick={() => setIsOpen(false)}
                     className="block py-3 text-base-dark font-sans text-lg font-bold border-b border-border-light/50 hover:text-accent-green"
                   >

@@ -13,7 +13,8 @@ await fs.mkdir(outputDir, { recursive: true });
 const { expectedQr } = JSON.parse(await fs.readFile('test-results/scanner-ticket-private.json', 'utf8'));
 const configHeaders = await nextConfig.headers();
 const csp = configHeaders.flatMap(rule => rule.headers).find(header => header.key === 'Content-Security-Policy').value;
-const common = { bundle: true, format: 'iife', platform: 'browser', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' }, write: false };
+// Next normally inlines its framework environment flags when bundling clients.
+const common = { bundle: true, format: 'iife', platform: 'browser', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"', 'process.env': '{}' }, write: false };
 const oldBundle = await build({ ...common, stdin: { resolveDir: process.cwd(), contents: `
   import {createRoot} from 'react-dom/client';
   import {Scanner} from '@yudiel/react-qr-scanner';
@@ -52,6 +53,9 @@ const server = http.createServer(async (req, res) => {
   } else if (req.url === '/scanner/zxing_reader.wasm') {
     res.setHeader('Content-Type', 'application/wasm');
     res.end(await fs.readFile('public/scanner/zxing_reader.wasm'));
+  } else if (req.url === '/maennchen.svg') {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.end(await fs.readFile('public/maennchen.svg'));
   } else {
     res.setHeader('Content-Security-Policy', req.url === '/old' || req.url === '/without-wasm' ? csp.replace("'wasm-unsafe-eval'", '') : csp);
     res.setHeader('Permissions-Policy', 'camera=(self)');
@@ -82,10 +86,15 @@ try {
       const page = await context.newPage();
       const errors = [];
       const externalDecoderRequests = [];
-      page.on('pageerror', () => errors.push('browser-error'));
+      page.on('pageerror', error => errors.push(error.message));
       page.on('request', request => { if (/jsdelivr|unpkg/.test(request.url())) externalDecoderRequests.push(true); });
       await page.goto(`${origin}/${kind}`);
-      await expect(page.getByRole('heading', { name: kind === 'event' ? 'Zugang gewährt!' : 'Erfolgreich!' })).toBeVisible();
+      try {
+        await expect(page.getByRole('heading', { name: kind === 'event' ? 'Zugang gewährt!' : 'Erfolgreich!' })).toBeVisible();
+      } catch (error) {
+        await fs.writeFile(path.join(outputDir, 'failure.json'), JSON.stringify({ kind, errors }, null, 2));
+        throw error;
+      }
       if (!await page.evaluate(() => window.valueMatched)) throw new Error('Decoded value differs from issued ticket');
       await page.waitForTimeout(1200);
       if (await page.evaluate(() => window.scanCount) !== 1) throw new Error('Concurrent camera frames triggered duplicate action');

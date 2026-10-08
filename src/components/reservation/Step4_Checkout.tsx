@@ -9,7 +9,6 @@ export default function Step4_Checkout({
   guestEmail,
   setGuestName,
   setGuestEmail,
-  turnstileToken,
   setTurnstileToken,
   checkoutError,
   onValidChange,

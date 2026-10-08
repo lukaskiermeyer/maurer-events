@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image';
 
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
@@ -19,7 +20,7 @@ export default function Footer() {
           
           <div className="col-span-2 md:col-span-2 flex flex-col items-center md:items-start text-center md:text-left">
             <Link href="/#start" className="mb-6 md:mb-8 hover:opacity-90 transition-opacity block">
-              <img src="/Logo.png" alt="Maurer Events Logo" className="h-16 sm:h-20 md:h-24 w-auto object-contain brightness-0 invert drop-shadow-md" />
+              <Image src="/Logo.png" alt="Maurer Events Logo" width={648} height={192} className="h-16 sm:h-20 md:h-24 w-auto object-contain brightness-0 invert drop-shadow-md" />
             </Link>
             <p className="font-sans text-white/80 mb-8 max-w-sm text-sm leading-relaxed">
               {t("brand_desc")}

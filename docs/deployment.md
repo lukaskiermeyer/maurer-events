@@ -1,5 +1,10 @@
 # Deployment und Betrieb
 
+Die konkreten Einstellungen für den parallelen Vercel-Testbetrieb und den späteren
+Netcup-Umzug stehen in [coolify.md](coolify.md). Dort sind auch die neuen Befehle
+`db:migrate` und `cron:cleanup`, Build-/Runtime-Variablen und Vercels Tarifgrenzen
+dokumentiert. Die aktuelle erneute Prüfung steht in [project-acceptance.md](project-acceptance.md).
+
 Die Anwendung benötigt eine Node.js-Laufzeit, PostgreSQL, Stripe, Resend und
 Cloudflare Turnstile. Die abgenommene Staging-Domain ist
 `https://maurer-events.madebylui.net`; Vercel bedient diese Domain aus seiner

@@ -1,4 +1,7 @@
 "use client";
+import Image from 'next/image';
+
+import type { EventRecord } from '@/types/domain';
 
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
@@ -33,7 +36,7 @@ const AWNING_CLIP_PATH = (() => {
   return path;
 })();
 
-export default function EventsSection({ initialEvents }: { initialEvents: any[] }) {
+export default function EventsSection({ initialEvents }: { initialEvents: EventRecord[] }) {
   const t = useTranslations("Events");
   const locale = useLocale();
 
@@ -180,7 +183,7 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
                   </p>
                 </motion.div>
             ) : (
-                initialEvents.map((event: any, index: number) => {
+                initialEvents.map((event, index: number) => {
                   const dateObj = new Date(event.date);
                   const day = dateObj.getDate().toString().padStart(2, '0');
                   const monthNamesDe = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
@@ -205,7 +208,7 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
                           {/* 16:9 Poster Area */}
                           <div className="w-full md:w-2/5 aspect-video relative bg-border-light/30 overflow-hidden shrink-0">
                             {event.imageUrl ? (
-                              <img src={event.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                              <Image src={event.imageUrl} alt={title} fill sizes="(max-width: 767px) 100vw, 40vw" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
                                 Kein Plakat
@@ -222,7 +225,7 @@ export default function EventsSection({ initialEvents }: { initialEvents: any[] 
                           {/* Content Area */}
                           <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col justify-between">
                             <div>
-                              <h4 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark group-hover:text-accent-green transition-colors">{title}</h4>
+                              <h3 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark group-hover:text-accent-green transition-colors">{title}</h3>
                               {event.reservable && (
                                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
                                     {locale === 'en' ? "Tables reservable" : "Tische reservierbar"}

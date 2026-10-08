@@ -1,6 +1,5 @@
 "use client";
 
-import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 
 export default function AnimatedLogo({ className = "w-24 h-24" }: { className?: string }) {
   // Temporarily disabled useRive to prevent the "Bad Header" crash 

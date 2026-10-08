@@ -1,5 +1,12 @@
 # Produktionsabnahme Tischreservierungen
 
+**Ergänzung:** Die erneute Projektprüfung, zusätzliche Fehlerkorrekturen und die
+Einschätzung für einen ersten Kundentest stehen in
+[project-acceptance.md](project-acceptance.md). Dieser Bericht enthält historische
+Provider-Nachweise; sie wurden bei der neuen lokalen Prüfung nicht pauschal wiederholt.
+Die nachfolgend dokumentierten Lint-Warnungen sind inzwischen vollständig behoben;
+die aktuelle Nachprüfung ergibt 0 Fehler und 0 Warnungen.
+
 **Ergebnis: noch nicht zur Produktion freigegeben.** Prüfung am 6./7. Oktober 2026
 gegen `https://maurer-events.madebylui.net` und den lokalen Produktionsbuild.
 Die Datenbank wurde vom Betreiber ausdrücklich als ausschließlich Staging/Test
@@ -98,8 +105,9 @@ vollständiger Datenschutzfreigabe.
    Vertragstext. Keine aus den Code-Defaults erfundenen Vertragsversprechen.
 3. **Betrieb nachweisen.** Authentifizierter regelmäßiger Cleanup, Alarmierung
    bei Webhook-/Mail-/DB-Ausfällen, Backup/PITR und Wiederherstellungsplan auf dem
-   tatsächlichen Zielsystem. Kein Scheduler im Repository konfiguriert; realer
-   geplanter Lauf ist bislang nicht nachgewiesen.
+   tatsächlichen Zielsystem. Ein portabler Cleanup-Runner und die Coolify-
+   Zeitplaneinstellungen sind inzwischen vorbereitet; ein realer geplanter Lauf
+   auf dem Zielsystem ist weiterhin nicht nachgewiesen.
 4. **Live-Konfiguration gesondert abnehmen.** Eigene Produktionsdatenbank,
    Liveschlüssel/-webhook, passende verifizierte Absenderdomain und korrektes
    Kontaktpostfach. Staging verwendet Vercel-Environment `Production`, aber

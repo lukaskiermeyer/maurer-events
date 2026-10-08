@@ -1,5 +1,37 @@
 # Reservierungs- und Sicherheitstests
 
+## Wiederholbare Projektabnahme
+
+Nach `npm run build` und Start des unten beschriebenen PostgreSQL-Testservers:
+
+```powershell
+npm.cmd run test:acceptance
+```
+
+Der Runner erzeugt ausschließlich eine zufällig benannte Datenbank auf dem festen
+Loopback-Testport 55439, prüft die Migrationen inklusive zweitem Aufruf und startet
+den Standalone-Server auf `localhost` mit einem automatisch gewählten freien Port. Eine bereits laufende App
+wird nicht beendet oder mitgetestet. Bestehende `.env.local`-Providerzugänge werden
+für den Kindprozess geleert und durch lokale Testwerte ersetzt. Die Datenbank und
+der gestartete Server werden beim Abschluss entfernt bzw. beendet.
+
+Geprüft werden öffentliche Seiten, Zugriffsschutz, Admin-/Helferrollen, Formulare,
+gefüllte Warteliste, Galerie-Dialog, mobile Bildaktionen und VIP-Bedienung von
+320 bis 1280 Pixel, Buchungskomponenten, Bildverkleinerung vor dem Upload und
+Readiness bei fehlendem Schema. Bericht und Screenshots liegen unter
+`test-results/project-acceptance`; Komponentenberichte zusätzlich unter
+`test-results/booking-browser`, `admin-role-browser` und `image-upload`.
+Die Rollenprüfung benötigt keine echten OTPs, E-Mails, Stripe-Zahlungen oder Kamera.
+Der Upload-Harness prüft echte Bildverarbeitung im Browser und ersetzt ausschließlich
+den anschließenden Provideraufruf. Reale Cloudinary-Zustellung bleibt ein Deployment-Check.
+
+Für den Cleanup-Runner: `node --test scripts/deployment-tools-test.mjs` verwendet
+nur einen lokalen HTTP-Server; keine echten Bereinigungen.
+
+Die browserseitige Prüfung benötigt Chromium (`npx playwright install chromium`).
+Die zusätzlichen Admin-Tests überspringen sich bei direkten Staging-Smoke-Läufen,
+wenn die temporären lokalen Fixtures nicht gesetzt sind.
+
 `npm run test:security` führt die Regressionen für Tischbuchung, Statuswechsel,
 Zahlung, OTP-Anmeldung, Warteliste und Ticketversand aus. `npm run test:concurrency`
 verwendet dieselbe Suite einschließlich 50 paralleler Buchungsversuche für 8 Plätze.
@@ -32,13 +64,18 @@ npx tsc --noEmit --incremental false
 npm run build
 ```
 
-`npm.cmd run lint` prüft jetzt auch TypeScript, Next.js und React. Bestehende
-`any`-Typen und direkte State-Updates in Effekten bleiben Warnungen. Korrektheitsregeln
-wie Hook-Reihenfolge sind Fehler. Der Produktionsbuild führt zusätzlich Typechecking aus.
+`npm.cmd run lint` prüft TypeScript, Next.js und React mit `--max-warnings 0`.
+Explizites `any`, direkte synchrone State-Updates in Effekten und verletzte
+Hook-Regeln sind Fehler. Die vorherigen 142 Warnungen sind behoben.
+Der Produktionsbuild führt zusätzlich Typechecking aus.
 
 ## Browser- und Provider-Abnahme
 
-`npm.cmd run test:browser` führt acht Desktop-/Mobilprüfungen aus. Standardziel ist
+`npm.cmd run test:browser` führt die Desktop-/Mobilprüfungen aus. Mit den lokalen
+Fixtures aus `test:acceptance` laufen alle 20 Tests einschließlich Admin und Bildern.
+Die Bildprüfung prüft erfolgreiche Abrufe, natürliche Galerieproportionen und
+Lightbox-Größen; der Buchungsharness prüft außerdem verzögerte Antworten bei
+schnellen Event- und Datumswechseln. Standardziel ist
 `http://localhost:3100`; mit `ACCEPTANCE_URL` wird Staging geprüft. Getrennte parallele
 Läufe benötigen eigene `ACCEPTANCE_ARTIFACTS` und `ACCEPTANCE_REPORT`.
 Playwright löscht ausschließlich sein Artefakt-Unterverzeichnis. DB-Sicherungen
@@ -106,6 +143,18 @@ ersetzt weder die echte Authentifizierung noch einen Scan mit physischer Kamera.
 Decoder-Datei und WASM-Freigabe der tatsächlichen Deployment-Antwort nur lesend.
 `staging-table-navigation.mjs [Basis-URL]` prüft am separaten Testevent die Tisch-,
 Uhrzeit- und Kontakt-Auswahl beim Vor-/Zurückgehen; keine Buchung oder E-Mail.
+
+`node scripts/booking-browser-check.mjs --app-origin=http://localhost:3100`
+prüft die Reservierungs- und Bestätigungskomponenten lokal mit fiktiven Daten:
+10 Personen bei Tischreservierungen, 1 Person ohne Tischwahl, tatsächliche
+Tischkapazität, Wechsel zwischen Eventarten sowie Bestätigung, ausstehende
+Zahlung und nicht verfügbarer Status auf Deutsch/Englisch bei 390/1440 Pixeln.
+Der lokale Harness ersetzt Server-Aktionen und Turnstile und prüft auch die
+automatische Statusaktualisierung. Der optionale `--app-origin` prüft zusätzlich
+die echten Next.js-Routen, `noindex`, die alte Stripe-Rückleitung und den
+Sprachwechsel mit erhaltener Zahlungszuordnung. Vorschauen
+und Bericht liegen in `test-results/booking-browser`; keine echten Buchungen,
+Zahlungen oder E-Mails. Vorher `npm run build` für das tatsächliche CSS ausführen.
 
 ## Vor Inbetriebnahme der Sicherheitsänderungen
 

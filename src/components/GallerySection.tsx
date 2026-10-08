@@ -1,12 +1,14 @@
 "use client";
 
+import type { GalleryAlbum } from '@/types/domain';
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import ImageWithSkeleton from "./ImageWithSkeleton";
 import { useTranslations, useLocale } from "next-intl";
 
-export default function GallerySection({ albums, sneakPeek = false }: { albums?: any[], sneakPeek?: boolean }) {
+export default function GallerySection({ albums, sneakPeek = false }: { albums?: GalleryAlbum[], sneakPeek?: boolean }) {
   const t = useTranslations("Gallery");
   const locale = useLocale();
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -24,21 +26,21 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
     ? sortedAlbums.filter(a => a.isFeaturedGallery).slice(0, 4) 
     : sortedAlbums;
 
-  if (visibleAlbums.length === 0 && !sneakPeek) return null;
+  const Heading = sneakPeek ? motion.h2 : motion.h1;
 
   return (
     <section id="gallery" className="relative w-full bg-white py-24 md:py-32">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 md:mb-24 gap-6">
           <div>
-            <motion.h2 
+            <Heading
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-dark"
             >
               {t("title_1_alt") || "Rückblick in"} <span className="text-accent-green">{t("title_2_alt") || "Bildern"}</span>
-            </motion.h2>
+            </Heading>
             <motion.p
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -85,9 +87,9 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
         </div>
 
         <div className={`grid ${sneakPeek ? 'grid-cols-2 gap-3 sm:gap-8 max-w-5xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8'}`}>
-          {visibleAlbums.length === 0 && sneakPeek ? (
+          {visibleAlbums.length === 0 ? (
             <div className="col-span-full py-12 text-center text-base-dark/50 font-bold border border-dashed border-border-light rounded-2xl">
-              {t("empty_homepage") || "Es wurden noch keine Galerien für die Startseite markiert."}
+              {sneakPeek ? t("empty_homepage") : locale === 'en' ? 'Photos from our events will appear here soon.' : 'Hier findest du bald Bilder unserer Veranstaltungen.'}
             </div>
           ) : visibleAlbums.map((album, i) => {
             const title = locale === "en" && album.titleEn ? album.titleEn : album.title;
@@ -109,6 +111,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
                   <ImageWithSkeleton 
                     src={album.coverImage} 
                     alt={album.title}
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
                     className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"
                     wrapperClassName="w-full h-full"

@@ -14,7 +14,7 @@ export async function translateContent(text: string | null | undefined, targetLa
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `You are a professional translator for a Bavarian event and festival website.
-Translate the following German text to English. Keep the tone festive, inviting, and professional.
+Translate the following German text to ${targetLang === 'en' ? 'English' : targetLang}. Keep the tone festive, inviting, and professional.
 Only return the translated text. Do not wrap it in quotes, markdown, or add any commentary.
 
 Original text:

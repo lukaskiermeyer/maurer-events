@@ -14,9 +14,11 @@ export function parseCheckout(body: unknown) {
   const guests = guestDetails(input.name, input.email, input.guestCount);
   const day = calendarDate(input.reservationDate);
   if (typeof input.selectedPackage !== 'string' || !input.selectedPackage || input.selectedPackage.length > 100) throw new BookingError('Bitte ein gültiges Paket auswählen.');
+  const locale = input.locale ?? 'de';
+  if (locale !== 'de' && locale !== 'en') throw new BookingError('Ungültige Sprache.');
   return { ...guests, eventId: uuid(input.eventId, 'Event-ID'), tableId: input.tableId === null || input.tableId === undefined || input.tableId === '' ? null : uuid(input.tableId, 'Tisch-ID'),
     day, selectedTime: cleanTime(input.selectedTime), selectedPackage: input.selectedPackage,
-    idempotencyKey: uuid(input.idempotencyKey, 'Idempotenz-ID'), turnstileToken: input.turnstileToken };
+    idempotencyKey: uuid(input.idempotencyKey, 'Idempotenz-ID'), turnstileToken: input.turnstileToken, locale };
 }
 
 export function createCheckoutService(connection: typeof db, stripe: Pick<Stripe, 'checkout'>, captcha = verifyTurnstile) {
@@ -64,7 +66,7 @@ export function createCheckoutService(connection: typeof db, stripe: Pick<Stripe
       if (price.fee > 0) line_items.push({ price_data: { currency: 'eur', product_data: { name: 'Service- & Buchungsgebühr' }, unit_amount: price.fee }, quantity: 1 });
       const params: Stripe.Checkout.SessionCreateParams = {
         payment_method_types: ['card', 'paypal', 'klarna', 'sepa_debit'], mode: 'payment', line_items,
-        success_url: `${baseUrl.origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${baseUrl.origin}/?canceled=true`,
+        success_url: `${baseUrl.origin}${input.locale === 'en' ? '/en' : ''}/reservierung/erfolgreich?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${baseUrl.origin}/?canceled=true`,
         customer_email: input.email, expires_at: expires, client_reference_id: id, metadata: { reservationId: id, requestHash }, payment_intent_data: { metadata: { reservationId: id } },
       };
       const [created] = await tx.insert(reservations).values({ id, eventId: event.id, tableId: input.tableId,

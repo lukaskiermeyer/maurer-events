@@ -1,5 +1,7 @@
 "use client";
 
+import type { TableRecord } from '@/types/domain';
+
 import { useTranslations } from "next-intl";
 
 export default function Step2_TableSelection({
@@ -12,12 +14,12 @@ export default function Step2_TableSelection({
   setIsWaitlistMode,
   isLoadingTables = false
 }: {
-  tables: any[];
+  tables: TableRecord[];
   bookedTableIds: string[];
   selectedTableId: string;
   setSelectedTableId: (id: string) => void;
   isCountdown: boolean;
-  publishTablesAt?: string;
+  publishTablesAt?: string | Date;
   setIsWaitlistMode: (val: boolean) => void;
   isLoadingTables?: boolean;
 }) {

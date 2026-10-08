@@ -1,16 +1,19 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
-
-if (typeof WebSocket !== 'undefined') {
-  neonConfig.webSocketConstructor = WebSocket;
-}
 
 // Fallback für die Build-Phase, falls DATABASE_URL nicht gesetzt ist
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
 
-// Neon pooled endpoints reject search_path in startup options. ORM table names
-// are explicitly qualified in schema.ts instead of changing pooled session state.
-const pool = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 5000, query_timeout: 10000, max: 10 });
-pool.on('error', error => console.error('Idle database connection failed:', error.name));
-export const db = drizzle({ client: pool, schema });
+// Standard PostgreSQL works with both Neon's pooled Vercel connection and a
+// private PostgreSQL service in Coolify. No Neon WebSocket proxy is required.
+// Disable prepared statements for transaction poolers; qualify tables in schema.ts
+// instead of sending search_path startup options to the Neon pooler.
+const client = postgres(databaseUrl, {
+  max: 5,
+  prepare: false,
+  connect_timeout: 5,
+  idle_timeout: 20,
+  max_lifetime: 60 * 30,
+});
+export const db = drizzle({ client, schema });

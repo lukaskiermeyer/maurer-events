@@ -6,11 +6,9 @@ export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
   {
-    // Existing broad data types and effect-driven UI state are migration warnings.
-    // Correctness rules, including hook order, remain errors.
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      'react-hooks/set-state-in-effect': 'error',
     },
   },
   { files: ['**/*.js'], rules: { '@typescript-eslint/no-require-imports': 'off' } },

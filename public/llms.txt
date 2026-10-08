@@ -1,0 +1,6 @@
+# Maurer Events LLM Guide
+
+Maurer Events is a Bavarian festival and event service based in Müchsmünster, Germany. We provide traditional Bavarian tents (Festzelt), catering, and event planning.
+
+For more information, please visit our [homepage](https://maurer-events.com/).
+Our events can be found at [Events Overview](https://maurer-events.com/termine).

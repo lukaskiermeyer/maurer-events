@@ -1,5 +1,7 @@
 "use client";
 
+import type { EventRecord, AdminStats } from '@/types/domain';
+
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
 import AdminGalleryTab from "./AdminGalleryTab";
@@ -8,8 +10,8 @@ export default function AdminTabs({
   initialEvents, 
   stats
 }: { 
-  initialEvents: any[], 
-  stats?: any
+  initialEvents: EventRecord[],
+  stats?: AdminStats
 }) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery">("dashboard");
 
@@ -55,7 +57,7 @@ export default function AdminTabs({
             <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
               <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Bestätigte Gäste (Total)</div>
-              <div className="text-4xl font-display font-black text-base-dark">{stats.totalReservations}</div>
+              <div className="text-4xl font-display font-black text-base-dark">{stats.totalGuests}</div>
               <div className="text-xs font-bold text-accent-wood mt-2">{stats.pendingCount} Zahlungen stehen noch aus</div>
             </div>
             
@@ -128,7 +130,7 @@ export default function AdminTabs({
               
               {stats.recentReservations && stats.recentReservations.length > 0 ? (
                 <div className="space-y-4">
-                  {stats.recentReservations.map((res: any) => (
+                  {stats.recentReservations.map((res) => (
                     <div key={res.id} className="flex items-center justify-between border-b border-border-light/50 pb-3 last:border-0 last:pb-0">
                       <div>
                         <div className="font-bold text-sm text-base-dark truncate max-w-[150px]">{res.guestName}</div>

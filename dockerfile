@@ -8,7 +8,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
 # Rebuild the source code only when needed
@@ -44,6 +44,12 @@ COPY --from=builder /app/public ./public
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Release migrations and scheduled cleanup can run directly in the same image.
+# Next's route tracing does not include the standalone migration entry point.
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=builder --chown=nextjs:nodejs /app/src/db/migrations ./src/db/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/db-migrate.mjs /app/scripts/run-cleanup.mjs ./scripts/
 
 RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 

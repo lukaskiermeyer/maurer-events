@@ -1,20 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import TicketQrScanner from "@/components/admin/TicketQrScanner";
+import React, { useState, useRef } from "react";
+import dynamic from 'next/dynamic';
 import { scanTicket } from "@/app/actions/scanner";
 import { Link } from "@/i18n/routing";
 import StaffHeader from '@/components/admin/StaffHeader';
 
-export default function AdminScanClient({ scannerOnly = false }: { scannerOnly?: boolean }) {
-  const [scanResult, setScanResult] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const scanLocked = useRef(false);
+const TicketQrScanner = dynamic(() => import('@/components/admin/TicketQrScanner'), { ssr: false });
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+export default function AdminScanClient({ scannerOnly = false }: { scannerOnly?: boolean }) {
+  const [scanResult, setScanResult] = useState<Awaited<ReturnType<typeof scanTicket>> | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const scanLocked = useRef(false);
 
   const handleScan = async (qrCodeText: string) => {
     if (scanLocked.current) return;
@@ -34,8 +31,6 @@ export default function AdminScanClient({ scannerOnly = false }: { scannerOnly?:
     scanLocked.current = false;
     setScanResult(null);
   };
-
-  if (!isClient) return null; // Avoid hydration mismatch on camera render
 
   return (
     <div className="min-h-screen bg-base-dark text-white flex flex-col">

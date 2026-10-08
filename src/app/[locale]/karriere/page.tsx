@@ -1,7 +1,6 @@
-import { getTranslations } from "next-intl/server";
 import { Metadata } from "next";
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Karriere bei Maurer Events | Werde Teil des Teams",
     description: "Wir suchen Verstärkung! Bewirb dich jetzt als Servicekraft, Zeltaufbauer oder im Eventmanagement bei Maurer Events.",
@@ -9,7 +8,6 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 }
 
 export default async function KarrierePage() {
-  const t = await getTranslations("Navigation");
 
   return (
     <main className="min-h-screen bg-base-light pt-24 pb-16">

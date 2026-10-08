@@ -3,11 +3,10 @@ config({ path: '.env.local' });
 
 import { optimizeImage } from '@/lib/imageOptimizer';
 import fs from 'fs/promises';
-import path from 'path';
 
 // Test-Konfiguration
 const TEST_DIR = './test-images';
-const RESULTS: any[] = [];
+const RESULTS: { name: string; status: string; error: string | null }[] = [];
 
 async function setup() {
   console.log('🔧 Setup: Erstelle Test-Verzeichnis...\n');
@@ -42,10 +41,11 @@ async function runTest(
     await testFn();
     RESULTS.push({ name, status: '✅ PASS', error: null });
     console.log(`✅ ${name}\n`);
-  } catch (err: any) {
-    RESULTS.push({ name, status: '❌ FAIL', error: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unbekannter Fehler';
+    RESULTS.push({ name, status: '❌ FAIL', error: message });
     console.log(`❌ ${name}`);
-    console.log(`   Fehler: ${err.message}\n`);
+    console.log(`   Fehler: ${message}\n`);
   }
 }
 
@@ -167,10 +167,12 @@ async function test8_UploadActionIntegration() {
   // Importiere die Action dynamisch (benötigt ggf. Mock für requireAdmin)
   try {
     const { uploadImage } = await import('@/app/actions/upload');
-    console.log(`   uploadImage() ist importierbar und akzeptiert FormData\n`);
+    if (typeof uploadImage !== 'function') throw new Error('Upload-Action fehlt.');
+    if (!(formData.get('file') instanceof File)) throw new Error('Upload-Datei fehlt.');
+    console.log('   uploadImage() ist importierbar; FormData enthält eine Datei.');
     // Hinweis: Voller Test erfordert authentifizierte Session
-  } catch (err: any) {
-    throw new Error(`uploadImage() nicht importierbar: ${err.message}`);
+  } catch (err) {
+    throw new Error(`uploadImage() nicht importierbar: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
   }
 }
 

@@ -31,6 +31,7 @@ export const DEFAULT_PACKAGES = [
   { id: 'vollgas', name: 'Vollgas-Paket', price: 50, description: '2 Maß, 1 Hauptgericht & 1 Schnaps', popular: true },
 ];
 export const DEFAULT_TIMES = ['17:00', '18:00', '19:00'];
+export const DEFAULT_TABLE_GUESTS = 10;
 
 // A calendar day is stored at UTC midnight; admission times are German local time.
 // Reject ambiguous/nonexistent DST times instead of silently choosing another time.

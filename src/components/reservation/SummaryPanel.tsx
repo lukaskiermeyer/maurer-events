@@ -1,5 +1,7 @@
 "use client";
 
+import type { TableRecord, FoodPackage, ReservationEvent } from '@/types/domain';
+
 import { useTranslations } from "next-intl";
 import { calculateFee } from "@/lib/pricing";
 
@@ -17,13 +19,13 @@ export default function SummaryPanel({
   serviceFeePercent,
   serviceFeeFixedCents
 }: {
-  selectedEventObj: any;
+  selectedEventObj: ReservationEvent | undefined;
   selectedDate: string;
   selectedTime: string;
-  selectedTableObj: any;
+  selectedTableObj: TableRecord | undefined;
   guests: number;
   selectedPackage: string;
-  packages: any[];
+  packages: FoodPackage[];
   amountTotal: number;
   minimumConsumption: number;
   customServiceFee?: boolean;

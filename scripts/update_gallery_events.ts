@@ -1,6 +1,6 @@
 import { db } from '../src/db';
 import { events, galleries } from '../src/db/schema';
-import { like, eq, and, isNull } from 'drizzle-orm';
+import { like, eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 async function main() {

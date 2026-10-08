@@ -63,8 +63,8 @@ export async function uploadImage(formData: FormData) {
       optimizedSize: optimized.size,
       savings: `${(100 - (optimized.size / file.size) * 100).toFixed(1)}%`,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Upload error:", error);
-    return { success: false, error: error.message || "Failed to upload image" };
+    return { success: false, error: error instanceof Error && error.message ? error.message : "Failed to upload image" };
   }
 }

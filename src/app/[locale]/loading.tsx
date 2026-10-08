@@ -1,5 +1,4 @@
-import { useTranslations } from 'next-intl';
-
+import Image from 'next/image';
 export default function Loading() {
   return (
     <div className="fixed inset-0 z-[100] bg-base-light flex flex-col items-center justify-center overflow-hidden">
@@ -7,8 +6,11 @@ export default function Loading() {
       <div className="relative z-10 flex flex-col items-center justify-center">
         {/* Logo Container */}
         <div className="relative mb-16 animate-[float_4s_ease-in-out_infinite]">
-          <img 
+          <Image
             src="/Logo.png" 
+            width={490}
+            height={145}
+            sizes="(max-width: 767px) 325px, 433px"
             alt="Maurer Events Logo" 
             className="relative z-10 h-24 md:h-32 w-auto object-contain drop-shadow-sm"
           />

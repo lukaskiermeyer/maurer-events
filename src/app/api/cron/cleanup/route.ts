@@ -101,7 +101,7 @@ export async function GET(request: Request) {
       updatedReservationsCount
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Cleanup cron failed:", error);
     return NextResponse.json({ success: false, error: 'Bereinigung vorübergehend fehlgeschlagen.' }, { status: 500 });
   }

@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image';
 
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
@@ -90,7 +91,7 @@ export default function ContactSection() {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   </div>
                   <div>
-                    <h5 className="font-bold text-sm text-base-light/70 mb-1">Standort</h5>
+                    <h4 className="font-bold text-sm text-base-light/70 mb-1">Standort</h4>
                     <p className="text-lg">Schwaiger Str. 6<br/>85126 Müchsmünster</p>
                   </div>
                 </div>
@@ -100,7 +101,7 @@ export default function ContactSection() {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   </div>
                   <div>
-                    <h5 className="font-bold text-sm text-base-light/70 mb-1">E-Mail</h5>
+                    <h4 className="font-bold text-sm text-base-light/70 mb-1">E-Mail</h4>
                     <p className="text-lg">servus@maurer-events.com</p>
                   </div>
                 </div>
@@ -228,7 +229,7 @@ export default function ContactSection() {
                     transition={{ delay: 0.8, type: "spring" }}
                     className="w-24 md:w-32 pointer-events-none hidden sm:block"
                   >
-                    <img src="/figur-transparent.png" alt="Festwirt Easteregg" className="w-full h-auto drop-shadow-md opacity-80" />
+                    <Image src="/figur-transparent.png" alt="Festwirt Easteregg" width={1007} height={853} sizes="128px" className="w-full h-auto drop-shadow-md opacity-80" />
                   </motion.div>
                 </div>
               </form>

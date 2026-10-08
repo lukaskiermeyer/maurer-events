@@ -1,11 +1,13 @@
 "use client";
 
+import type { EventRecord, GalleryWithEvent } from '@/types/domain';
+
 import { useState } from "react";
 import Image from "next/image";
-import { uploadImage } from "@/app/actions/upload";
+import { uploadImage } from "@/lib/client-image-upload";
 import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
 
-export default function AdminGlobalGallery({ events, initialGallery }: { events: any[], initialGallery: any[] }) {
+export default function AdminGlobalGallery({ events, initialGallery }: { events: EventRecord[], initialGallery: GalleryWithEvent[] }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [galleryFile, setGalleryFile] = useState<File | null>(null);
   const [galleryUrl, setGalleryUrl] = useState("");
@@ -60,7 +62,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
     }
     acc[eventId].images.push(img);
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, { event: EventRecord; images: GalleryWithEvent[] }>);
   
   const albumList = Object.values(groupedAlbums);
 
@@ -122,7 +124,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
         {albumList.length === 0 ? (
           <p className="text-center opacity-50 py-10 bg-white rounded-xl border border-border-light shadow-sm">Keine Bilder in der Galerie.</p>
         ) : (
-          albumList.map((album: any) => (
+          albumList.map((album) => (
             <div key={album.event.id} className="bg-white p-6 rounded-2xl border border-border-light shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold font-display text-xl text-base-dark">
@@ -133,7 +135,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {album.images.map((img: any) => (
+                {album.images.map((img) => (
                   <div key={img.gallery.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group shadow-sm bg-base-light">
                     <Image 
                       src={img.gallery.imageUrl} 
@@ -151,8 +153,9 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
                           window.location.reload();
                         }
                       }}
-                      className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
+                      className="admin-image-action absolute top-2 right-2 bg-red-500 text-white w-11 h-11 rounded-full transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
                       title="Bild löschen"
+                      aria-label="Bild löschen"
                     >
                       ×
                     </button>

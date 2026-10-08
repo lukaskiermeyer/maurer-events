@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
       } else {
         setError(res.error || "Ein unerwarteter Fehler ist aufgetreten.");
       }
-    } catch (err) {
+    } catch {
       setError("Verbindungsfehler.");
     } finally {
       setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
       } else {
         setError(res.error || "Ungültiger Code.");
       }
-    } catch (err) {
+    } catch {
       setError("Verbindungsfehler.");
     } finally {
       setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);
@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
       } else {
         setError(res.error || "Bypass failed.");
       }
-    } catch (err) {
+    } catch {
       setError("Dev Bypass error.");
     } finally {
       setLoading(false); setTurnstileToken(""); setCaptchaVersion(value => value + 1);

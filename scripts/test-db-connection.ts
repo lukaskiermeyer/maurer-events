@@ -12,9 +12,9 @@ async function testConnection() {
         const result = await db.execute(sql`SELECT 1 as test`);
         console.log('✅ DB connection successful:', result);
         process.exit(0);
-    } catch (err: any) {
-        console.error('❌ DB connection failed:', err.message);
-        console.error('Cause:', err.cause);
+    } catch (err) {
+        console.error('❌ DB connection failed:', err instanceof Error ? err.message : 'Unknown error');
+        console.error('Cause:', err instanceof Error ? err.cause : undefined);
         process.exit(1);
     }
 }

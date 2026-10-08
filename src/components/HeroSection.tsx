@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image';
 
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
@@ -199,8 +200,10 @@ export default function HeroSection() {
               }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
-            <img
-              src="/maennchen-kopie.svg"
+            <Image
+              src="/maennchen.svg"
+              width={241}
+              height={205}
               alt="Maurer Events Festwirt"
               className="w-auto h-full object-contain relative z-10"
             />
@@ -218,7 +221,7 @@ export default function HeroSection() {
           >
             <Link
               href="/#contact"
-              className="w-full md:w-auto px-8 py-4 bg-accent-wood text-white rounded-full font-display font-bold tracking-wide hover:bg-accent-green transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-3 text-base text-center"
+              className="w-full md:w-auto px-8 py-4 bg-accent-wood text-base-dark rounded-full font-display font-bold tracking-wide hover:bg-accent-green hover:text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-3 text-base text-center"
             >
               {t("cta_primary")}
             </Link>

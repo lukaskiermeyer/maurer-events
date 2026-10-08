@@ -62,7 +62,7 @@ export async function notifyWaitlistEntry(entryId: string) {
 
     return { success: true };
   } catch (err) {
-    console.error("Notify waitlist error:", (err as any).message);
+    console.error("Notify waitlist error:", err instanceof Error ? err.message : 'Unknown error');
     return { success: false, error: "Fehler beim Senden der Benachrichtigung." };
   }
 }

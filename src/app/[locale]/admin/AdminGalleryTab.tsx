@@ -1,23 +1,25 @@
 "use client";
+import Image from 'next/image';
 
-import { useState, useRef } from "react";
+import type { EventRecord } from '@/types/domain';
+
+import { useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { deleteEvent, createEvent, convertEventToGallery, toggleFeaturedGallery } from "@/app/actions/events";
-import { uploadImage } from "@/app/actions/upload";
+import { uploadImage } from "@/lib/client-image-upload";
 
 export default function AdminGalleryTab({ 
   galleries,
   convertibleEvents 
 }: { 
-  galleries: any[],
-  convertibleEvents: any[] 
+  galleries: EventRecord[],
+  convertibleEvents: EventRecord[]
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   // Optimistic UI state for instant star toggling
@@ -46,7 +48,7 @@ export default function AdminGalleryTab({
     }
   };
 
-  const handleConvert = async (event: any) => {
+  const handleConvert = async (event: EventRecord) => {
     if(confirm(`Möchtest du das Event "${event.title}" wirklich in ein Galerie-Album umwandeln?`)) {
       setLoading(true);
       try {
@@ -57,7 +59,7 @@ export default function AdminGalleryTab({
         // I will implement a quick server action inside a new file or add it to events.ts.
         await convertEventToGallery(event.id);
         window.location.reload();
-      } catch (err) {
+      } catch {
         alert("Fehler bei der Umwandlung.");
       }
       setLoading(false);
@@ -96,7 +98,7 @@ export default function AdminGalleryTab({
       });
       setFile(null);
       window.location.reload();
-    } catch (err) {
+    } catch {
       alert("Fehler beim Speichern.");
     }
     setLoading(false);
@@ -114,7 +116,7 @@ export default function AdminGalleryTab({
     try {
       await toggleFeaturedGallery(id, newState);
       router.refresh();
-    } catch (err) {
+    } catch {
       // Rollback on error
       setFeaturedState(prev => ({ ...prev, [id]: currentState }));
     }
@@ -122,7 +124,7 @@ export default function AdminGalleryTab({
   };
 
   return (
-    <div className="relative min-h-[500px]">
+    <div className="relative min-h-[500px] pb-24">
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
@@ -147,7 +149,7 @@ export default function AdminGalleryTab({
               
               <div className="aspect-[4/3] bg-base-light relative">
                 {album.imageUrl ? (
-                  <img src={album.imageUrl} alt={album.title} className="w-full h-full object-cover" />
+                  <Image src={album.imageUrl} alt={album.title} fill sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw" className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-sm opacity-50">Kein Cover</div>
                 )}
@@ -155,7 +157,7 @@ export default function AdminGalleryTab({
                 <button
                   onClick={(e) => handleToggleFeatured(e, album.id, isFeatured)}
                   disabled={loading}
-                  className={`absolute top-3 left-3 z-10 p-2 rounded-full backdrop-blur-sm transition-all shadow-sm ${
+                  className={`absolute top-3 left-3 z-10 p-3 rounded-full backdrop-blur-sm transition-all shadow-sm ${
                     isFeatured 
                       ? "bg-yellow-400 text-white hover:bg-yellow-500 hover:scale-110" 
                       : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white hover:scale-110"
@@ -176,7 +178,7 @@ export default function AdminGalleryTab({
                   <Link href={`/admin/events/${album.id}`} className="flex-1 text-center bg-base-light hover:bg-base-dark hover:text-white transition-colors text-sm font-bold py-2 rounded-lg">
                     Bearbeiten
                   </Link>
-                <button onClick={(e) => handleDelete(e, album.id)} className="px-3 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors rounded-lg flex items-center justify-center">
+                <button aria-label={`${album.title} löschen`} onClick={(e) => handleDelete(e, album.id)} className="min-h-11 min-w-11 px-3 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors rounded-lg flex items-center justify-center">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -194,8 +196,9 @@ export default function AdminGalleryTab({
 
       {/* Floating Action Button */}
       <button 
+        aria-label="Galerie-Album erstellen"
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-accent-green text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 hover:shadow-2xl transition-all z-40"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 sm:bottom-8 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-accent-green text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 hover:shadow-2xl transition-all z-40"
       >
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -205,17 +208,17 @@ export default function AdminGalleryTab({
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white p-6 border-b border-border-light flex justify-between items-center z-10">
+          <div role="dialog" aria-label="Galerie-Album erstellen" className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
+            <div className="sticky top-0 bg-white p-4 sm:p-6 border-b border-border-light flex justify-between items-center gap-3 z-10">
               <h2 className="text-xl font-bold font-display">Galerie-Album erstellen</h2>
-              <button onClick={() => { setIsModalOpen(false); setShowCreateForm(false); }} className="p-2 hover:bg-base-light rounded-full">
+              <button aria-label="Dialog schließen" onClick={() => { setIsModalOpen(false); setShowCreateForm(false); }} className="p-2 min-h-11 min-w-11 shrink-0 hover:bg-base-light rounded-full">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             
-            <div className="p-6 space-y-8">
+            <div className="p-4 sm:p-6 space-y-8">
               {!showCreateForm ? (
                 <>
                   <div>
@@ -241,7 +244,7 @@ export default function AdminGalleryTab({
                       <div className="space-y-3">
                         <p className="text-sm opacity-70 mb-4">Hier sind vergangene Events, die noch keine Galerie sind. Mit einem Klick kannst du sie in ein Galerie-Album umwandeln.</p>
                         {pastEvents.map(event => (
-                          <div key={event.id} className="flex justify-between items-center p-4 border border-border-light rounded-xl hover:border-accent-green transition-colors">
+                          <div key={event.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 border border-border-light rounded-xl hover:border-accent-green transition-colors">
                             <div>
                               <div className="font-bold">{event.title}</div>
                               <div className="text-xs opacity-70">{new Date(event.date).toLocaleDateString('de-DE')} • {event.location}</div>

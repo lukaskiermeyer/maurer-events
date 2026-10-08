@@ -4,10 +4,11 @@ import { useState, useMemo, useRef } from "react";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { updateEvent } from "@/app/actions/events";
-import { uploadImage } from "@/app/actions/upload";
+import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
-import { saveTentSettings } from "@/app/actions/settings";
+import type { EventRecord, ReservationRow, TableRecord, GalleryImage, WaitlistEntry, EventSettings, TentDimensions } from '@/types/domain';
+import type { ScannerGrant } from '@/components/admin/ScannerAccessPanel';
 
 function stringToColor(str: string) {
   let hash = 0;
@@ -36,7 +37,18 @@ import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
 const statusNames: Record<string, string> = { pending: 'Ausstehend', paid: 'Bezahlt', confirmed: 'Bestätigt', checked_in: 'Eingecheckt', cancelled: 'Storniert', expired: 'Abgelaufen', refunded: 'Erstattet', payment_pending: 'Zahlung wird verarbeitet', payment_review: 'Zahlung prüfen', disputed: 'Zahlung angefochten' };
 const statusOptions = (status: string) => [status, ...(ADMIN_TRANSITIONS[status] || [])].filter(next => next !== 'checked_in' || next === status);
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, scannerGrants = [] }: any) {
+interface EventDetailProps {
+  event: EventRecord;
+  initialReservations: ReservationRow[];
+  initialTables: TableRecord[];
+  tentSettings: TentDimensions;
+  initialGallery?: GalleryImage[];
+  initialWaitlist?: WaitlistEntry[];
+  initialEventSettings?: EventSettings;
+  scannerGrants?: ScannerGrant[];
+}
+
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, scannerGrants = [] }: EventDetailProps) {
   const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist" | "settings" | "team">(event.type === 'event' ? 'reservations' : 'edit');
   const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -119,16 +131,11 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const [selectedDate, setSelectedDate] = useState<string>(event.reservableDates?.[0] || new Date(event.date).toISOString().slice(0, 10));
 
-  // Tent Settings
-  const [newTableName, setNewTableName] = useState("");
-  const [newTableCapacity, setNewTableCapacity] = useState(8);
-
   // Generator State
   const [genW, setGenW] = useState(10);
   const [genL, setGenL] = useState(10);
   const [genCap, setGenCap] = useState(8);
-  const [tentW, setTentW] = useState(tentSettings.width);
-  const [tentH, setTentH] = useState(tentSettings.height);
+  const { width: tentW, height: tentH } = tentSettings;
 
   // Search & Filter State for Reservations
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,7 +205,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         walkInReserve: formData.walkInReserve
       });
       alert("Event erfolgreich aktualisiert!");
-    } catch (err) {
+    } catch {
       alert("Fehler beim Aktualisieren.");
     }
     setIsUpdating(false);
@@ -206,7 +213,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleStatusChange = async (id: string, status: string) => {
     setIsUpdating(true);
-    const res = await updateReservationStatus(id, status as any);
+    const res = await updateReservationStatus(id, status);
     if (res && !res.success && res.error) {
       alert(res.error);
     }
@@ -218,7 +225,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     if (selectedBulkIds.length === 0) return;
     if (!confirm(`Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`)) return;
     setIsUpdating(true);
-    const results = await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status as any)));
+    const results = await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status)));
     const errors = results.filter(r => r && !r.success && r.error).map(r => r.error);
     if (errors.length > 0) {
       alert(`Einige Updates sind fehlgeschlagen:\n${errors.join('\n')}`);
@@ -278,7 +285,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
       setGalleryFiles([]);
       setGalleryUrl("");
-    } catch (err) {
+    } catch {
       alert("Fehler beim Bildupload.");
     }
     setIsUpdating(false);
@@ -286,7 +293,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const downloadCSV = () => {
     // We export all currently filtered reservations
-    const rows = initialReservations.filter((row: any) => {
+    const rows = initialReservations.filter((row) => {
       const rDate = new Date(row.reservation.reservationDate).toISOString().split('T')[0];
       if (selectedDate && rDate !== selectedDate) return false;
       const matchesSearch = row.reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -300,8 +307,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
     const csvContent = [
       ["Name", "Email", "Personen", "Tisch", "Status", "Betrag (€)", "Datum"],
-      ...rows.map((r: any) => {
-        const t = initialTables.find((t: any) => t.id === r.reservation.tableId);
+      ...rows.map((r) => {
+        const t = initialTables.find((t) => t.id === r.reservation.tableId);
         return [
           `"${r.reservation.guestName}"`,
           `"${r.reservation.email}"`,
@@ -324,20 +331,32 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     document.body.removeChild(link);
   };
 
+  const changeTableVip = async (table: { id: string; isVip: boolean }) => {
+    const makeVip = !table.isVip;
+    const price = makeVip ? prompt('VIP Aufpreis für den gesamten Tisch (in €)?', '100') : '0';
+    if (price === null) return;
+    const cents = Math.round(Number(price.replace(',', '.')) * 100);
+    if (!Number.isFinite(cents) || cents < 0) { alert('Bitte einen gültigen Aufpreis eingeben.'); return; }
+    setIsUpdating(true);
+    try { await toggleTableVip(table.id, makeVip, cents); }
+    catch { alert('VIP-Einstellung konnte nicht gespeichert werden.'); }
+    finally { setIsUpdating(false); }
+  };
+
   const renderTableMap = (mode: "edit" | "assign") => {
     const grid = [];
     for (let y = 0; y < tentH; y++) {
       for (let x = 0; x < tentW; x++) {
-        const tableHere = initialTables.find((t: any) => t.positionX === x && t.positionY === y);
+        const tableHere = initialTables.find((t) => t.positionX === x && t.positionY === y);
 
         // Find reservations for THIS event that use this table on the selected date
-        const resHere = tableHere ? initialReservations.filter((r: any) => {
+        const resHere = tableHere ? initialReservations.filter((r) => {
           const rDate = new Date(r.reservation.reservationDate).toISOString().split('T')[0];
           return mode === "assign"
             ? r.reservation.tableId === tableHere.id && rDate === selectedDate
             : false;
         }) : [];
-        const totalGuests = resHere.reduce((sum: number, r: any) => sum + r.reservation.guestCount, 0);
+        const totalGuests = resHere.reduce((sum: number, r) => sum + r.reservation.guestCount, 0);
 
         let bgColor = "#e5e7eb"; // light gray
         if (mode === "edit" && tableHere?.isVip) bgColor = "#fef08a"; // yellow-200 for VIP
@@ -347,7 +366,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         if (mode === "assign" && tableHere) {
           if (resHere.length > 0) {
             bgColor = stringToColor(resHere[0].reservation.guestName);
-            tooltip += `\nReserviert für: ${resHere.map((r:any)=>r.reservation.guestName).join(", ")} (${totalGuests} Pers.)`;
+            tooltip += `\nReserviert für: ${resHere.map((r)=>r.reservation.guestName).join(", ")} (${totalGuests} Pers.)`;
           } else {
             bgColor = "#ffffff";
           }
@@ -365,13 +384,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             onContextMenu={(e) => {
               if (mode === "edit" && tableHere) {
                 e.preventDefault();
-                const makeVip = !tableHere.isVip;
-                const priceStr = makeVip ? prompt("VIP Aufpreis für den gesamten Tisch (in €)?", "100") : "0";
-                if (priceStr !== null) {
-                  const price = parseInt(priceStr) * 100; // in cents
-                  setIsUpdating(true);
-                  toggleTableVip(tableHere.id, makeVip, price).then(()=>window.location.reload()).finally(() => setIsUpdating(false));
-                }
+                void changeTableVip(tableHere);
               }
             }}
             onClick={() => {
@@ -399,7 +412,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             className={`
               relative flex flex-col items-center justify-center p-2 rounded-lg border-2
               ${tableHere ? 'border-base-dark cursor-pointer hover:brightness-95 shadow-md' : 'border-dashed border-border-light cursor-crosshair hover:bg-canvas-light'}
-              transition-all h-24 overflow-hidden
+              transition-all ${mode === 'edit' ? 'h-36' : 'h-24'} overflow-hidden
             `}
             style={{ backgroundColor: tableHere ? bgColor : "transparent" }}
           >
@@ -409,7 +422,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 {tableHere.isVip && <span className="bg-yellow-400 text-yellow-900 text-[9px] px-1 rounded absolute top-1 right-1">VIP</span>}
                 {mode === "assign" && resHere.length > 0 && (
                   <div className="flex flex-col items-center gap-1 mt-1 z-10">
-                    {resHere.map((r: any) => (
+                    {resHere.map((r) => (
                       <div key={r.reservation.id} className="group relative flex items-center bg-white/70 px-2 py-0.5 rounded-full whitespace-nowrap">
                         <span className="text-[10px] font-bold truncate max-w-[60px] mr-1">{r.reservation.guestName}</span>
                         <span className="text-[10px] font-bold opacity-60">({r.reservation.guestCount})</span>
@@ -423,7 +436,12 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   </div>
                 )}
                 {mode === "edit" && (
-                   <span className="text-[10px] font-bold opacity-50 absolute bottom-1">Max. {tableHere.capacity}</span>
+                  <>
+                    <span className="text-xs opacity-60">Max. {tableHere.capacity}</span>
+                    <button type="button" disabled={isUpdating} aria-label={`VIP ändern: ${tableHere.name}`}
+                      onClick={e => { e.stopPropagation(); void changeTableVip(tableHere); }}
+                      className="mt-2 min-h-11 w-full rounded-md bg-white/80 px-2 text-xs font-bold disabled:opacity-50">VIP ändern</button>
+                  </>
                 )}
                 {mode === "assign" && resHere.length === 0 && (
                    <span className="text-[10px] font-bold opacity-50 absolute bottom-1">{tableHere.capacity} Plätze</span>
@@ -745,13 +763,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               ) : (
                 <>
                 <div className="space-y-3 md:hidden">
-                  {initialReservations.filter((row: any) => {
+                  {initialReservations.filter((row) => {
                     const reservation = row.reservation;
                     return (!selectedDate || new Date(reservation.reservationDate).toISOString().slice(0, 10) === selectedDate) &&
                       (reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) || reservation.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
                       (filterStatus === 'all' || reservation.status === filterStatus) &&
                       (filterTable === 'all' || (filterTable === 'assigned' ? !!reservation.tableId : !reservation.tableId));
-                  }).map((row: any) => {
+                  }).map((row) => {
                     const reservation = row.reservation;
                     return <article key={reservation.id} className="rounded-2xl border border-border-light p-4 bg-canvas-light/40">
                       <div className="flex items-start gap-3"><input aria-label={`Buchung von ${reservation.guestName} auswählen`} type="checkbox" className="h-5 w-5 mt-1 shrink-0 accent-accent-green" checked={selectedBulkIds.includes(reservation.id)} onChange={e => setSelectedBulkIds(ids => e.target.checked ? [...ids, reservation.id] : ids.filter(id => id !== reservation.id))} />
@@ -762,7 +780,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                         <div><label htmlFor={`status-${reservation.id}`} className="block text-xs font-bold mb-1">Status</label><select id={`status-${reservation.id}`} value={reservation.status} onChange={e => handleStatusChange(reservation.id, e.target.value)} disabled={isUpdating} className="w-full min-h-12 border border-border-light rounded-lg bg-white px-3 text-sm">
                           {statusOptions(reservation.status).map(status => <option key={status} value={status}>{statusNames[status] || status}</option>)}
                         </select></div>
-                        <div><label htmlFor={`table-${reservation.id}`} className="block text-xs font-bold mb-1">Tisch</label><select id={`table-${reservation.id}`} value={reservation.tableId || 'none'} onChange={e => handleTableAssign(reservation.id, e.target.value)} disabled={isUpdating || !['paid', 'confirmed'].includes(reservation.status)} className="w-full min-h-12 border border-border-light rounded-lg bg-white px-3 text-sm disabled:opacity-60"><option value="none">Kein Tisch</option>{initialTables.map((table: any) => <option key={table.id} value={table.id}>{table.name} · {table.capacity} Plätze</option>)}</select></div>
+                        <div><label htmlFor={`table-${reservation.id}`} className="block text-xs font-bold mb-1">Tisch</label><select id={`table-${reservation.id}`} value={reservation.tableId || 'none'} onChange={e => handleTableAssign(reservation.id, e.target.value)} disabled={isUpdating || !['paid', 'confirmed'].includes(reservation.status)} className="w-full min-h-12 border border-border-light rounded-lg bg-white px-3 text-sm disabled:opacity-60"><option value="none">Kein Tisch</option>{initialTables.map((table) => <option key={table.id} value={table.id}>{table.name} · {table.capacity} Plätze</option>)}</select></div>
                       </div>
                     </article>;
                   })}
@@ -778,7 +796,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             onChange={(e) => {
                               if (e.target.checked) {
                                 // Select all filtered
-                                const filtered = initialReservations.filter((row: any) => {
+                                const filtered = initialReservations.filter((row) => {
                                   const rDate = new Date(row.reservation.reservationDate).toISOString().split('T')[0];
                                   if (selectedDate && rDate !== selectedDate) return false;
                                   const matchesSearch = row.reservation.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -789,7 +807,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                                                        (filterTable === "unassigned" && !row.reservation.tableId);
                                   return matchesSearch && matchesStatus && matchesTable;
                                 });
-                                setSelectedBulkIds(filtered.map((r: any) => r.reservation.id));
+                                setSelectedBulkIds(filtered.map((r) => r.reservation.id));
                               } else {
                                 setSelectedBulkIds([]);
                               }
@@ -804,7 +822,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     </thead>
                     <tbody>
                       {initialReservations
-                        .filter((row: any) => {
+                        .filter((row) => {
                           // Match date
                           const rDate = new Date(row.reservation.reservationDate).toISOString().split('T')[0];
                           if (selectedDate && rDate !== selectedDate) return false;
@@ -817,10 +835,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                                                (filterTable === "unassigned" && !row.reservation.tableId);
                           return matchesSearch && matchesStatus && matchesTable;
                         })
-                        .map((row: any) => {
+                        .map((row) => {
                         // Generate color circle for assigned guest
-                        const colorBadge = null;
-                        const assignedTable = initialTables.find((t:any) => t.id === row.reservation.tableId);
+
+                        const assignedTable = initialTables.find((t) => t.id === row.reservation.tableId);
 
                         return (
                         <tr key={row.reservation.id} className="border-b border-border-light/50 hover:bg-canvas-light/50 transition-colors">
@@ -873,9 +891,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                               className="border border-border-light rounded p-2 text-sm bg-white"
                             >
                               <option value="none">-- Kein Tisch --</option>
-                              {initialTables.map((t: any) => {
+                              {initialTables.map((t) => {
                                 // Check if this table is taken ON THIS SPECIFIC DATE
-                                const isTaken = initialReservations.some((r:any) => {
+                                const isTaken = initialReservations.some((r) => {
                                   const rDate = new Date(r.reservation.reservationDate).toISOString().split('T')[0];
                                   return rDate === selectedDate && r.reservation.tableId === t.id && r.reservation.id !== row.reservation.id;
                                 });
@@ -921,7 +939,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
             {tableMode === "edit" && (
               <div className="space-y-6 animate-fade-in">
-                <p className="text-sm opacity-70">Erstelle ein neues Zelt-Layout. Danach kannst du durch Klicken einzelne Tische entfernen oder hinzufügen, um das Layout anzupassen. <strong>Rechtsklick auf einen Tisch markiert ihn als VIP.</strong></p>
+                <p className="text-sm opacity-70">Erstelle ein neues Zelt-Layout. Tippe auf ein freies Feld, um einen Tisch anzulegen, oder auf einen Tisch, um ihn zu entfernen. Über „VIP ändern“ kannst du den Aufpreis einstellen.</p>
                 <div className="bg-canvas-light border border-border-light p-6 rounded-2xl">
                   <form onSubmit={handleGenerate} className="flex flex-wrap gap-4 items-end">
                     <div>
@@ -964,19 +982,19 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
                   {/* Left Sidebar: Unassigned Reservations */}
-                  <div className="xl:col-span-1 bg-canvas-light rounded-xl border border-border-light p-4 h-[600px] flex flex-col">
+                  <div className="xl:col-span-1 bg-canvas-light rounded-xl border border-border-light p-4 max-h-72 xl:max-h-none xl:h-[600px] flex flex-col">
                     <h4 className="font-bold font-display mb-4">Noch zuzuweisen</h4>
                     <div className="flex-1 overflow-y-auto space-y-3 hide-scrollbar pr-2">
-                      {initialReservations.filter((r: any) => {
+                      {initialReservations.filter((r) => {
                         const rDate = new Date(r.reservation.reservationDate).toISOString().split('T')[0];
                         return !r.reservation.tableId && rDate === selectedDate;
                       }).length === 0 ? (
                         <p className="text-sm opacity-50 text-center py-10">Alle Gäste für diesen Tag sind zugewiesen!</p>
                       ) : (
-                        initialReservations.filter((r: any) => {
+                        initialReservations.filter((r) => {
                           const rDate = new Date(r.reservation.reservationDate).toISOString().split('T')[0];
                           return !r.reservation.tableId && rDate === selectedDate;
-                        }).map((r: any) => (
+                        }).map((r) => (
                           <div
                             key={r.reservation.id}
                             draggable
@@ -1037,7 +1055,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               {initialGallery.length === 0 ? (
                 <p className="col-span-full text-center opacity-50 py-10 bg-white rounded-xl border border-border-light shadow-sm">Keine Bilder in der Galerie.</p>
               ) : (
-                initialGallery.map((img: any) => (
+                initialGallery.map((img) => (
                   <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group shadow-sm bg-base-light">
                     <Image src={img.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-105 transition-transform" />
                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -1062,7 +1080,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             alert("Cover erfolgreich geändert!");
                           }
                         }}
-                        className="absolute bottom-2 left-2 right-2 bg-white/90 text-base-dark py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity font-bold text-xs shadow-sm hover:bg-accent-green hover:text-white"
+                        className="admin-image-action absolute bottom-2 left-2 right-2 bg-white/90 text-base-dark min-h-11 py-2 rounded-lg transition-opacity font-bold text-xs shadow-sm hover:bg-accent-green hover:text-white"
                         title="Als Cover festlegen"
                       >
                         Als Cover
@@ -1078,8 +1096,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                           setIsUpdating(false);
                         }
                       }}
-                      className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
+                      className="admin-image-action absolute top-2 right-2 bg-red-500 text-white w-11 h-11 rounded-full transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
                       title="Bild löschen"
+                      aria-label="Bild löschen"
                     >
                       ×
                     </button>
@@ -1096,7 +1115,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             <h3 className="font-display font-bold text-2xl">Warteliste</h3>
             <p className="text-sm opacity-70">Hier siehst du alle Gäste, die auf einen freien Tisch warten. Du kannst sie benachrichtigen, wenn etwas frei wird.</p>
 
-            <div className="bg-canvas-light rounded-2xl border border-border-light overflow-hidden">
+            <div className="admin-waitlist bg-canvas-light rounded-2xl border border-border-light overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-white border-b border-border-light text-sm font-bold uppercase tracking-wider opacity-70">
@@ -1114,12 +1133,12 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                         <td colSpan={5} className="p-8 text-center opacity-50">Keine Einträge auf der Warteliste.</td>
                       </tr>
                     ) : (
-                      initialWaitlist.map((entry: any) => (
+                      initialWaitlist.map((entry) => (
                         <tr key={entry.id} className="hover:bg-white transition-colors">
                           <td className="p-4">{entry.name}</td>
                           <td className="p-4"><a href={`mailto:${entry.email}`} className="text-accent-green underline">{entry.email}</a></td>
-                          <td className="p-4">{entry.guestCount}</td>
-                          <td className="p-4">{new Date(entry.createdAt).toLocaleString('de-DE')}</td>
+                          <td className="p-4"><span className="md:hidden font-bold">Personen: </span>{entry.guestCount}</td>
+                          <td className="p-4"><span className="md:hidden font-bold">Eingetragen: </span>{new Date(entry.createdAt).toLocaleString('de-DE')}</td>
                           <td className="p-4 flex gap-2">
                             {entry.notifiedAt ? (
                               <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold border border-blue-200">
@@ -1130,8 +1149,11 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                                 onClick={async () => {
                                   if (confirm(`Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`)) {
                                     setIsUpdating(true);
-                                    await notifyWaitlistEntry(entry.id);
-                                    setIsUpdating(false);
+                                    try {
+                                      const result = await notifyWaitlistEntry(entry.id);
+                                      if (!result.success) alert(result.error || 'Benachrichtigung fehlgeschlagen.');
+                                    } catch { alert('Benachrichtigung fehlgeschlagen. Bitte erneut versuchen.'); }
+                                    finally { setIsUpdating(false); }
                                   }
                                 }}
                                 disabled={isUpdating}
@@ -1144,12 +1166,14 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                               onClick={async () => {
                                 if (confirm("Eintrag aus der Warteliste löschen?")) {
                                   setIsUpdating(true);
-                                  await removeWaitlistEntry(entry.id, event.id);
-                                  setIsUpdating(false);
+                                  try { await removeWaitlistEntry(entry.id, event.id); }
+                                  catch { alert('Löschen fehlgeschlagen. Bitte erneut versuchen.'); }
+                                  finally { setIsUpdating(false); }
                                 }
                               }}
                               disabled={isUpdating}
-                              className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors disabled:opacity-50"
+                              aria-label={`${entry.name} aus Warteliste löschen`}
+                              className="bg-red-100 text-red-600 min-w-11 min-h-11 text-xs px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors disabled:opacity-50"
                               title="Löschen"
                             >
                               ×

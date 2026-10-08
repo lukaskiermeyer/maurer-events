@@ -6,13 +6,15 @@ import postgres from 'postgres';
 import { chromium, expect } from '@playwright/test';
 
 if (!process.argv.includes('--confirmed-test-database')) throw new Error('Explicit test-database confirmation required');
-const origin = 'http://localhost:3100';
+const origin = process.env.ACCEPTANCE_URL || 'http://localhost:3100';
 const sql = postgres(process.env.DATABASE_URL, { max: 1, connect_timeout: 15 });
 const owner = process.env.ADMIN_EMAILS?.split(',').map(value => value.trim().toLowerCase()).find(Boolean);
 if (!owner) throw new Error('An existing Admin allowlist is required');
 const helper = `scanner-${randomUUID()}@example.com`;
 const adminToken = randomUUID(), helperToken = randomUUID();
 const eventId = randomUUID(), otherEventId = randomUUID();
+const eventDay = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
+const expiryDay = new Date(Date.now() + 8 * 86400000).toISOString().slice(0, 10);
 const bookings = Array.from({ length: 4 }, () => ({ id: randomUUID(), qr: randomUUID() }));
 const manifest = JSON.parse(await fs.readFile('.next/server/server-reference-manifest.json', 'utf8'));
 const actions = Object.fromEntries(Object.entries(manifest.node).map(([id, value]) => [value.exportedName, id]));
@@ -48,8 +50,8 @@ async function staffContext(token, width) {
 
 try {
   await sql.begin(async tx => {
-    for (const id of [eventId, otherEventId]) await tx`INSERT INTO public.events (id,title,date,location,description,reservable,allow_table_selection,max_capacity,reservable_dates) VALUES (${id},'Mobile Admin Test', '2026-10-13 00:00:00', 'Testzelt', 'Temporary browser acceptance fixture', true, false, 100, '["2026-10-13"]')`;
-    for (const [index, booking] of bookings.entries()) await tx`INSERT INTO public.reservations (id,event_id,reservation_date,guest_name,email,guest_count,selected_time,amount_total,status,qr_code_text) VALUES (${booking.id},${index === 3 ? otherEventId : eventId},'2026-10-13 00:00:00',${`Browser Gast ${index + 1}`},'guest@example.com',1,'18:00',2563,'confirmed',${booking.qr})`;
+    for (const id of [eventId, otherEventId]) await tx`INSERT INTO public.events (id,title,date,location,description,reservable,allow_table_selection,max_capacity,reservable_dates) VALUES (${id},'Mobile Admin Test', ${eventDay}, 'Testzelt', 'Temporary browser acceptance fixture', true, false, 100, ${JSON.stringify([eventDay])})`;
+    for (const [index, booking] of bookings.entries()) await tx`INSERT INTO public.reservations (id,event_id,reservation_date,guest_name,email,guest_count,selected_time,amount_total,status,qr_code_text) VALUES (${booking.id},${index === 3 ? otherEventId : eventId},${eventDay},${`Browser Gast ${index + 1}`},'guest@example.com',1,'18:00',2563,'confirmed',${booking.qr})`;
     for (const [id, email] of [[adminToken, owner], [helperToken, helper]]) await tx`INSERT INTO public.admin_sessions (id,email,valid_until) VALUES (${id},${email},NOW() + INTERVAL '30 minutes')`;
   });
   browser = await chromium.launch({ headless: true });
@@ -79,7 +81,7 @@ try {
     await page.getByRole('button', { name: 'Einlass-Team', exact: true }).click();
     if (width === 390) {
       await page.getByLabel('E-Mail des Helfers').fill(helper);
-      await page.getByLabel('Zugang bis einschließlich').fill('2026-10-15');
+      await page.getByLabel('Zugang bis einschließlich').fill(expiryDay);
       await page.getByRole('button', { name: 'Scanner-Zugang freigeben' }).click();
       await expect(page.getByRole('status')).toContainText('Scanner-Zugang gespeichert');
       await expect(page.getByText(helper, { exact: true })).toBeVisible();
@@ -93,12 +95,22 @@ try {
   if (!grant) throw new Error('UI did not persist the scanner grant');
   const adminRead = await invoke(adminToken, 'getReservationsByEvent', [eventId]);
   if (adminRead.status !== 200 || !adminRead.body.includes('Browser Gast 1')) throw new Error('Admin reservation action not available');
+  // Verify both the action response and the server-rendered client boundary.
+  const dashboardResponse = await fetch(`${origin}/admin/events/${eventId}`, { headers: { Cookie: `admin_token=${adminToken}` } });
+  const dashboard = { status: dashboardResponse.status, body: await dashboardResponse.text() };
+  if (!dashboard.body.includes('Browser Gast 1')) throw new Error('Dashboard reservation fixture missing');
+  for (const response of [adminRead, dashboard]) {
+    if (response.status !== 200) throw new Error('Admin reservation listing unavailable');
+    for (const field of ['checkoutParams', 'requestHash', 'idempotencyKey', 'ticketEmailPayload']) {
+      if (response.body.includes(field)) throw new Error(`Admin reservation listing exposes ${field}`);
+    }
+  }
   const deniedActions = [
     ['getReservations', []], ['getReservationsByEvent', [eventId]],
     ['updateEvent', [eventId, { maxCapacity: 200 }]],
     ['updateReservationStatus', [bookings[0].id, 'cancelled']],
     ['assignTableToReservation', [bookings[0].id, null]],
-    ['saveScannerAccess', [{ eventId: otherEventId, email: helper, validUntil: '2026-10-15T21:59:59Z' }]],
+    ['saveScannerAccess', [{ eventId: otherEventId, email: helper, validUntil: `${expiryDay}T21:59:59Z` }]],
     ['removeScannerAccess', [eventId, grant.id]],
     ['checkInGuestByQR', [otherEventId, bookings[3].qr]],
   ];

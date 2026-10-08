@@ -35,9 +35,10 @@ record('config.stripe-mode', (production ? !stripeTest && env.STRIPE_SECRET_KEY?
 
 await check('database', async () => {
   if (!configured('DATABASE_URL')) return;
-  const db = postgres(env.DATABASE_URL, { max: 1, connect_timeout: 10, idle_timeout: 1, connection: {search_path:'public'} });
+  const db = postgres(env.DATABASE_URL, { max: 1, prepare: false, connect_timeout: 10, idle_timeout: 1 });
   try {
     const snapshot = await db.begin('read only', async tx => {
+      await tx`SET LOCAL search_path = public`;
       await tx`SET LOCAL statement_timeout = '15000ms'`;
       const columns = await tx`SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'`;
       const has = (table, column) => columns.some(c => c.table_name === table && c.column_name === column);

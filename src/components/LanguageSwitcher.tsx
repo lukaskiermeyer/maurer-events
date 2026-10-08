@@ -14,7 +14,7 @@ export default function LanguageSwitcher() {
 
   const toggleLocale = () => {
     startTransition(() => {
-      router.replace(pathname, { locale: nextLocale, scroll: false });
+      router.replace(`${pathname}${window.location.search}`, { locale: nextLocale, scroll: false });
     });
   };
 

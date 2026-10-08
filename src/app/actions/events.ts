@@ -14,7 +14,7 @@ export async function createEvent(data: {
   title: string;
   date: Date;
   endDate?: Date;
-  reservableDates?: any;
+  reservableDates?: string[];
   location: string;
   description: string;
   imageUrl?: string;
@@ -99,7 +99,6 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
 export async function deleteEvent(id: string) {
   await requireAdmin();
 
-  const { inArray, eq } = await import("drizzle-orm");
   const { reservations } = await import("@/db/schema");
 
   await db.transaction(async (tx) => {
@@ -161,16 +160,19 @@ export async function getAdminStats() {
 
   const statsAgg = await db.select({
     totalRevenue: sum(
-      sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed') THEN ${reservations.amountTotal} ELSE 0 END`
+      sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed', 'checked_in') THEN ${reservations.amountTotal} ELSE 0 END`
     ).mapWith(Number),
     devShare: sum(
-      sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed') AND ${tables.isVip} = true THEN ${tables.vipPrice} * 0.20 ELSE 0 END`
+      sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed', 'checked_in') AND ${tables.isVip} = true THEN ${tables.vipPrice} * 0.20 ELSE 0 END`
     ).mapWith(Number),
     unassignedPaidCount: sum(
       sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed') AND ${reservations.tableId} IS NULL THEN 1 ELSE 0 END`
     ).mapWith(Number),
     pendingCount: sum(
-      sql`CASE WHEN ${reservations.status} = 'pending' THEN 1 ELSE 0 END`
+      sql`CASE WHEN ${reservations.status} IN ('pending', 'payment_pending') THEN 1 ELSE 0 END`
+    ).mapWith(Number),
+    totalGuests: sum(
+      sql`CASE WHEN ${reservations.status} IN ('paid', 'confirmed', 'checked_in') THEN ${reservations.guestCount} ELSE 0 END`
     ).mapWith(Number),
     totalReservations: count()
   })
@@ -218,6 +220,7 @@ export async function getAdminStats() {
     totalEvents: allEvents.length,
     reservableEvents: allEvents.filter(e => e.reservable).length,
     totalReservations,
+    totalGuests: statsAgg[0]?.totalGuests || 0,
     waitlistCount,
     revenue: totalRevenue / 100,
     devShare: devShare / 100,

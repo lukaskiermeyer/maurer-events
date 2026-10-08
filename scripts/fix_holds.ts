@@ -57,8 +57,8 @@ async function main() {
       console.warn('\n⚠️  Einige Datensätze konnten nicht migriert werden.');
     }
 
-  } catch (err: any) {
-    console.error('❌ Migration fehlgeschlagen:', err.message);
+  } catch (err) {
+    console.error('❌ Migration fehlgeschlagen:', err instanceof Error ? err.message : 'Unbekannter Fehler');
     process.exit(1);
   } finally {
     await sql.end();

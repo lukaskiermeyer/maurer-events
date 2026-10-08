@@ -12,10 +12,22 @@ import { uuid } from '@/lib/reservation-policy';
 
 const service = reservationAdmin(db);
 
+// Only select fields needed by the administration UI. Frozen checkout and
+// email payloads, request hashes and retry keys never cross the client boundary.
+const adminReservationColumns = {
+  id: reservations.id, eventId: reservations.eventId, tableId: reservations.tableId,
+  reservationDate: reservations.reservationDate, guestName: reservations.guestName,
+  email: reservations.email, guestCount: reservations.guestCount, selectedTime: reservations.selectedTime,
+  amountTotal: reservations.amountTotal, stripeSessionId: reservations.stripeSessionId,
+  status: reservations.status, expiresAt: reservations.expiresAt, pdfUrl: reservations.pdfUrl,
+  qrCodeText: reservations.qrCodeText, ticketSentAt: reservations.ticketSentAt,
+  scannedAt: reservations.scannedAt, createdAt: reservations.createdAt, updatedAt: reservations.updatedAt,
+};
+
 export async function getReservations() {
   await requireAdmin();
   const results = await db.select({
-    reservation: reservations,
+    reservation: adminReservationColumns,
     eventTitle: events.title,
     eventDate: events.date,
     tableName: tables.name
@@ -25,10 +37,7 @@ export async function getReservations() {
       .leftJoin(tables, eq(reservations.tableId, tables.id))
       .orderBy(desc(reservations.createdAt));
 
-  return results.map(({ reservation, ...row }) => {
-    const { checkoutParams, requestHash, idempotencyKey, ticketEmailPayload, ...publicReservation } = reservation;
-    return { ...row, reservation: publicReservation };
-  });
+  return results;
 }
 
 export async function assignTableToReservation(reservationId: string, tableId: string | null) {
@@ -72,7 +81,7 @@ export async function checkInGuestByQR(eventId: string, qrCodeText: string) {
 export async function getReservationsByEvent(eventId: string) {
   await requireAdmin(); uuid(eventId);
   const results = await db.select({
-    reservation: reservations,
+    reservation: adminReservationColumns,
     eventTitle: events.title,
     eventDate: events.date,
     tableName: tables.name
@@ -83,8 +92,5 @@ export async function getReservationsByEvent(eventId: string) {
       .where(eq(reservations.eventId, eventId))
       .orderBy(desc(reservations.createdAt));
 
-  return results.map(({ reservation, ...row }) => {
-    const { checkoutParams, requestHash, idempotencyKey, ticketEmailPayload, ...publicReservation } = reservation;
-    return { ...row, reservation: publicReservation };
-  });
+  return results;
 }

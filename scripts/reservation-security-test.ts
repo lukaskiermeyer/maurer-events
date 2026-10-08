@@ -11,6 +11,7 @@ import type Stripe from 'stripe';
 import * as schema from '../src/db/schema';
 import type { db as appDb } from '../src/db';
 import { createCheckoutService, parseCheckout } from '../src/lib/checkout';
+import { getBookingConfirmation } from '../src/lib/booking-confirmation';
 import { reservationAdmin } from '../src/lib/reservation-admin';
 import { processReservationWebhook } from '../src/lib/stripe-webhook';
 import { reconcileExpiredReservations } from '../src/lib/reservation-cleanup';
@@ -130,6 +131,32 @@ test('Concurrent full-table bookings have exactly one winner', async () => {
   const checkout = createCheckoutService(connection, fake.stripe, captcha);
   const results = await Promise.allSettled(Array.from({ length: 12 }, () => checkout({ ...f.input, guestCount: 8, email: `${randomUUID()}@example.com`, idempotencyKey: randomUUID() })));
   assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+});
+
+test('Checkout returns to the booking confirmation in the selected language', async () => {
+  for (const locale of [undefined, 'de', 'en']) {
+    const f = await fixture({ table: false }); const fake = fakeStripe();
+    await createCheckoutService(connection, fake.stripe, captcha)({ ...f.input, locale });
+    const [reservation] = await rows(f.event.id);
+    const url = new URL(reservation.checkoutParams.success_url as string);
+    assert.equal(url.pathname, `${locale === 'en' ? '/en' : ''}/reservierung/erfolgreich`);
+    assert.equal(url.searchParams.get('session_id'), '{CHECKOUT_SESSION_ID}');
+  }
+  const f = await fixture();
+  assert.throws(() => parseCheckout({ ...f.input, locale: 'https://attacker.example' }), /Sprache/);
+});
+
+test('Booking confirmation relies on stored payment status and exposes no guest data', async () => {
+  const f = await fixture();
+  for (const status of ['pending', 'payment_pending', 'paid', 'confirmed', 'checked_in', 'payment_review', 'cancelled', 'expired', 'refunded', 'disputed'] as const) {
+    const reservation = await booked(f, { status });
+    const expected = ['paid', 'confirmed', 'checked_in'].includes(status) ? 'success'
+      : ['pending', 'payment_pending'].includes(status) ? 'pending' : 'unavailable';
+    assert.equal(await getBookingConfirmation(reservation.stripeSessionId, connection), expected);
+  }
+  for (const id of [undefined, '', true, ['cs_test_1234567890'], 'success=true', `cs_${randomUUID()}`]) {
+    assert.equal(await getBookingConfirmation(id, connection), 'unavailable');
+  }
 });
 test('20 duplicate requests produce a single reservation and Stripe session', async () => {
   const f = await fixture(); const fake = fakeStripe();
@@ -464,14 +491,17 @@ test('A confirmed expiry permits a new attempt, and the old key never creates an
   assert.equal(fake.keys.size, 2);
 });
 test('Reservation wizard renders single-day events with actual RSC Date values', async () => {
-  const f = await fixture({ table: false });
   const messages = JSON.parse(await readFile('messages/de.json', 'utf8'));
   // The provider declares children as required, so React's createElement overload
   // requires it in props even though JSX ordinarily supplies it implicitly.
-  // eslint-disable-next-line react/no-children-prop
-  const html = renderToString(createElement(NextIntlClientProvider, { locale: 'de', messages, timeZone: 'Europe/Berlin', now: new Date(), children:
-    createElement(ReservationSection, { initialEvents: [f.event], initialSelectedEvent: f.event.id }) }));
-  assert.ok(html.includes('reservation-wizard'));
-  assert.ok(html.includes('Weiter'));
-  assert.ok(!html.includes('Uhrzeit ist wegen'));
+  for (const table of [false, true]) {
+    const f = await fixture({ table });
+    // eslint-disable-next-line react/no-children-prop
+    const html = renderToString(createElement(NextIntlClientProvider, { locale: 'de', messages, timeZone: 'Europe/Berlin', now: new Date(), children:
+      createElement(ReservationSection, { initialEvents: [f.event], initialSelectedEvent: f.event.id }) }));
+    assert.ok(html.includes('reservation-wizard'));
+    assert.ok(html.includes('Weiter'));
+    assert.ok(!html.includes('Uhrzeit ist wegen'));
+    assert.ok(html.replaceAll('<!-- -->', '').includes(`${table ? 10 : 1} Personen`));
+  }
 });

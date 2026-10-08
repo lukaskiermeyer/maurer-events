@@ -1,6 +1,6 @@
 import { db } from '../src/db';
 import { events, galleries } from '../src/db/schema';
-import { eq, like } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { randomUUID } from 'crypto';
 
@@ -67,8 +67,8 @@ async function main() {
         const newUrl = await processImage(ev.imageUrl, 'event_cover.jpg');
         await db.update(events).set({ imageUrl: newUrl }).where(eq(events.id, ev.id));
         console.log(`-> Event Cover aktualisiert: ${newUrl}`);
-      } catch (err: any) {
-        console.error(`Fehler bei Event ${ev.title}:`, err.message);
+      } catch (err) {
+        console.error(`Fehler bei Event ${ev.title}:`, err instanceof Error ? err.message : 'Unbekannter Fehler');
       }
     }
   }
@@ -82,8 +82,8 @@ async function main() {
         const newUrl = await processImage(gal.imageUrl, 'gallery_img.jpg');
         await db.update(galleries).set({ imageUrl: newUrl }).where(eq(galleries.id, gal.id));
         console.log(`-> Galeriebild aktualisiert: ${newUrl}`);
-      } catch (err: any) {
-        console.error(`Fehler bei Galeriebild ${gal.id}:`, err.message);
+      } catch (err) {
+        console.error(`Fehler bei Galeriebild ${gal.id}:`, err instanceof Error ? err.message : 'Unbekannter Fehler');
       }
     }
   }

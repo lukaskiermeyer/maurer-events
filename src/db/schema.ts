@@ -22,7 +22,7 @@ export const events = pgTable('events', {
   reservable: boolean('reservable').default(false).notNull(),
   allowTableSelection: boolean('allow_table_selection').default(true).notNull(),
   maxCapacity: integer('max_capacity').default(0).notNull(),
-  reservableDates: json('reservable_dates'), // Array of ISO date strings
+  reservableDates: json('reservable_dates').$type<string[]>(), // Array of ISO date strings
   minimumConsumption: integer('minimum_consumption').default(5000), // Default 50â‚¬ (in cents)
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible

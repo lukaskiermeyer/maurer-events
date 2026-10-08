@@ -2,8 +2,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { assertBookingWindow, bookingInstant, DEFAULT_PACKAGES, DEFAULT_TIMES } from '@/lib/reservation-policy';
-import { useTranslations } from "next-intl";
+import { assertBookingWindow, bookingInstant, DEFAULT_PACKAGES, DEFAULT_TIMES, DEFAULT_TABLE_GUESTS } from '@/lib/reservation-policy';
+import { useLocale, useTranslations } from "next-intl";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { getTables, getBookedTableIds } from "@/app/actions/tables";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -15,22 +15,27 @@ import Step2_TableSelection from "./reservation/Step2_TableSelection";
 import Step3_TimePackage from "./reservation/Step3_TimePackage";
 import Step4_Checkout from "./reservation/Step4_Checkout";
 import SummaryPanel from "./reservation/SummaryPanel";
+import type { ReservationEvent, PublicEventSettings, TableRecord } from '@/types/domain';
 
-export default function ReservationSection({ initialEvents, initialSelectedEvent }: { initialEvents: any[], initialSelectedEvent?: string }) {
+export default function ReservationSection({ initialEvents, initialSelectedEvent }: { initialEvents: ReservationEvent[], initialSelectedEvent?: string }) {
   const t = useTranslations("Reservation");
-  const reservableEvents = initialEvents.filter((e: any) => e.reservable);
+  const locale = useLocale();
+  const reservableEvents = initialEvents.filter(e => e.reservable);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedEvent, setSelectedEvent] = useState(initialSelectedEvent || "");
-  const [eventSettings, setEventSettings] = useState<any>(null);
+  const [settingsResult, setSettingsResult] = useState<{ eventId: string; data: PublicEventSettings | null } | null>(null);
+  const eventSettings = settingsResult?.eventId === selectedEvent ? settingsResult.data : null;
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
 
-  const [tables, setTables] = useState<any[]>([]);
-  const [bookedTableIds, setBookedTableIds] = useState<string[]>([]);
+  const [tables, setTables] = useState<TableRecord[]>([]);
+  const [bookedResult, setBookedResult] = useState<{ key: string; ids: string[] } | null>(null);
   const [selectedTableId, setSelectedTableId] = useState("");
 
-  const [guests, setGuests] = useState(1);
+  const [guests, setGuests] = useState(() =>
+    reservableEvents.find(event => event.id === initialSelectedEvent)?.allowTableSelection === false ? 1 : DEFAULT_TABLE_GUESTS
+  );
   const [selectedPackage, setSelectedPackage] = useState("");
 
   const [guestName, setGuestName] = useState("");
@@ -48,29 +53,25 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const [waitlistCaptchaVersion, setWaitlistCaptchaVersion] = useState(0);
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
   const [isStep4Valid, setIsStep4Valid] = useState(false);
-  const [isLoadingBookedTables, setIsLoadingBookedTables] = useState(false);
-
-  const selectedEventObj = reservableEvents.find((e: any) => e.id === selectedEvent);
+  const selectedEventObj = reservableEvents.find(e => e.id === selectedEvent);
   // React Server Components preserve Date values passed from database records.
   const eventDay = selectedEventObj ? new Date(selectedEventObj.date).toISOString().slice(0, 10) : '';
+  const bookingDate = selectedDate || eventDay;
+  const bookingKey = selectedEvent && bookingDate ? `${selectedEvent}:${bookingDate}` : '';
+  const bookedTableIds = bookedResult?.key === bookingKey ? bookedResult.ids : [];
+  const isLoadingBookedTables = !!bookingKey && bookedResult?.key !== bookingKey;
   const isCountdown = selectedEventObj?.publishTablesAt && new Date(selectedEventObj.publishTablesAt) > new Date();
 
   const totalSteps = selectedEventObj?.allowTableSelection !== false ? 4 : 3;
 
   useEffect(() => {
-    async function loadSettings() {
-      if (selectedEvent) {
-        const settings = await getPublicEventSettings(selectedEvent);
-        if (active) setEventSettings(settings);
-      } else {
-        setEventSettings(null);
-      }
-    }
+    if (!selectedEvent) return;
     let active = true;
-    setEventSettings(null);
-    loadSettings().catch(() => { if (active) setCheckoutError(t('error_connection')); });
+    getPublicEventSettings(selectedEvent)
+      .then(data => { if (active) setSettingsResult({ eventId: selectedEvent, data }); })
+      .catch(() => { if (active) setCheckoutError(t('error_connection')); });
     return () => { active = false; };
-  }, [selectedEvent]);
+  }, [selectedEvent, t]);
 
   useEffect(() => {
     async function loadTables() {
@@ -80,52 +81,48 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
     let active = true;
     loadTables();
     return () => { active = false; };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    async function loadBooked() {
-      const date = selectedDate || eventDay;
-      if (selectedEvent && date) {
-        setIsLoadingBookedTables(true);
-        try {
-          const booked = await getBookedTableIds(selectedEvent, date);
-          if (active) setBookedTableIds(booked);
-        } catch { if (active) setCheckoutError(t('error_connection')); }
-        finally { if (active) setIsLoadingBookedTables(false); }
-      }
-    }
+    if (!bookingKey) return;
     let active = true;
-    setBookedTableIds([]);
-    setIsLoadingBookedTables(false);
-    loadBooked();
+    getBookedTableIds(selectedEvent, bookingDate)
+      .then(ids => { if (active) setBookedResult({ key: bookingKey, ids }); })
+      .catch(() => {
+        if (active) {
+          setCheckoutError(t('error_connection'));
+          setBookedResult({ key: bookingKey, ids: [] });
+        }
+      });
     return () => { active = false; };
-  }, [selectedEvent, selectedDate, eventDay]);
+  }, [selectedEvent, bookingDate, bookingKey, t]);
 
-  useEffect(() => {
-    if (selectedTableId) {
-      const tb = tables.find(t => t.id === selectedTableId);
-      if (tb) {
-        setGuests(tb.capacity);
-      }
-    }
-  }, [selectedTableId, tables]);
+  const handleTableChange = (id: string) => {
+    setSelectedTableId(id);
+    const table = tables.find(item => item.id === id);
+    if (table) setGuests(table.capacity);
+  };
 
   // Handle cascading resets when changing earlier steps
   const handleEventChange = (id: string) => {
     if (id === selectedEvent) return;
     setSelectedEvent(id);
+    setSettingsResult(null);
+    setBookedResult(null);
     setSelectedDate("");
     setSelectedTableId("");
     setSelectedTime("");
     setSelectedPackage("");
-    setGuests(1);
+    setGuests(reservableEvents.find(event => event.id === id)?.allowTableSelection === false ? 1 : DEFAULT_TABLE_GUESTS);
   };
 
   const handleDateChange = (date: string) => {
     if (date === selectedDate) return;
     setSelectedDate(date);
+    if (date !== bookingDate) setBookedResult(null);
     setSelectedTableId("");
     setSelectedTime("");
+    setGuests(selectedEventObj?.allowTableSelection === false ? 1 : DEFAULT_TABLE_GUESTS);
   };
 
   const windowMessage = () => {
@@ -178,7 +175,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
 
     const payload = { eventId: selectedEvent, tableId: selectedTableId || null,
       reservationDate: selectedDate || eventDay, selectedTime,
-      guestCount: guests, name: guestName.trim(), email: guestEmail.trim().toLowerCase(), selectedPackage };
+      guestCount: guests, name: guestName.trim(), email: guestEmail.trim().toLowerCase(), selectedPackage, locale };
     const fingerprint = JSON.stringify(payload);
     let stored: string | null = null;
     try { stored = sessionStorage.getItem('reservation-checkout-attempt'); } catch { /* Storage is optional. */ }
@@ -205,7 +202,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
       let data;
       try {
         data = await res.json();
-      } catch (e) {
+      } catch {
         setCheckoutError(t('error_connection') + " (Status: " + res.status + ")");
         setIsCheckingOut(false);
         return;
@@ -226,7 +223,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
       } else {
         setCheckoutError(data.error || t('error_checkout'));
       }
-    } catch (err) {
+    } catch {
       setCheckoutError(t('error_connection'));
     } finally {
       setIsCheckingOut(false);
@@ -368,7 +365,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                       tables={tables}
                       bookedTableIds={bookedTableIds}
                       selectedTableId={selectedTableId}
-                      setSelectedTableId={setSelectedTableId}
+                      setSelectedTableId={handleTableChange}
                       isCountdown={isCountdown ?? false}
                       publishTablesAt={selectedEventObj?.publishTablesAt}
                       setIsWaitlistMode={setIsWaitlistMode}

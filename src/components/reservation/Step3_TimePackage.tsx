@@ -1,5 +1,7 @@
 "use client";
 
+import type { TableRecord, FoodPackage } from '@/types/domain';
+
 import { useTranslations } from "next-intl";
 
 export default function Step3_TimePackage({
@@ -15,17 +17,18 @@ export default function Step3_TimePackage({
   requireFullTable
 }: {
   times: string[];
-  packages: any[];
+  packages: FoodPackage[];
   selectedTime: string;
   selectedPackage: string;
   guests: number;
-  selectedTableObj: any;
+  selectedTableObj: TableRecord | undefined;
   setSelectedTime: (time: string) => void;
   setSelectedPackage: (pkg: string) => void;
   setGuests: (g: number) => void;
   requireFullTable?: boolean;
 }) {
   const t = useTranslations("Reservation");
+  const isFullTable = requireFullTable && !!selectedTableObj;
 
   return (
     <div className="animate-fade-in">
@@ -53,9 +56,9 @@ export default function Step3_TimePackage({
             Gästezahl {selectedTableObj ? `(Max ${selectedTableObj.capacity})` : ''}
           </label>
           <div className="flex items-center gap-4 bg-white border border-border-light rounded-xl p-2 h-[56px]">
-            <button 
+            <button
               onClick={() => setGuests(Math.max(1, guests - 1))} 
-              disabled={requireFullTable && !!selectedTableObj}
+              disabled={isFullTable || guests <= 1}
               className="w-12 h-12 flex items-center justify-center hover:bg-canvas-light transition-colors rounded-lg text-2xl font-normal text-base-dark disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Gästezahl verringern"
             >
@@ -64,16 +67,16 @@ export default function Step3_TimePackage({
             <span className="flex-1 text-center font-bold text-xl text-base-dark" aria-live="polite">{guests}</span>
             <button 
               onClick={() => setGuests(Math.min(selectedTableObj?.capacity || 100, guests + 1))} 
-              disabled={requireFullTable && !!selectedTableObj}
+              disabled={isFullTable || guests >= (selectedTableObj?.capacity || 100)}
               className="w-12 h-12 flex items-center justify-center hover:bg-canvas-light transition-colors rounded-lg text-2xl font-normal text-base-dark disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Gästezahl erhöhen"
             >
               +
             </button>
           </div>
-          {requireFullTable && selectedTableObj && (
-            <p className="text-[10px] text-accent-green font-bold uppercase mt-2 opacity-70">
-              Für diesen Event muss die gesamte Tischkapazität gebucht werden.
+          {isFullTable && (
+            <p className="text-sm text-accent-green mt-3 leading-relaxed">
+              {t('full_table_hint', { count: selectedTableObj.capacity })}
             </p>
           )}
         </div>

@@ -1,6 +1,8 @@
 # Offene Punkte
 
-Der aktuelle Abnahmestand steht in [production-acceptance.md](production-acceptance.md).
+Der aktuelle Stand für den **ersten Kundentest** steht in
+[project-acceptance.md](project-acceptance.md). Die frühere ausführliche
+Produktions-/Providerabnahme bleibt in [production-acceptance.md](production-acceptance.md).
 
 - Freigegebene AGB und Stornobedingungen fehlen; `/agb` und `/widerruf` liefern 404.
 - Warteliste und Zahlungsabschluss mit Tischwahl sind noch offen. Echter OTP-Login mit
@@ -20,9 +22,14 @@ Der aktuelle Abnahmestand steht in [production-acceptance.md](production-accepta
   auf `127.0.0.1` verursachte mit Next.js-URL-Normalisierung eine Locale-Redirectschleife.
 - Docker, produktives Backup/PITR, Monitoring und Scheduler sind auf dem tatsächlichen
   Zielsystem noch nachzuweisen.
-- ESLint prüft jetzt TypeScript und React. Bestehende `any`-Typen und direkte
-  State-Updates in Effekten bleiben ausdrücklich Warnungen; Hook-Reihenfolge,
-  Render-Purity und die übrigen Korrektheitsregeln werden als Fehler geprüft.
+  Docker-Image, Standard-PostgreSQL, Migrations- und Cleanup-Runner sowie konkrete
+  Coolify-Einstellungen sind jetzt in [coolify.md](coolify.md) vorbereitet und
+  lokal im Standalone-Betrieb geprüft. Ein echter Linux-/Coolify-Lauf steht aus.
+- Vercel Hobby ist kein zugesicherter kostenloser Hostingweg für eine kommerzielle
+  Kundenwebsite. Tarif/Nutzungsberechtigung vor Übergabe klären oder Staging auf
+  dem vorhandenen Netcup-Server betreiben.
 
 Die frühere Behauptung einer allgemeinen ESLint-9-/Next-Inkompatibilität ist mit
-der aktualisierten Flat Config nicht mehr zutreffend.
+der aktualisierten Flat Config nicht mehr zutreffend. Die anschließenden 142
+Lint-Warnungen sind ebenfalls behoben: 0 Fehler, 0 Warnungen.
+`npm run lint` schlägt künftig auch bei einer einzelnen Warnung fehl.

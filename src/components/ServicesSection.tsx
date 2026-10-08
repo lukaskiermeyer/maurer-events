@@ -1,4 +1,7 @@
 "use client";
+import Image from 'next/image';
+
+import type { SVGProps } from 'react';
 
 import { motion, Variants } from "framer-motion";
 import { services } from "@/data/services";
@@ -6,7 +9,7 @@ import { useTranslations } from "next-intl";
 
 // Ultra-minimalist traditional SVGs (Thin line art)
 const Icons = {
-  beer: (props: any) => (
+  beer: (props: SVGProps<SVGSVGElement>) => (
     // Maßkrug / Beer (Chunky, cartoon style)
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M7 8v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8" />
@@ -16,7 +19,7 @@ const Icons = {
       <line x1="14" y1="12" x2="14" y2="18" />
     </svg>
   ),
-  briefcase: (props: any) => (
+  briefcase: (props: SVGProps<SVGSVGElement>) => (
     // Briefcase (Chunky)
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <rect x="3" y="7" width="18" height="14" rx="2" fill="currentColor" fillOpacity="0.15" />
@@ -25,7 +28,7 @@ const Icons = {
       <path d="M3 12h18" />
     </svg>
   ),
-  users: (props: any) => (
+  users: (props: SVGProps<SVGSVGElement>) => (
     // Festzelt (Chunky Tent for Vereinsfest)
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M3 21h18L12 5 3 21z" fill="currentColor" fillOpacity="0.15" />
@@ -33,7 +36,7 @@ const Icons = {
       <path d="M9 21v-4a3 3 0 0 1 6 0v4" />
     </svg>
   ),
-  sun: (props: any) => (
+  sun: (props: SVGProps<SVGSVGElement>) => (
     // Sun (Chunky)
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="12" r="5" fill="currentColor" fillOpacity="0.15" />
@@ -81,7 +84,7 @@ export default function ServicesSection() {
               transition={{ duration: 1.2, ease: "easeOut" }}
               className="absolute top-4 md:top-6 lg:top-8 right-full mr-0 md:mr-2 lg:mr-4 w-24 md:w-32 lg:w-40 pointer-events-none hidden sm:block z-0"
             >
-              <img src="/maennchen.svg" alt="Festwirt Icon" className="w-full h-auto brightness-0 invert opacity-15 drop-shadow-md" />
+              <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} className="w-full h-auto brightness-0 invert opacity-15 drop-shadow-md" />
             </motion.div>
 
             <motion.h2
@@ -111,7 +114,7 @@ export default function ServicesSection() {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
         >
-          {services.map((service: any) => {
+          {services.map((service) => {
             const Icon = Icons[service.iconType as keyof typeof Icons];
             return (
               <motion.div
@@ -124,7 +127,7 @@ export default function ServicesSection() {
                     <div className="text-accent-gold mb-4 md:mb-8 bg-accent-gold/15 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300">
                       {Icon && <Icon className="w-6 h-6 md:w-8 md:h-8" />}
                     </div>
-                    <h4 className="font-display font-bold text-base md:text-2xl mb-2 md:mb-3 leading-tight break-words hyphens-auto">{t(`items.${service.id}.title`)}</h4>
+                    <h3 className="font-display font-bold text-base md:text-2xl mb-2 md:mb-3 leading-tight break-words hyphens-auto">{t(`items.${service.id}.title`)}</h3>
                   </div>
                   <p className="font-sans text-base-dark/70 text-xs sm:text-sm md:text-base leading-snug md:leading-relaxed mt-2 md:mt-4 break-words hyphens-auto">
                     {t(`items.${service.id}.description`)}

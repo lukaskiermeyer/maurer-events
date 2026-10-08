@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReservationEvent } from '@/types/domain';
+
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
@@ -12,12 +14,12 @@ export default function Step1_EventDate({
   selectedEventObj,
   windowError
 }: {
-  reservableEvents: any[];
+  reservableEvents: ReservationEvent[];
   selectedEvent: string;
   selectedDate: string;
   setSelectedEvent: (id: string) => void;
   setSelectedDate: (date: string) => void;
-  selectedEventObj: any;
+  selectedEventObj: ReservationEvent | undefined;
   windowError?: string;
 }) {
   const t = useTranslations("Reservation");
@@ -64,7 +66,7 @@ export default function Step1_EventDate({
         <div>
           <label id="event-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('select_event')}</label>
           <div className="grid grid-cols-1 gap-3" role="radiogroup" aria-labelledby="event-label">
-            {reservableEvents.map((event: any) => {
+            {reservableEvents.map((event) => {
               const dateObj = new Date(event.date);
               const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
               return (

@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { saveScannerAccess, removeScannerAccess } from '@/app/actions/scannerAccess';
 
-type Grant = { id: string; email: string; validUntil: Date };
-export default function ScannerAccessPanel({ eventId, eventDate, grants }: { eventId: string; eventDate: Date; grants: Grant[] }) {
+export type ScannerGrant = { id: string; email: string; validUntil: Date };
+export default function ScannerAccessPanel({ eventId, eventDate, grants }: { eventId: string; eventDate: Date; grants: ScannerGrant[] }) {
   const [email, setEmail] = useState('');
   const [until, setUntil] = useState(() => new Date(Math.min(Math.max(new Date(eventDate).getTime() + 2 * 86400000, Date.now() + 86400000), Date.now() + 89 * 86400000)).toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);

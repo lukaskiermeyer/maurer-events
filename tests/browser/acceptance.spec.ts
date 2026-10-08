@@ -19,7 +19,7 @@ test('Admin, event dashboard and scanners require login', async ({ page }) => {
   for (const route of ['/admin', '/admin/events/00000000-0000-4000-8000-000000000000', '/admin/scan', '/admin/events/00000000-0000-4000-8000-000000000000/scanner']) {
     await page.goto(route);
     await expect(page).toHaveURL(/\/admin\/login/);
-    await expect(page.getByRole('heading', { name: 'Admin Login' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^(Admin|Team) Login$/ })).toBeVisible();
   }
   await expect(page.getByText('Admin Login Skip')).toHaveCount(0);
   await expect(page.getByRole('button', {name:'Code anfordern'})).toBeDisabled();
@@ -41,4 +41,29 @@ test('Readiness is uncached and security headers are present', async ({ request 
   expect(home.headers()['x-frame-options']).toBe('DENY');
   expect(home.headers()['x-content-type-options']).toBe('nosniff');
   expect(home.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
+});
+
+test('Public information, event and gallery pages render in both languages', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  for (const prefix of ['', '/en']) {
+    for (const route of ['/termine', '/galerie', '/karriere', '/impressum', '/datenschutz']) {
+      const response = await page.goto(`${prefix}${route}`);
+      expect(response?.status()).toBe(200);
+      await expect(page.locator('h1')).toBeVisible();
+      await expect(page.locator('body')).not.toContainText('Da ist etwas schiefgelaufen.');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Unknown routes and payment confirmation do not expose private data', async ({ page }) => {
+  const response = await page.goto('/en/acceptance-page-does-not-exist');
+  expect(response?.status()).toBe(404);
+  await expect(page.locator('h1')).toBeVisible();
+  await page.goto('/reservierung/erfolgreich?session_id=invalid-acceptance-session');
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+  await expect(page.locator('h1')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('guest@example.com');
 });

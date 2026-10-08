@@ -1,11 +1,13 @@
 "use client";
 
+import type { EventRecord, AdminStats } from '@/types/domain';
+
 import { useState, useMemo } from "react";
 import { createEvent, deleteEvent } from "@/app/actions/events";
-import { uploadImage } from "@/app/actions/upload";
+import { uploadImage } from "@/lib/client-image-upload";
 import { Link } from "@/i18n/routing";
 
-export default function AdminEventList({ initialEvents, stats }: { initialEvents: any[], stats?: any }) {
+export default function AdminEventList({ initialEvents, stats }: { initialEvents: EventRecord[], stats?: AdminStats }) {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -82,7 +84,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
       });
       setFile(null);
       window.location.reload();
-    } catch (err) {
+    } catch {
       alert("Fehler beim Speichern. Ist die Datenbank verbunden?");
     }
     setLoading(false);

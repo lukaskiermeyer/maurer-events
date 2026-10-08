@@ -36,6 +36,16 @@ Buchungen als Karten mit Suche, Status und Tischzuweisung bereit. **Einlass
 starten** öffnet direkt den Veranstaltungs-Scanner. Im Überblick öffnet **Tickets
 scannen** den globalen Scanner. **Abmelden** beendet die aktuelle Sitzung.
 
+Die Warteliste zeigt auf dem Handy alle Angaben und Aktionen untereinander.
+Im Zeltplan öffnet **VIP ändern** den Aufpreisdialog auch ohne Rechtsklick.
+Bei der Gästezuweisung zuerst den Gast auswählen und anschließend einen Tisch
+antippen; Status und Tisch lassen sich auch direkt in der Gästekarte ändern.
+
+Bildaktionen sind auf Touch-Geräten ständig sichtbar und mindestens 44 Pixel
+groß. JPG, PNG und WebP bis 10 MB werden vor dem Hochladen automatisch verkleinert.
+HEIC-Dateien vorher als JPG exportieren. Damit funktionieren typische Handyfotos
+auch innerhalb der Uploadgrenzen des Vercel-Betriebs.
+
 ## Ticketgestaltung
 
 Neue Tickets enthalten das vorhandene Wirt-Männchen als Vektorgrafik, Datum,

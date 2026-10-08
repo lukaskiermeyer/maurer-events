@@ -1,37 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Maurer Events
 
-## Getting Started
+Next.js 16 / React 19 mit deutsch-englischer Eventseite, Tischreservierung,
+Stripe-Zahlung, PDF-Tickets und einem Adminbereich mit Einlass-Team.
 
-First, run the development server:
+## Lokal starten
 
-```bash
+Node.js 22 und PostgreSQL verwenden. `.env.example` nach `.env.local` kopieren
+und eigene Entwicklungs-/Testdienste eintragen. Keine Liveschlüssel für Tests.
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prüfen
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```sh
+npm run lint
+npm run build
+npm run test:security
+npm run test:acceptance
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Sicherheitstests und Abnahme brauchen den isolierten PostgreSQL-Testserver auf
+Port 55439. `test:acceptance` startet den Produktionsbuild auf einem freien lokalen Port,
+erzeugt eine eigene Datenbank und entfernt diese wieder. Browserabhängigkeiten
+müssen installiert sein. Einrichtung: [docs/testing.md](docs/testing.md).
 
-## Learn More
+## Hosting und Übergabe
 
-To learn more about Next.js, take a look at the following resources:
+- [Aktuelle Projektabnahme](docs/project-acceptance.md)
+- [Vercel und Coolify auf Netcup](docs/coolify.md): Konfiguration, Umzug,
+  Migrationen, geplanter Cleanup, Backups und Grenzen des kostenlosen Vercel-Tarifs.
+- [Provider und Betrieb](docs/deployment.md): Variablen, Webhook-Ereignisse, CAPTCHA.
+- [Admin-Anleitung](docs/admin-guide.md)
+- [Offene Punkte vor echtem Verkauf](docs/KNOWN_ISSUES.md)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# maurer-events" 
+Das Docker-Image nutzt den vorhandenen kleingeschriebenen `dockerfile` und läuft
+als Standalone-Server auf Port 3000. Vercel baut dasselbe Repository direkt über
+`vercel.json`. Geheimnisse gehören in die jeweilige Hosting-Umgebung.

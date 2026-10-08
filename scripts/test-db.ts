@@ -22,8 +22,8 @@ async function testConnection() {
     console.log('✅ DB connection successful:', result);
     await sql.end();
     process.exit(0);
-  } catch (err: any) {
-    console.error('❌ DB connection failed:', err.message);
+  } catch (err) {
+    console.error('❌ DB connection failed:', err instanceof Error ? err.message : 'Unknown error');
     await sql.end();
     process.exit(1);
   }
