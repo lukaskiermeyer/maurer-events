@@ -37,7 +37,7 @@ export default function AboutSection() {
                       alt="Florian Maurer - Festwirt"
                       width={600}
                       height={800}
-                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      sizes="(max-width: 768px) 100vw, 400px"
                       className="w-full h-auto object-cover grayscale-[10%] contrast-110" // Leicht analoger Foto-Look
                   />
 

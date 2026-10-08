@@ -55,7 +55,7 @@ export default function FestzeltBanner({ position = "right" }: FestzeltBannerPro
       </svg>
       {/* Content overlay */}
       <div className="absolute top-[20%] left-0 w-full h-[80%] pb-[20%] px-6 flex flex-col items-center justify-center pointer-events-none">
-        <Image src="/mann.png" alt="Festwirt Figur" width={146} height={124} className="w-[65%] md:w-[70%] h-auto object-contain mb-3 filter drop-shadow-md" />
+        <Image src="/mann.png" alt="Festwirt Figur" width={146} height={124} className="w-[65%] md:w-[70%] h-auto object-contain mb-3 filter drop-shadow-md" sizes="(max-width: 768px) 100px, 150px" />
         
         <div className="flex flex-col items-center">
           <h4 className="font-display font-black text-center text-accent-green text-[12px] md:text-base lg:text-lg leading-tight tracking-widest uppercase">

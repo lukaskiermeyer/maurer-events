@@ -60,7 +60,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-24">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/#start" className="flex items-center gap-3 group">
-                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 w-auto object-contain transition-transform group-hover:scale-105" />
+                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 w-auto object-contain transition-transform group-hover:scale-105" priority sizes="324px" />
               </Link>
             </div>
 
@@ -90,6 +90,8 @@ export default function Navbar() {
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-base-dark hover:text-accent-green focus:outline-none"
+                aria-label="Toggle menu"
+                aria-expanded={isOpen}
               >
                 <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {isOpen ? (

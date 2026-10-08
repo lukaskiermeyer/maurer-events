@@ -121,7 +121,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
                   </div>
                 </div>
                 <div className="p-3 sm:p-6">
-                  <h4 className="font-display font-bold text-lg sm:text-xl text-base-dark mb-1 group-hover:text-accent-green transition-colors line-clamp-1">{title}</h4>
+                  <h3 className="font-display font-bold text-lg sm:text-xl text-base-dark mb-1 group-hover:text-accent-green transition-colors line-clamp-1">{title}</h3>
                   <p className="text-base-dark/50 text-xs sm:text-sm font-bold mb-2 sm:mb-3">
                     {new Date(album.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE')}
                   </p>

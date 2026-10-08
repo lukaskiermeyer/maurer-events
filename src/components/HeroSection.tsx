@@ -206,6 +206,7 @@ export default function HeroSection() {
               height={205}
               alt="Maurer Events Festwirt"
               className="w-auto h-full object-contain relative z-10"
+              priority
             />
           </div>
         </motion.div>

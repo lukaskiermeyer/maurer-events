@@ -122,7 +122,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="geo.position" content="48.7618;11.6781" />
         <meta name="ICBM" content="48.7618, 11.6781" />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-base-light text-base-dark">
+      <body className="min-h-full flex flex-col font-sans bg-base-light text-base-dark" suppressHydrationWarning>
         {children}
       </body>
     </html>
