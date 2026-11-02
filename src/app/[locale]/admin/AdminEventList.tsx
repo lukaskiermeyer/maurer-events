@@ -21,7 +21,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     reservable: false,
     allowTableSelection: true,
     maxCapacity: 0,
-    minimumConsumption: 50, // Default 50€
     walkInReserve: 0, // default
     reservableDates: [] as string[],
     publishTablesAt: "" // ISO String
@@ -80,7 +79,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         publishTablesAt: formData.publishTablesAt ? new Date(formData.publishTablesAt) : undefined
       });
       setFormData({
-        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, maxCapacity: 0, minimumConsumption: 50, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
+        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
       });
       setFile(null);
       window.location.reload();
@@ -266,16 +265,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
-                  <input 
-                    type="number" 
-                    min="0"
-                    value={formData.minimumConsumption} 
-                    onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} 
-                    className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" 
-                  />
-                </div>
                 <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Laufkundschaft-Puffer (Pers.)</label>
                   <input 

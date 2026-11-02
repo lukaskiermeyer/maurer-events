@@ -15,6 +15,7 @@
     "test:concurrency": "tsx scripts/concurrency-test.ts",
     "test:security": "tsx --test scripts/reservation-security-test.ts",
     "test:upload": "tsx scripts/test-upload.ts",
+    "test:career": "tsx scripts/career-content-test.ts",
     "check:production": "node scripts/production-preflight.mjs",
     "test:browser": "playwright test",
     "db:migrate": "node scripts/db-migrate.mjs",

@@ -10,6 +10,22 @@ export type GalleryImage = typeof galleries.$inferSelect;
 export type WaitlistEntry = typeof waitlists.$inferSelect;
 export type EventSettings = typeof eventSettings.$inferSelect;
 export type FoodPackage = EventSettings['packages'][number];
+export interface PackagePreset { name: string; packages: FoodPackage[] }
+export interface CareerPosition {
+  id: string;
+  title: string;
+  badge: string;
+  employment: string;
+  description: string;
+  benefits: string[];
+}
+export interface CareerContent {
+  headline: string;
+  intro: string;
+  positions: CareerPosition[];
+  closingTitle: string;
+  closingText: string;
+}
 export type AdminStats = Awaited<ReturnType<typeof getAdminStats>>;
 export type ReservationRow = Awaited<ReturnType<typeof getReservationsByEvent>>[number];
 export type PublicEventSettings = NonNullable<Awaited<ReturnType<typeof getPublicEventSettings>>>;

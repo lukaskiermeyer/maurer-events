@@ -1,8 +1,10 @@
 import { getAllEvents, getAdminStats } from "@/app/actions/events";
+import { getCareerContent } from "@/app/actions/career";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
 import { requireAdmin } from "@/lib/auth";
+import { DEFAULT_CAREER_CONTENT } from "@/lib/career";
 import StaffHeader from '@/components/admin/StaffHeader';
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,9 @@ export default async function AdminPage() {
     console.error("Admin overview unavailable");
   }
 
+  // Karriere-Inhalte dürfen die Übersicht nicht blockieren.
+  const careerContent = await getCareerContent().catch(() => DEFAULT_CAREER_CONTENT);
+
   return (
     <div className="min-h-screen bg-base-light pb-12">
       <StaffHeader />
@@ -36,7 +41,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminTabs initialEvents={events} stats={stats} />
+        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} />
       </div>
     </div>
   );

@@ -1,19 +1,22 @@
 "use client";
 
-import type { EventRecord, AdminStats } from '@/types/domain';
+import type { EventRecord, AdminStats, CareerContent } from '@/types/domain';
 
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
 import AdminGalleryTab from "./AdminGalleryTab";
+import AdminCareerTab from "./AdminCareerTab";
 
-export default function AdminTabs({ 
-  initialEvents, 
-  stats
-}: { 
+export default function AdminTabs({
+  initialEvents,
+  stats,
+  careerContent
+}: {
   initialEvents: EventRecord[],
-  stats?: AdminStats
+  stats?: AdminStats,
+  careerContent: CareerContent
 }) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career">("dashboard");
 
   // Type 'event' usually refers to standard reservable/future events
   const futureEvents = initialEvents.filter(e => e.type === 'event');
@@ -24,7 +27,7 @@ export default function AdminTabs({
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="grid grid-cols-3 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
         <button 
           onClick={() => setActiveTab("dashboard")}
           aria-pressed={activeTab === 'dashboard'}
@@ -45,6 +48,13 @@ export default function AdminTabs({
           className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "gallery" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
         >
           Galerie
+        </button>
+        <button
+          onClick={() => setActiveTab("career")}
+          aria-pressed={activeTab === 'career'}
+          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "career" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
+        >
+          Karriere
         </button>
       </div>
 
@@ -163,6 +173,10 @@ export default function AdminTabs({
       
       {activeTab === "gallery" && (
         <AdminGalleryTab galleries={pastGalleries} convertibleEvents={futureEvents} />
+      )}
+
+      {activeTab === "career" && (
+        <AdminCareerTab initialContent={careerContent} />
       )}
     </div>
   );

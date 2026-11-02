@@ -28,6 +28,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.public.blob.vercel-storage.com',
       },
+      {
+        // Bestandsbilder vor der Cloudinary-Migration; in der CSP bereits erlaubt.
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
   },
   async headers() {

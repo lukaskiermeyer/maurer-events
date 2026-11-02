@@ -4,6 +4,7 @@
     "about": "About Us",
     "services": "Services",
     "events": "Events",
+    "karriere": "Careers",
     "contact": "Contact",
     "event_anfragen": "Inquire Event"
   },
@@ -92,6 +93,9 @@
     "contact_title": "Contact",
     "rights": "Maurer Events. All rights reserved.",
     "impressum": "Imprint",
+    "agb": "Terms",
+    "storno": "Cancellation Policy",
+    "widerruf": "Right of withdrawal",
     "datenschutz": "Privacy Policy"
   },
   "Reservation": {

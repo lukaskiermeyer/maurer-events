@@ -14,7 +14,6 @@ export default function SummaryPanel({
   selectedPackage,
   packages,
   amountTotal,
-  minimumConsumption,
   customServiceFee,
   serviceFeePercent,
   serviceFeeFixedCents
@@ -27,7 +26,6 @@ export default function SummaryPanel({
   selectedPackage: string;
   packages: FoodPackage[];
   amountTotal: number;
-  minimumConsumption: number;
   customServiceFee?: boolean;
   serviceFeePercent?: number;
   serviceFeeFixedCents?: number;
@@ -35,7 +33,7 @@ export default function SummaryPanel({
   const t = useTranslations("Reservation");
 
   const subtotal = selectedPackage 
-    ? amountTotal + ((packages.find(p => p.id === selectedPackage)?.price || 0) * guests) - (minimumConsumption/100 * guests) 
+    ? amountTotal + ((packages.find(p => p.id === selectedPackage)?.price || 0) * guests) 
     : amountTotal;
 
   // Stripe Fee berechnet über zentrale Funktion

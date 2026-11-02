@@ -46,6 +46,7 @@ export default function Navbar() {
     { name: t("about"), href: "/#about" },
     { name: t("services"), href: "/#services" },
     { name: t("events"), href: "/#events" },
+    { name: t("karriere"), href: "/karriere" },
     { name: t("contact"), href: "/#contact" },
   ];
 
@@ -56,21 +57,21 @@ export default function Navbar() {
           showNavbar ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-10 xl:px-16">
           <div className="flex justify-between items-center h-24">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/#start" className="flex items-center gap-3 group">
-                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 w-auto object-contain transition-transform group-hover:scale-105" priority sizes="324px" />
+                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 lg:h-10 xl:h-12 w-auto object-contain transition-transform group-hover:scale-105" priority sizes="162px" />
               </Link>
             </div>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-8 lg:space-x-10">
+            <div className="hidden lg:flex flex-shrink-0 items-center space-x-5 xl:space-x-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="text-base-dark hover:text-accent-green font-sans text-sm font-bold tracking-wide transition-colors"
+                  className="text-base-dark hover:text-accent-green font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors"
                 >
                   {link.name}
                 </Link>
@@ -78,14 +79,14 @@ export default function Navbar() {
               <LanguageSwitcher />
               <Link
                 href="/#contact"
-                className="px-6 py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-sm hover:bg-base-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-base-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
                 {t("event_anfragen")}
               </Link>
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center gap-4">
+            <div className="lg:hidden flex items-center gap-4">
               <LanguageSwitcher />
               <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -112,7 +113,7 @@ export default function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-base-light border-b border-border-light overflow-hidden shadow-xl"
+              className="lg:hidden bg-base-light border-b border-border-light overflow-hidden shadow-xl"
             >
               <div className="px-6 pt-4 pb-8 space-y-4">
                 {navLinks.map((link) => (

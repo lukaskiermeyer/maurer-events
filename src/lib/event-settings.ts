@@ -13,7 +13,7 @@ export async function ensureEventSettings(eventId: string) {
 export function validateEventSettings(input: unknown): Partial<typeof eventSettings.$inferInsert> {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new BookingError('Ungültige Einstellungen.');
   const result: Record<string, unknown> = {};
-  const ranges = { minConsumptionCents: [0, 99999999], cancellationDays: [0, 365], maxBookingsPerEmail: [1, 100], serviceFeePercent: [0, 100], serviceFeeFixedCents: [0, 999999], bookingWindowStartDays: [1, 730], bookingWindowEndHours: [0, 8760] };
+  const ranges = { cancellationDays: [0, 365], maxBookingsPerEmail: [1, 100], serviceFeePercent: [0, 100], serviceFeeFixedCents: [0, 999999], bookingWindowStartDays: [1, 730], bookingWindowEndHours: [0, 8760] };
   const booleans = ['requireFullTable', 'customServiceFee', 'autoSendTicket'];
   for (const [key, value] of Object.entries(input)) {
     if (booleans.includes(key)) {

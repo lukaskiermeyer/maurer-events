@@ -44,6 +44,7 @@ export default function Footer() {
               <li><Link href="/#about" className="hover:text-white transition-colors">{navT("about")}</Link></li>
               <li><Link href="/#services" className="hover:text-white transition-colors">{navT("services")}</Link></li>
               <li><Link href="/#events" className="hover:text-white transition-colors">{navT("events")}</Link></li>
+              <li><Link href="/karriere" className="hover:text-white transition-colors">{navT("karriere")}</Link></li>
               <li><Link href="/#contact" className="hover:text-white transition-colors">{navT("contact")}</Link></li>
             </ul>
           </div>
@@ -64,7 +65,10 @@ export default function Footer() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-2 flex flex-col md:flex-row justify-between items-center md:items-center gap-2 md:gap-4">
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left text-xs text-white/60 font-sans font-medium">
             <p>&copy; {new Date().getFullYear()} {t("rights")}</p>
-            <div className="flex space-x-6 md:space-x-8">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:gap-x-8">
+              <Link href="/agb" className="hover:text-white transition-colors">{t("agb")}</Link>
+              <Link href="/stornobedingungen" className="hover:text-white transition-colors">{t("storno")}</Link>
+              <Link href="/widerruf" className="hover:text-white transition-colors">{t("widerruf")}</Link>
               <Link href="/impressum" className="hover:text-white transition-colors">{t("impressum")}</Link>
               <Link href="/datenschutz" className="hover:text-white transition-colors">{t("datenschutz")}</Link>
             </div>

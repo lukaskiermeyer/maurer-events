@@ -265,8 +265,8 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
   const packages = eventSettings?.packages || DEFAULT_PACKAGES;
 
   const selectedTableObj = tables.find(t => t.id === selectedTableId);
-  const minimumConsumption = eventSettings?.minConsumptionCents ?? (selectedEventObj?.minimumConsumption || 5000);
-  let amountTotal = (minimumConsumption / 100) * guests;
+  // Der Paketpreis pro Person ist die einzige Preisquelle; nur der VIP-Aufpreis kommt hinzu.
+  let amountTotal = 0;
   if (selectedTableObj?.isVip) {
     amountTotal += (selectedTableObj.vipPrice || 0) / 100;
   }
@@ -329,7 +329,6 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                 selectedPackage={selectedPackage}
                 packages={packages}
                 amountTotal={amountTotal}
-                minimumConsumption={minimumConsumption}
                 customServiceFee={eventSettings?.customServiceFee}
                 serviceFeePercent={eventSettings?.serviceFeePercent}
                 serviceFeeFixedCents={eventSettings?.serviceFeeFixedCents}
@@ -451,7 +450,6 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                 selectedPackage={selectedPackage}
                 packages={packages}
                 amountTotal={amountTotal}
-                minimumConsumption={minimumConsumption}
                 customServiceFee={eventSettings?.customServiceFee}
                 serviceFeePercent={eventSettings?.serviceFeePercent}
                 serviceFeeFixedCents={eventSettings?.serviceFeeFixedCents}

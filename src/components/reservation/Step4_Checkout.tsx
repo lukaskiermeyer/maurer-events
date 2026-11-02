@@ -105,7 +105,7 @@ export default function Step4_Checkout({
         </div>
         
         <div className="text-sm text-base-dark/60 leading-relaxed pt-4 border-t border-border-light">
-          Mit dem Klick auf den Button akzeptierst du unsere <a href="/agb" className="underline hover:text-accent-green font-bold" target="_blank">AGB</a> und <a href="/widerruf" className="underline hover:text-accent-green font-bold" target="_blank">Stornobedingungen</a>.
+          Mit dem Klick auf den Button akzeptierst du unsere <a href="/agb" className="underline hover:text-accent-green font-bold" target="_blank" rel="noopener">AGB</a>, die <a href="/stornobedingungen" className="underline hover:text-accent-green font-bold" target="_blank" rel="noopener">Stornobedingungen</a> und die <a href="/datenschutz" className="underline hover:text-accent-green font-bold" target="_blank" rel="noopener">Datenschutzerklärung</a>. Hinweise zum <a href="/widerruf" className="underline hover:text-accent-green font-bold" target="_blank" rel="noopener">Widerrufsrecht</a>.
         </div>
       </div>
     </div>

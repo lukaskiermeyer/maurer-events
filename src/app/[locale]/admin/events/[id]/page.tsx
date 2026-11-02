@@ -1,6 +1,6 @@
 import { getReservationsByEvent } from "@/app/actions/reservations";
 import { getTables } from "@/app/actions/tables";
-import { getTentSettings } from "@/app/actions/settings";
+import { getTentSettings, getPackagePresets } from "@/app/actions/settings";
 import { getGalleryImages } from "@/app/actions/gallery";
 import { getWaitlist } from "@/app/actions/waitlist";
 import { getEventSettings } from "@/app/actions/eventSettings";
@@ -24,14 +24,15 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants] = await Promise.all([
+  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants, packagePresets] = await Promise.all([
     getReservationsByEvent(resolvedParams.id),
     getTables(),
     getTentSettings(),
     getGalleryImages(resolvedParams.id),
     getWaitlist(resolvedParams.id),
     getEventSettings(resolvedParams.id),
-    db.select({ id: scannerAccess.id, email: scannerAccess.email, validUntil: scannerAccess.validUntil }).from(scannerAccess).where(eq(scannerAccess.eventId, resolvedParams.id))
+    db.select({ id: scannerAccess.id, email: scannerAccess.email, validUntil: scannerAccess.validUntil }).from(scannerAccess).where(eq(scannerAccess.eventId, resolvedParams.id)),
+    getPackagePresets()
   ]);
 
   return (
@@ -58,6 +59,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           initialGallery={galleryImages}
           initialWaitlist={waitlistEntries}
           initialEventSettings={eventSettings}
+          initialPackagePresets={packagePresets}
           scannerGrants={scannerGrants}
         />
       </div>

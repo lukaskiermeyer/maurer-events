@@ -7,7 +7,7 @@ import { updateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
-import type { EventRecord, ReservationRow, TableRecord, GalleryImage, WaitlistEntry, EventSettings, TentDimensions } from '@/types/domain';
+import type { EventRecord, ReservationRow, TableRecord, GalleryImage, WaitlistEntry, EventSettings, TentDimensions, PackagePreset } from '@/types/domain';
 import type { ScannerGrant } from '@/components/admin/ScannerAccessPanel';
 
 function stringToColor(str: string) {
@@ -31,6 +31,7 @@ const ReactQuill = dynamic(() => import("react-quill-new"), {
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 
 import { updateEventSettings } from "@/app/actions/eventSettings";
+import { deletePackagePreset, getPackagePresets, savePackagePreset } from "@/app/actions/settings";
 import ScannerAccessPanel from '@/components/admin/ScannerAccessPanel';
 import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
 
@@ -45,10 +46,11 @@ interface EventDetailProps {
   initialGallery?: GalleryImage[];
   initialWaitlist?: WaitlistEntry[];
   initialEventSettings?: EventSettings;
+  initialPackagePresets?: PackagePreset[];
   scannerGrants?: ScannerGrant[];
 }
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, scannerGrants = [] }: EventDetailProps) {
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], scannerGrants = [] }: EventDetailProps) {
   const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist" | "settings" | "team">(event.type === 'event' ? 'reservations' : 'edit');
   const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -67,7 +69,6 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     reservable: event.reservable,
     allowTableSelection: event.allowTableSelection ?? true,
     maxCapacity: event.maxCapacity || 0,
-    minimumConsumption: event.minimumConsumption / 100,
     walkInReserve: event.walkInReserve || 0
   });
 
@@ -76,7 +77,6 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const [settingsData, setSettingsData] = useState({
     requireFullTable: initialEventSettings?.requireFullTable ?? true,
-    minConsumptionCents: initialEventSettings?.minConsumptionCents ?? 5000,
     timeSlots: initialEventSettings?.timeSlots ?? ['17:00', '18:00', '19:00'],
     packages: initialEventSettings?.packages ?? [
       { id: 'brotzeit', name: 'Brotzeit-Paket', price: 25, description: '1 Maß & 1 halbes Hendl', popular: false },
@@ -91,6 +91,47 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     bookingWindowEndHours: initialEventSettings?.bookingWindowEndHours ?? 2,
     autoSendTicket: initialEventSettings?.autoSendTicket ?? true,
   });
+
+  const [presets, setPresets] = useState<PackagePreset[]>(initialPackagePresets);
+  const [selectedPreset, setSelectedPreset] = useState("");
+  const [presetName, setPresetName] = useState("");
+  const [isPresetBusy, setIsPresetBusy] = useState(false);
+
+  const applyPreset = () => {
+    const preset = presets.find(p => p.name === selectedPreset);
+    if (!preset) return;
+    // Kopie, damit spätere Änderungen am Event die Vorlage nicht verändern.
+    setSettingsData(p => ({ ...p, packages: preset.packages.map(pkg => ({ ...pkg })) }));
+  };
+
+  const persistPreset = async () => {
+    setIsPresetBusy(true);
+    try {
+      await savePackagePreset(presetName, settingsData.packages);
+      setPresets(await getPackagePresets());
+      setSelectedPreset(presetName.trim());
+      setPresetName("");
+      alert("Vorlage gespeichert.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Vorlage konnte nicht gespeichert werden.");
+    } finally {
+      setIsPresetBusy(false);
+    }
+  };
+
+  const removePreset = async () => {
+    if (!selectedPreset || !confirm(`Vorlage "${selectedPreset}" löschen?`)) return;
+    setIsPresetBusy(true);
+    try {
+      await deletePackagePreset(selectedPreset);
+      setPresets(await getPackagePresets());
+      setSelectedPreset("");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Vorlage konnte nicht gelöscht werden.");
+    } finally {
+      setIsPresetBusy(false);
+    }
+  };
 
   const handleSettingsUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +242,6 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         reservableDates: formData.reservableDates,
         allowTableSelection: formData.allowTableSelection,
         maxCapacity: formData.maxCapacity,
-        minimumConsumption: formData.minimumConsumption * 100,
         walkInReserve: formData.walkInReserve
       });
       alert("Event erfolgreich aktualisiert!");
@@ -608,10 +648,6 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-4">
-                        <div className="flex-1 min-w-[150px]">
-                          <label className="block text-sm font-bold mb-1 opacity-70">Mindestabnahme p.P. (in €)</label>
-                          <input type="number" min="0" value={formData.minimumConsumption} onChange={e => setFormData({...formData, minimumConsumption: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
-                        </div>
                     <div className="flex-1 min-w-[150px]">
                       <label className="block text-sm font-bold mb-1 opacity-70">Laufkundschaft-Puffer (Pers.)</label>
                       <input type="number" min="0" value={formData.walkInReserve} onChange={e => setFormData({...formData, walkInReserve: Number(e.target.value)})} className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green" />
@@ -1210,25 +1246,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 <p className="text-sm text-base-dark/60 mt-1 ml-8">Wenn deaktiviert, können Gäste auch weniger Personen als die Kapazität buchen.</p>
               </section>
 
-              {/* B) Mindestabnahme */}
-              <section>
-                <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Mindestabnahme pro Person</h3>
-                <div className="max-w-xs">
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={settingsData.minConsumptionCents / 100}
-                      onChange={(e) => setSettingsData(p => ({ ...p, minConsumptionCents: Math.round(parseFloat(e.target.value) * 100) }))}
-                      className="w-full bg-canvas-light border border-border-light rounded-xl p-3 font-bold"
-                    />
-                    <span className="absolute right-4 top-3 font-bold text-base-dark/50">€</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* C) Zeitslots */}
+              {/* B) Zeitslots */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Zeitslots</h3>
                 <div className="flex flex-wrap gap-3 mb-3">
@@ -1251,6 +1269,37 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               {/* D) Pakete */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Konsumations-Pakete</h3>
+                <p className="text-sm text-base-dark/60 mb-4">Der Paketpreis pro Person ist der Betrag, den der Gast vorab zahlt. Er ersetzt den früheren Mindestverzehr.</p>
+
+                <div className="mb-6 rounded-xl border border-border-light bg-white p-4">
+                  <label htmlFor="preset-select" className="block text-xs font-bold uppercase mb-2 opacity-70">Vorlage</label>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      id="preset-select"
+                      value={selectedPreset}
+                      onChange={(e) => setSelectedPreset(e.target.value)}
+                      className="flex-1 min-w-[180px] bg-canvas-light border border-border-light rounded-lg p-2 font-bold min-h-11"
+                    >
+                      <option value="">– Vorlage wählen –</option>
+                      {presets.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                    </select>
+                    <button type="button" disabled={!selectedPreset || isPresetBusy} onClick={applyPreset} className="px-4 bg-accent-green text-white rounded-lg font-bold min-h-11 disabled:opacity-40">Anwenden</button>
+                    <button type="button" disabled={!selectedPreset || isPresetBusy} onClick={removePreset} className="px-4 border border-border-light rounded-lg font-bold min-h-11 disabled:opacity-40 hover:border-red-400 hover:text-red-600">Löschen</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border-light">
+                    <input
+                      type="text"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      placeholder="Aktuelle Pakete als Vorlage speichern, z. B. Standard Volksfest"
+                      maxLength={60}
+                      className="flex-1 min-w-[180px] bg-canvas-light border border-border-light rounded-lg p-2 min-h-11"
+                    />
+                    <button type="button" disabled={!presetName.trim() || isPresetBusy} onClick={persistPreset} className="px-4 bg-base-dark text-white rounded-lg font-bold min-h-11 disabled:opacity-40">Speichern</button>
+                  </div>
+                  <p className="text-xs text-base-dark/50 mt-3">Vorlagen gelten für alle Events. Nach dem Anwenden bleiben die Pakete für dieses Event frei änderbar.</p>
+                </div>
+
                 <div className="space-y-4 mb-4">
                   {settingsData.packages.map((pkg, i) => (
                     <div key={pkg.id} className="bg-canvas-light p-4 rounded-xl border border-border-light relative">

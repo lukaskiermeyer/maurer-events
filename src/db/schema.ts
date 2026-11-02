@@ -23,7 +23,7 @@ export const events = pgTable('events', {
   allowTableSelection: boolean('allow_table_selection').default(true).notNull(),
   maxCapacity: integer('max_capacity').default(0).notNull(),
   reservableDates: json('reservable_dates').$type<string[]>(), // Array of ISO date strings
-  minimumConsumption: integer('minimum_consumption').default(5000), // Default 50â‚¬ (in cents)
+  minimumConsumption: integer('minimum_consumption').default(5000), // Deprecated: unused for pricing, the package price is authoritative. Drop in a later migration.
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
   type: text('type').default('event').notNull(), // 'event' or 'gallery'
@@ -180,7 +180,7 @@ export const eventSettings = pgTable('event_settings', {
   // Tisch-Belegung
   requireFullTable: boolean('require_full_table').default(true).notNull(),
 
-  // Mindestabnahme (in Cents)
+  // Deprecated: der Paketpreis ist maßgeblich. In einer späteren Migration entfernen.
   minConsumptionCents: integer('min_consumption_cents').default(5000).notNull(),
 
   // Zeitslots (JSON Array)
