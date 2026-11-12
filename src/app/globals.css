@@ -21,6 +21,192 @@
   .group:focus-within .admin-image-action { opacity: 1; }
 }
 
+/* ---------------------------------------------------------------------------
+   Hero layer composition: Himmel > Boden > Zelt > Pubschild > Eingang.
+   Zelt and Eingang share one 1920x1071.5 artboard, so both stage boxes must keep
+   the same width. Landscape reads as a poster: the gate board is a marquee,
+   the pub plaque hangs from its lower edge and sits centred in the viewport.
+   The gate is bottom-anchored on desktop so its posts stand on the ground
+   instead of ending mid-air; on portrait it sits 10vh below the top edge.
+*/
+.hero-scene {
+  /* Zelt nutzt mehr als die volle Bildschirmbreite: links/rechts ueber den Rand,
+     unten bei 99.5vh verankert, oben laeuft es aus dem Bild (Crop gewollt).
+     Auf hohen/quadratischen Screens (z.B. ~919x931) wird das Zelt per
+     152vh groesser, damit es dort nicht zu klein wirkt - auf breiten
+     Screens bleibt 115vw massgeblich (unveraendert). */
+  --hero-stage-w: max(115vw, 152vh);
+  /* Tor auf komplette Bildschirmbreite, damit keine Lichterkette endet/abschneidet;
+     auf sehr breiten Screens wird dafuer unten beschnitten (Ketten bleiben ganz). */
+  --hero-gate-w: 100vw;
+  /* Eingang unten verankert: Pfosten stehen auf dem Boden statt in der
+     Luft zu enden (vorher top:0, Pfosten endeten 96px ueber dem Boden). */
+  --hero-gate-top: calc(100vh - 0.55807 * var(--hero-gate-w));
+  /* Boden ist die CSS-Plankenflaeche .hero-ground (Boden.svg wird nicht
+     mehr verwendet): nur 15vh hoch (Horizont bei 85vh), damit links/
+     rechts vom Zelt kein hohes Plankenband zu sehen ist. */
+  --hero-floor-h: 15vh;
+  /* Boden-Ebene beginnt an der Box-Oberkante. */
+  --hero-ground-top: calc(100% - var(--hero-floor-h));
+  /* Bretter horizontal: 3 Reihen ueber die Bodenhoehe, parallel zur
+     Dachtraufe/Horizontlinie und senkrecht zu den Zeltwaenden. */
+  --hero-row-h: calc(var(--hero-floor-h) / 3);
+  /* Zelt endet exakt auf der Screen-Unterkante, damit die Nebelwolken unten
+     buendig sitzen und kein Streifen unter ihnen steht. */
+  --hero-tent-top: calc(100vh - 0.55807 * var(--hero-stage-w));
+  --hero-sign-w: 42vh;
+  /* Sign box top = lower edge of the gate board, so the chains hook into it. */
+  --hero-sign-top: calc(var(--hero-gate-top) + 0.19812 * var(--hero-gate-w));
+  --hero-sign-shift: 0%;
+  /* Nebel auf Web (Landscape): kein zusaetzlicher Nebel - da reicht
+     der Nebel aus dem Zelt-Artboard (Zelt.svg unten an den Ecken).
+     Der CSS-Nebel wuerde sonst weiss auf dem Boden zeigen. */
+  --hero-fog-main: 0vw 0vh;
+  --hero-fog-puff: 0vw 0vh;
+  --hero-fog-mid: 0vw 0vh;
+}
+@media (max-aspect-ratio: 1/1) {
+  .hero-scene {
+    /* Mobile: Eingang groesser als die sichtbare Breite (210vw,
+       Querbalken-Text bleibt lesbar, ca. 95vw breit), noch hoeher
+       (Top -25vh) und von fast ganz unten (Hoehe 130vh, unten aus dem
+       Bild laufend) bis ins obere Drittel - die Box wird in die Hoehe
+       gedehnt (object-fill). Tafel-Unterkante liegt im oberen Drittel
+       (-25vh + 0.355*130vh = 21,2vh) und fungiert als Aufhaengung
+       fuer das Pubschild, sodass der Zelteingang sichtbar bleibt. */
+    /* Zelthoehe muss in den Viewport passen (Top 15vh + Hoehe <= 100vh):
+       Breite auf 152vh gedeckelt - auf Zwischen-Groessen (~708/919px)
+       wird das Zelt kleiner, damit Tuer/Tische sichtbar bleiben.
+       Auf Handys greift 220vw (unveraendert). */
+    --hero-stage-w: min(220vw, 152vh);
+    --hero-gate-w: 210vw;
+    --hero-gate-top: -25vh;
+    --hero-gate-h: 130vh;
+    /* Nebel nur auf kleinen Mobile-Screens gross (Web/Tablet: kleiner,
+       s. Grundwerte oben). */
+    --hero-fog-main: 62vw 24vh;
+    --hero-fog-puff: 38vw 14vh;
+    --hero-fog-mid: 30vw 10vh;
+    /* Boden-Ebene ab der Zelttuer-Unterkante (ca. 85 % der Zelthoehe,
+       leicht darueber, damit kein Himmel durch die transparente Zone
+       unter der Tuer scheint); sie liegt hinter dem Zelt
+       (Z-Index: Himmel > Boden > Zelt). */
+    --hero-ground-top: calc(var(--hero-tent-top) + 0.474 * var(--hero-stage-w));
+    /* Horizontale Bretter: 6 Reihen ueber die sichtbare Bodenhoehe
+       (100vh statt %, % wuerde sich gegen die Gradientenlinie aufloesen). */
+    --hero-row-h: calc((100vh - var(--hero-ground-top)) / 6);
+    --hero-tent-top: 15vh;
+    /* Kleineres Schild, damit die Zelteingangstuer darunter sichtbar bleibt. */
+    --hero-sign-w: 56vw;
+    /* Tafel-Unterkante = 35,5 % der (gedehnten) Eingangshoehe
+       = im oberen Drittel (-25vh + 0.355*130vh = 21,2vh). Das Schild
+       haengt mit konstantem Abstand von 5vh darunter (bei jeder
+       Bildschirmgroesse gleich), damit die Plakette nicht mehr zur
+       Haelfte hinter dem Eingang liegt. */
+    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 5vh);
+    --hero-sign-shift: 0%;
+  }
+}
+/* Kleine Handys (z.B. iPhone SE 375px): Schild weiter nach unten,
+   sonst sitzt es zu hoch ueber dem Zelt. */
+@media (max-width: 400px) and (max-aspect-ratio: 1/1) {
+  .hero-scene {
+    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 12vh);
+  }
+}
+/* Ab 529px Breite (Portrait): kein zusaetzlicher Nebel mehr - der wuerde
+   hinter den Baenken Weiss zeigen. Nur kleine Handys (<529px) haben
+   den grossen Nebel, Web/Tablet haben keinen (Zelt-Nebel reicht). */
+@media (min-width: 529px) and (max-aspect-ratio: 1/1) {
+  .hero-scene {
+    --hero-fog-main: 0vw 0vh;
+    --hero-fog-puff: 0vw 0vh;
+    --hero-fog-mid: 0vw 0vh;
+  }
+}
+.hero-scene img { display: block; }
+.hero-sky,
+.hero-stage,
+.hero-sign { position: absolute; }
+.hero-sky { inset: 0; }
+/* Boden: horizontale CSS-Planken (Boden.svg ist weg). Die Bretter laufen
+   parallel zur Dachtraufe/Horizontlinie und senkrecht zu den Zeltwaenden -
+   so passt die Flaeche zur Zeltperspektive statt wie eine senkrechte
+   Wand zu wirken. Fugen alle --hero-row-h (Web: 3 Reihen, Mobile: 6),
+   plus Drei-Reihen-Farbwechsel als Tonvariation ueber dem Holzverlauf.
+   Liegt im Z-Index unter dem Zelt. */
+.hero-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--hero-ground-top);
+  bottom: 0;
+  background:
+    /* Nebelwolken unten: Das Zelt-Artboard liefert sie auf Mobile nicht
+       (220vw schneidet sie seitlich weg), deshalb als eigene
+       Boden-Hintergrundschicht. Groesse per --hero-fog-* je Breakpoint
+       (Mobile gross, Web/Tablet klein wie vorher). */
+    radial-gradient(ellipse var(--hero-fog-main) at 0% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-main) at 50% 100%, rgba(230, 240, 250, 0.95) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-main) at 100% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-puff) at 25% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-puff) at 75% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-mid) at 50% 92%, rgba(230, 240, 250, 0.7) 0 60%, transparent 61%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(62, 32, 6, 0.38) 0,
+      rgba(62, 32, 6, 0.38) 2px,
+      transparent 2px,
+      transparent var(--hero-row-h)
+    ),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 222, 158, 0.07) 0,
+      rgba(255, 222, 158, 0.07) var(--hero-row-h),
+      rgba(40, 18, 2, 0.06) var(--hero-row-h),
+      rgba(40, 18, 2, 0.06) calc(var(--hero-row-h) * 2),
+      transparent calc(var(--hero-row-h) * 2),
+      transparent calc(var(--hero-row-h) * 3)
+    ),
+    linear-gradient(#c08c52 0%, #a9713a 45%, #8a5a2e 100%);
+}
+.hero-stage {
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--hero-stage-w);
+  aspect-ratio: 1920 / 1071.5;
+}
+.hero-tent { top: var(--hero-tent-top); }
+/* Mobile: Hoehe explizit (gedehnt, object-fill) - Desktop: auto per Aspect. */
+.hero-gate { top: var(--hero-gate-top); width: var(--hero-gate-w); height: var(--hero-gate-h, auto); }
+/* Sign box is the plaque plus 6% padding so the pendulum swing never clips.
+   The inner frame carries the full artwork; landscape shows beam+chains above
+   the box (the beam disappears behind the gate board), portrait clips them. */
+.hero-sign {
+  left: 50%;
+  top: var(--hero-sign-top);
+  width: var(--hero-sign-w);
+  aspect-ratio: 793.7 / 703.7;
+  transform: translate(-50%, var(--hero-sign-shift));
+  z-index: 5;
+}
+.hero-sign-frame {
+  position: absolute;
+  left: -14.58%;
+  top: -10.42%;
+  width: 129.09%;
+  height: 108.37%;
+}
+/* Funkel-Overlay exakt auf den gezeichneten Birnen (Punkte aus HeroLights.tsx). */
+.hero-light {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 244, 200, 0.9) 0%, rgba(255, 205, 105, 0.5) 45%, rgba(255, 190, 80, 0) 70%);
+  mix-blend-mode: screen;
+}
+
 @media (max-width: 639px) {
   .admin-area :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
     min-width: 0;

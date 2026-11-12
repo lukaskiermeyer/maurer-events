@@ -5,6 +5,7 @@ import { reservations, stripeEvents } from '@/db/schema';
 import { assertCapacity, lockLayout, lockReservation } from './reservation-db';
 import { BookingError, UUID_PATTERN } from './reservation-policy';
 import { toCalendarDay } from './date';
+import { voidVouchersForReservation } from './vouchers';
 
 export const RESERVATION_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed', 'checkout.session.expired', 'charge.refunded', 'charge.dispute.created']);
 
@@ -63,6 +64,7 @@ export async function processReservationWebhook(connection: typeof db, event: St
     await tx.update(reservations).set({ status, stripeSessionId: session.id, updatedAt: new Date(),
       qrCodeText: invalidTicket ? null : reservation.qrCodeText, pdfUrl: invalidTicket ? null : reservation.pdfUrl,
     }).where(eq(reservations.id, reservation.id));
+    if (invalidTicket) await voidVouchersForReservation(tx, reservation.id);
     return reservation.id;
   });
 }

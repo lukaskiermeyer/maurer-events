@@ -11,7 +11,8 @@ import { revalidatePath } from 'next/cache';
 export async function getPublicEventSettings(eventId: string) {
   uuid(eventId);
   const [row] = await db.select({ requireFullTable: eventSettings.requireFullTable,
-    timeSlots: eventSettings.timeSlots, packages: eventSettings.packages, cancellationDays: eventSettings.cancellationDays,
+    timeSlots: eventSettings.timeSlots, packages: eventSettings.packages, pricingMode: eventSettings.pricingMode,
+    cancellationDays: eventSettings.cancellationDays,
     maxBookingsPerEmail: eventSettings.maxBookingsPerEmail, customServiceFee: eventSettings.customServiceFee,
     serviceFeePercent: eventSettings.serviceFeePercent, serviceFeeFixedCents: eventSettings.serviceFeeFixedCents,
     bookingWindowStartDays: eventSettings.bookingWindowStartDays, bookingWindowEndHours: eventSettings.bookingWindowEndHours,

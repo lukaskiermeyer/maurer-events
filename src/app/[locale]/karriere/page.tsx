@@ -3,6 +3,7 @@ import { Metadata } from "next";
 
 import { getCareerContent } from "@/app/actions/career";
 import CareerSection from "@/components/career/CareerSection";
+import { localizeCareerContent } from "@/lib/career";
 
 export const revalidate = 60;
 
@@ -14,16 +15,18 @@ function summarize(text: string) {
   return flat.length > 160 ? `${flat.slice(0, 157)}…` : flat;
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const content = await loadCareer();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const content = localizeCareerContent(await loadCareer(), locale);
   return {
     title: `${content.headline} | Karriere bei Maurer Events`,
     description: summarize(content.intro),
   };
 }
 
-export default async function KarrierePage() {
-  const content = await loadCareer();
+export default async function KarrierePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const content = localizeCareerContent(await loadCareer(), locale);
 
   return (
     <main className="min-h-screen bg-base-light pt-24 pb-16">

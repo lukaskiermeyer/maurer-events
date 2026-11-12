@@ -24,38 +24,32 @@ export default function AdminTabs({
   // Type 'gallery' usually refers to past/album events
   const pastGalleries = initialEvents.filter(e => e.type === 'gallery');
 
+  const tabs = [
+    { id: "dashboard", label: "Übersicht" },
+    { id: "events", label: "Veranstaltungen" },
+    { id: "gallery", label: "Galerie" },
+    { id: "career", label: "Karriere" },
+  ] as const;
+
   return (
     <div>
       {/* Tab Navigation */}
       <div className="grid grid-cols-2 sm:grid-cols-4 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
-        <button 
-          onClick={() => setActiveTab("dashboard")}
-          aria-pressed={activeTab === 'dashboard'}
-          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "dashboard" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
-        >
-          Übersicht
-        </button>
-        <button 
-          onClick={() => setActiveTab("events")}
-          aria-pressed={activeTab === 'events'}
-          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "events" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
-        >
-          Veranstaltungen
-        </button>
-        <button 
-          onClick={() => setActiveTab("gallery")}
-          aria-pressed={activeTab === 'gallery'}
-          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "gallery" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
-        >
-          Galerie
-        </button>
-        <button
-          onClick={() => setActiveTab("career")}
-          aria-pressed={activeTab === 'career'}
-          className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-colors ${activeTab === "career" ? 'bg-base-light text-base-dark shadow-sm' : 'text-base-dark/50 hover:text-base-dark'}`}
-        >
-          Karriere
-        </button>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            aria-pressed={activeTab === tab.id}
+            aria-current={activeTab === tab.id ? 'true' : undefined}
+            className={`px-2 sm:px-6 min-h-12 rounded-lg font-bold text-sm transition-all duration-200 ${
+              activeTab === tab.id
+                ? 'bg-accent-green text-white shadow-md shadow-accent-green/25 ring-2 ring-accent-green/20'
+                : 'text-base-dark/50 hover:text-base-dark hover:bg-base-light'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}

@@ -33,6 +33,7 @@ export default async function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div><h1 className="text-3xl sm:text-4xl font-display font-black text-base-dark">Deine Veranstaltungen</h1><p className="mt-2 text-base-dark/60">Buchungen verwalten, Helfer freigeben und den Einlass starten.</p></div>
           <Link href="/admin/scan" className="min-h-12 inline-flex items-center px-5 rounded-xl bg-accent-green text-white font-bold">Tickets scannen</Link>
+            <Link href="/admin/festchancen" className="min-h-12 inline-flex items-center px-5 rounded-xl bg-white border border-border-light text-base-dark font-bold hover:border-accent-green transition-colors">Fest-Chancen</Link>
         </div>
         
         {loadFailed && (

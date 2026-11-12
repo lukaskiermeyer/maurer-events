@@ -12,7 +12,9 @@ const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@
 const client = postgres(databaseUrl, {
   max: 5,
   prepare: false,
-  connect_timeout: 5,
+  // Neon (Free) braucht beim Aufwachen aus dem Leerlauf oft >5s – 30s verhindert
+  // sporadische Timeouts, die sonst als „Invalid session" aussehen.
+  connect_timeout: 30,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
 });

@@ -1,12 +1,15 @@
 "use client";
 import Image from 'next/image';
 
-import type { EventRecord } from '@/types/domain';
+import type { EventDocument, EventRecord } from '@/types/domain';
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import FestzeltBanner from "./FestzeltBanner";
 import { useTranslations, useLocale } from "next-intl";
+import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
+import DocumentViewer from "./DocumentViewer";
 
 const AWNING_CLIP_PATH = (() => {
   const numScallops = 16;
@@ -36,9 +39,10 @@ const AWNING_CLIP_PATH = (() => {
   return path;
 })();
 
-export default function EventsSection({ initialEvents }: { initialEvents: EventRecord[] }) {
+export default function EventsSection({ initialEvents, documentsByEvent = {} }: { initialEvents: EventRecord[]; documentsByEvent?: Record<string, EventDocument[]> }) {
   const t = useTranslations("Events");
   const locale = useLocale();
+  const [documentView, setDocumentView] = useState<{ documents: EventDocument[]; title: string } | null>(null);
 
   return (
       <section id="events" className="relative w-full bg-base-light py-24 md:py-32 overflow-hidden -mt-[2px] z-10">
@@ -128,22 +132,23 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
           </svg>
         </div>
 
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 mt-[200px] md:mt-[280px] lg:mt-[350px] relative z-30">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-6">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 mt-[248px] md:mt-[368px] lg:mt-[488px] relative z-30">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-20 gap-6">
             <div>
               <motion.h2
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.7, ease: "easeOut", delay: 0.35 }}
                   className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-dark"
               >
-                {t("title_1_alt") || "Unsere"} <span className="text-accent-green">{t("title_2_alt") || "Termine"}</span>
+                {t("title_1_alt") || "Unsere"} <span className="text-accent-green">{t("title_2_alt") || "Volksfeste"}</span>
               </motion.h2>
               <motion.p
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.7, ease: "easeOut", delay: 0.5 }}
                   className="font-sans text-lg text-base-dark/60 font-medium"
               >
                 {t("subtitle")}
@@ -152,8 +157,8 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
             <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.7, ease: "easeOut", delay: 0.65 }}
             >
               <Link href="/termine" className="text-base-dark bg-border-light px-6 py-3 rounded-full hover:bg-accent-green hover:text-white font-display font-bold uppercase tracking-wide flex items-center gap-3 transition-colors text-sm shadow-sm">
                 {t("view_all")}
@@ -177,9 +182,9 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="font-display font-black text-3xl md:text-5xl text-base-dark mb-4">Bald gibt&apos;s was zu <span className="text-accent-green">feiern!</span></h3>
+                  <h3 className="font-display font-black text-3xl md:text-5xl text-base-dark mb-4">{t("empty_title_1")} <span className="text-accent-green">{t("empty_title_2")}</span></h3>
                   <p className="font-sans text-base-dark/70 max-w-lg mx-auto text-lg leading-relaxed">
-                    Der Wirt feilt gerade noch am Programm. Sobald die nächsten Termine feststehen, findest du sie genau hier. Schau bald wieder vorbei!
+                    {t("empty_text")}
                   </p>
                 </motion.div>
             ) : (
@@ -194,6 +199,10 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
                   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
                   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+                  const badge = reservationBadge(resolveReservationMode(event), locale);
+                  const docs = (documentsByEvent[event.id] || []).filter(document => document.isPublic);
+                  const menus = docs.filter(document => document.kind === "menu");
+                  const programs = docs.filter(document => document.kind === "program");
 
                   return (
                       <motion.div
@@ -203,7 +212,9 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                           viewport={{ once: true }}
                           transition={{ duration: 0.6, delay: index * 0.1 }}
                       >
-                        <Link href={`/termine/${event.id}`} className="group bg-white border border-border-light rounded-2xl flex flex-col md:flex-row relative hover:border-accent-green hover:shadow-lg transition-all duration-300 overflow-hidden block">
+                        <div className="group relative bg-white border border-border-light rounded-2xl hover:border-accent-green hover:shadow-lg transition-all duration-300 overflow-hidden">
+                        <Link href={`/termine/${event.id}`} className="absolute inset-0 z-0" aria-label={title} />
+                        <div className="relative z-10 pointer-events-none flex flex-col md:flex-row">
                           
                           {/* 16:9 Poster Area */}
                           <div className="w-full md:w-2/5 aspect-video relative bg-border-light/30 overflow-hidden shrink-0">
@@ -226,9 +237,9 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                           <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col justify-between">
                             <div>
                               <h3 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark group-hover:text-accent-green transition-colors">{title}</h3>
-                              {event.reservable && (
+                              {badge && (
                                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
-                                    {locale === 'en' ? "Tables reservable" : "Tische reservierbar"}
+                                    {badge}
                                   </span>
                               )}
                               <p className="font-sans text-sm md:text-base text-base-dark/70 mb-4 line-clamp-2">{description}</p>
@@ -241,7 +252,21 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                               </div>
                             </div>
 
-                            <div className="mt-6 flex justify-end">
+                            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                              {docs.length > 0 ? (
+                                <div className="relative z-20 pointer-events-auto flex flex-wrap gap-2">
+                                  {menus.length > 0 && (
+                                    <button type="button" onClick={() => setDocumentView({ documents: menus, title })} className="inline-flex items-center gap-2 bg-canvas-light border border-border-light text-base-dark px-3 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:border-accent-green transition-colors">
+                                      {locale === "en" ? "Menu" : "Speisekarte"}
+                                    </button>
+                                  )}
+                                  {programs.length > 0 && (
+                                    <button type="button" onClick={() => setDocumentView({ documents: programs, title })} className="inline-flex items-center gap-2 bg-canvas-light border border-border-light text-base-dark px-3 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:border-accent-green transition-colors">
+                                      {locale === "en" ? "Program" : "Programm"}
+                                    </button>
+                                  )}
+                                </div>
+                              ) : <span />}
                               <span className="inline-flex items-center gap-2 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest group-hover:bg-base-dark transition-colors shadow-sm">
                                 {t("details_btn")}
                                 <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -250,12 +275,21 @@ export default function EventsSection({ initialEvents }: { initialEvents: EventR
                               </span>
                             </div>
                           </div>
-                        </Link>
+                        </div>
+                        </div>
                       </motion.div>
                   );
                 }))}
           </div>
         </div>
+        <DocumentViewer
+          key={documentView?.documents.map(document => document.id).join(",") || "closed"}
+          open={!!documentView}
+          onClose={() => setDocumentView(null)}
+          documents={documentView?.documents || []}
+          title={documentView?.title || ""}
+          locale={locale}
+        />
       </section>
   );
 }

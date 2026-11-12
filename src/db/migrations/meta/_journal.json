@@ -64,6 +64,97 @@
       "when": 1791324491528,
       "tag": "0008_scanner_access",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793638190702,
+      "tag": "0009_reservation_modes_vouchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793643912692,
+      "tag": "0010_reservation_request_phone",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793646735469,
+      "tag": "0011_table_plan_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793655286414,
+      "tag": "0012_slip_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793655576704,
+      "tag": "0013_event_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793656015708,
+      "tag": "0014_customers",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793657568718,
+      "tag": "0015_staff_portal",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793658776069,
+      "tag": "0016_staffing",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793660315929,
+      "tag": "0017_payroll_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793933543753,
+      "tag": "0018_staff_document_kind_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793934683107,
+      "tag": "0019_staff_privacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793935000000,
+      "tag": "0020_document_form_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794517756472,
+      "tag": "0021_regular_luke_cage",
+      "breakpoints": true
     }
   ]
 }

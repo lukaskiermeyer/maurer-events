@@ -11,11 +11,25 @@ import LanguageSwitcher from "./LanguageSwitcher";
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNavbarOnHome, setShowNavbar] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isInHero, setIsInHero] = useState(true);
   const pathname = usePathname();
   const t = useTranslations("Navbar");
 
   const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
-  const showNavbar = !isHome || showNavbarOnHome;
+  // Mobile: Header schon im Hero sichtbar (transparent), Desktop wie bisher
+  // erst nach 80 % Scroll.
+  const showNavbar = !isHome || isMobile || showNavbarOnHome;
+  // Transparent nur mobil im Hero (und nicht bei offenem Menue).
+  const transparent = isHome && isMobile && isInHero && !isOpen;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const updateMobile = () => setIsMobile(mq.matches);
+    updateMobile();
+    mq.addEventListener("change", updateMobile);
+    return () => mq.removeEventListener("change", updateMobile);
+  }, []);
 
   useEffect(() => {
     // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
@@ -23,7 +37,14 @@ export default function Navbar() {
     if (!isHome) return;
 
     const handleScroll = () => {
-      // Show navbar after scrolling past 80% of the viewport height (nur auf Startseite)
+      // Transparent, solange das Hero noch unter dem Header liegt
+      // (Hero-Unterkante per getBoundingClientRect statt innerHeight -
+      // innerHeight ist auf Mobile dynamisch und springt beim Ein-/Ausblenden
+      // der Browserleiste, dadurch kippte der Wechsel an falscher Stelle
+      // und weisses Logo lag auf hellem Grund).
+      const hero = document.getElementById("start");
+      setIsInHero(hero ? hero.getBoundingClientRect().bottom > 96 : window.scrollY < window.innerHeight);
+      // Show navbar after scrolling past 80% of the viewport height (nur auf Startseite, Desktop)
       if (window.scrollY > window.innerHeight * 0.8) {
         setShowNavbar(true);
       } else {
@@ -35,8 +56,12 @@ export default function Navbar() {
     // Initial check
     handleScroll();
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, [isHome]);
 
   if (pathname.includes("/admin")) return null;
@@ -53,7 +78,11 @@ export default function Navbar() {
   return (
     <>
       <nav 
-        className={`fixed w-full z-50 bg-base-light/95 backdrop-blur-md border-b border-base-dark transition-all duration-500 ease-in-out ${
+        className={`fixed w-full z-50 transition-all duration-500 ease-in-out ${
+          transparent
+            ? "bg-transparent border-b border-transparent"
+            : "bg-base-light/95 backdrop-blur-md border-b border-base-dark"
+        } ${
           showNavbar ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
@@ -61,7 +90,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-24">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/#start" className="flex items-center gap-3 group">
-                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className="h-12 lg:h-10 xl:h-12 w-auto object-contain transition-transform group-hover:scale-105" priority sizes="162px" />
+                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className={`h-12 lg:h-10 xl:h-12 w-auto object-contain transition-[filter,transform] duration-500 group-hover:scale-105 ${transparent ? "brightness-0 invert drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]" : ""}`} priority sizes="162px" />
               </Link>
             </div>
 
@@ -76,7 +105,7 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
-              <LanguageSwitcher />
+              <LanguageSwitcher glass={transparent} />
               <Link
                 href="/#contact"
                 className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-base-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
@@ -87,10 +116,10 @@ export default function Navbar() {
 
             {/* Mobile Menu Button */}
             <div className="lg:hidden flex items-center gap-4">
-              <LanguageSwitcher />
+              <LanguageSwitcher glass={transparent} />
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="text-base-dark hover:text-accent-green focus:outline-none"
+                className={`${transparent ? "text-white" : "text-base-dark hover:text-accent-green"} focus:outline-none transition-colors duration-500`}
                 aria-label="Toggle menu"
                 aria-expanded={isOpen}
               >

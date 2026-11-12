@@ -1,0 +1,1 @@
+ALTER TABLE "public"."staff_documents" ADD CONSTRAINT "staff_documents_kind_check" CHECK ("public"."staff_documents"."kind" in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'other'));

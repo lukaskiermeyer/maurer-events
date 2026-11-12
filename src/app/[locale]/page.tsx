@@ -5,7 +5,11 @@ import ServicesSection from "@/components/ServicesSection";
 import EventsSection from "@/components/EventsSection";
 import { getEvents } from "@/app/actions/events";
 import { getGalleryAlbums } from "@/app/actions/gallery";
+import { getPublicEventDocumentsForEvents } from "@/app/actions/eventDocuments";
+import { getCareerContent } from "@/app/actions/career";
+import { localizeCareerContent } from "@/lib/career";
 import GallerySection from "@/components/GallerySection";
+import CareersTeaser from "@/components/CareersTeaser";
 import { notFound } from 'next/navigation';
 import { redirect, routing } from '@/i18n/routing';
 
@@ -29,18 +33,22 @@ export default async function Home({ params, searchParams }: {
     const sessionQuery = typeof query.session_id === 'string' ? `?${new URLSearchParams({ session_id: query.session_id })}` : '';
     redirect({ href: `/reservierung/erfolgreich${sessionQuery}`, locale });
   }
-  const [events, galleryAlbums] = await Promise.all([
+  const [events, galleryAlbums, documentsByEvent, careerRaw] = await Promise.all([
     getEvents(),
-    getGalleryAlbums()
+    getGalleryAlbums(),
+    getPublicEventDocumentsForEvents(),
+    getCareerContent()
   ]);
+  const careerContent = localizeCareerContent(careerRaw, locale);
 
   return (
     <>
       <HeroSection />
-      <AboutSection />
       <ServicesSection />
-      <EventsSection initialEvents={events} />
+      <EventsSection initialEvents={events} documentsByEvent={documentsByEvent} />
+        <AboutSection />
       <GallerySection albums={galleryAlbums} sneakPeek={true} />
+      <CareersTeaser content={careerContent} />
       <ContactSection />
     </>
   );

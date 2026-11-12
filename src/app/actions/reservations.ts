@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { reservations, events, tables } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { reservationAdmin } from "@/lib/reservation-admin";
 import { deliverTicket } from "@/lib/ticket-delivery";
@@ -15,11 +15,18 @@ const service = reservationAdmin(db);
 // Only select fields needed by the administration UI. Frozen checkout and
 // email payloads, request hashes and retry keys never cross the client boundary.
 const adminReservationColumns = {
-  id: reservations.id, eventId: reservations.eventId, tableId: reservations.tableId,
+  id: reservations.id, eventId: reservations.eventId, customerId: reservations.customerId, tableId: reservations.tableId,
   reservationDate: reservations.reservationDate, guestName: reservations.guestName,
-  email: reservations.email, guestCount: reservations.guestCount, selectedTime: reservations.selectedTime,
+  email: reservations.email, phone: reservations.phone, guestCount: reservations.guestCount, selectedTime: reservations.selectedTime,
   amountTotal: reservations.amountTotal, stripeSessionId: reservations.stripeSessionId,
-  status: reservations.status, expiresAt: reservations.expiresAt, pdfUrl: reservations.pdfUrl,
+  status: reservations.status, source: reservations.source, groupLabel: reservations.groupLabel,
+  groupIndex: reservations.groupIndex, groupSize: reservations.groupSize,
+  notes: reservations.notes, internalNotes: reservations.internalNotes,
+  packageId: reservations.packageId, packageName: reservations.packageName,
+  agreedPriceCents: reservations.agreedPriceCents,
+  confirmedAt: reservations.confirmedAt, confirmedBy: reservations.confirmedBy,
+  slipPrintedAt: reservations.slipPrintedAt, paymentStatus: reservations.paymentStatus,
+  expiresAt: reservations.expiresAt, pdfUrl: reservations.pdfUrl,
   qrCodeText: reservations.qrCodeText, ticketSentAt: reservations.ticketSentAt,
   scannedAt: reservations.scannedAt, createdAt: reservations.createdAt, updatedAt: reservations.updatedAt,
 };
@@ -93,4 +100,19 @@ export async function getReservationsByEvent(eventId: string) {
       .orderBy(desc(reservations.createdAt));
 
   return results;
+}
+
+export async function markSlipsPrinted(eventId: string, reservationIds: string[]) {
+  await requireAdmin();
+  uuid(eventId);
+  if (!Array.isArray(reservationIds) || reservationIds.length > 500) throw new Error('Ungültige Zettel-Auswahl.');
+  reservationIds.forEach(id => uuid(id));
+  if (reservationIds.length === 0) return { success: true };
+  await db.update(reservations).set({ slipPrintedAt: new Date() }).where(and(
+    eq(reservations.eventId, eventId),
+    inArray(reservations.id, reservationIds),
+    inArray(reservations.status, ['paid', 'confirmed']),
+  ));
+  revalidatePath('/[locale]/admin', 'layout');
+  return { success: true };
 }

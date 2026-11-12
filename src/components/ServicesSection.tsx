@@ -2,8 +2,9 @@
 import Image from 'next/image';
 
 import type { SVGProps } from 'react';
+import { useState } from 'react';
 
-import { motion, Variants } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { services } from "@/data/services";
 import { useTranslations } from "next-intl";
 
@@ -67,31 +68,24 @@ const itemVariants: Variants = {
 
 export default function ServicesSection() {
   const t = useTranslations("Services");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ vereinsfest: true });
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <section id="services" className="py-24 bg-accent-green text-base-light relative overflow-hidden border-t border-base-dark">
+    <section id="services" className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden border-t-4 border-base-dark">
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10">
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-20 gap-8">
+        <div className="flex flex-row items-start md:items-center justify-between mb-12 sm:mb-16 lg:mb-20 gap-4 md:gap-8">
 
-          <div className="max-w-2xl relative z-10">
-            {/* Easter Egg Icon positioned absolutely to the left so it doesn't shift the text */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-              className="absolute top-4 md:top-6 lg:top-8 right-full mr-0 md:mr-2 lg:mr-4 w-24 md:w-32 lg:w-40 pointer-events-none hidden sm:block z-0"
-            >
-              <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} className="w-full h-auto brightness-0 invert opacity-15 drop-shadow-md" />
-            </motion.div>
-
+          <div className="max-w-2xl min-w-0 relative z-10">
             <motion.h2
               initial={{ opacity: 0, y: -20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="font-display font-black text-5xl md:text-7xl mb-4 text-base-light"
+              className="font-display font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] break-words mb-4 text-base-light"
             >
               {t("title")}
             </motion.h2>
@@ -100,38 +94,90 @@ export default function ServicesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="font-sans text-xl text-base-light/80 max-w-md"
+              className="font-sans text-lg sm:text-xl text-base-light/80 max-w-md"
             >
               {t("subtitle")}
             </motion.p>
           </div>
+
+          {/* Männchen rechts von der Überschrift, als eigene Spalte im Flex-Header */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className="shrink-0 w-20 sm:w-40 lg:w-56 pointer-events-none"
+          >
+            <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
+          </motion.div>
         </div>
 
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 md:gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
         >
-          {services.map((service) => {
+          {services.map((service, index) => {
             const Icon = Icons[service.iconType as keyof typeof Icons];
+            const featured = service.featured === true;
+            const isBig = index === 0;
+            const isOpen = expanded[service.id] === true;
             return (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
-                className="group relative bg-canvas-light text-base-dark p-5 md:p-8 rounded-3xl shadow-lg border-b-8 border-accent-wood transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-accent-wood overflow-hidden"
+                className={`group relative min-w-0 h-full rounded-3xl shadow-lg border-b-8 border-accent-wood bg-white text-base-dark transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden ${
+                  featured
+                    ? `sm:col-span-2 lg:col-span-2 ${isBig ? "lg:row-span-2 " : ""}p-4 sm:p-6 md:p-8`
+                    : "p-4 sm:p-5"
+                }`}
               >
-                <div className="relative z-10 flex flex-col h-full">
-                  <div>
-                    <div className="text-accent-gold mb-4 md:mb-8 bg-accent-gold/15 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300">
-                      {Icon && <Icon className="w-6 h-6 md:w-8 md:h-8" />}
-                    </div>
-                    <h3 className="font-display font-bold text-base md:text-2xl mb-2 md:mb-3 leading-tight break-words hyphens-auto">{t(`items.${service.id}.title`)}</h3>
-                  </div>
-                  <p className="font-sans text-base-dark/70 text-xs sm:text-sm md:text-base leading-snug md:leading-relaxed mt-2 md:mt-4 break-words hyphens-auto">
-                    {t(`items.${service.id}.description`)}
-                  </p>
+                <div className="relative z-10 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => toggle(service.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={`service-desc-${service.id}`}
+                    className="flex w-full items-center gap-4 text-left cursor-pointer"
+                  >
+                    <span className={`shrink-0 text-accent-gold bg-accent-gold/15 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300 ${
+                      featured ? "w-12 h-12 md:w-16 md:h-16" : "w-10 h-10 md:w-12 md:h-12"
+                    }`}>
+                      {Icon && <Icon className={featured ? "w-6 h-6 md:w-8 md:h-8" : "w-5 h-5 md:w-6 md:h-6"} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-display font-bold text-xl sm:text-2xl md:text-3xl leading-tight break-words hyphens-auto">{t(`items.${service.id}.title`)}</span>
+                    </span>
+                    <motion.span
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="shrink-0 text-accent-wood"
+                      aria-hidden="true"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </motion.span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        id={`service-desc-${service.id}`}
+                        key="content"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <p className="font-sans text-base md:text-lg leading-snug md:leading-relaxed break-words hyphens-auto text-base-dark/70 pt-3">
+                          {t(`items.${service.id}.description`)}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             );

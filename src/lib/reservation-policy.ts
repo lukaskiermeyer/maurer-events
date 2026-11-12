@@ -78,4 +78,6 @@ export const ADMIN_TRANSITIONS: Record<string, readonly string[]> = {
   pending: ['paid', 'cancelled'], payment_pending: ['cancelled'], paid: ['confirmed', 'cancelled', 'checked_in'],
   confirmed: ['cancelled', 'checked_in'], checked_in: [], cancelled: [], expired: [], refunded: [], disputed: [],
   payment_review: ['paid', 'cancelled'],
+  requested: ['confirmed', 'declined', 'cancelled'],
+  declined: [],
 };

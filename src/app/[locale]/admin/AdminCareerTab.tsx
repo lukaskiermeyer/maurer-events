@@ -57,8 +57,16 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
             <input id="career-headline" value={content.headline} maxLength={200} onChange={event => patch({ headline: event.target.value })} className={inputClass} />
           </div>
           <div>
+            <label htmlFor="career-headline-en" className="block text-sm font-bold mb-1 opacity-70">Überschrift (Englisch)</label>
+            <input id="career-headline-en" value={content.headlineEn ?? ''} maxLength={200} onChange={event => patch({ headlineEn: event.target.value })} className={inputClass} />
+          </div>
+          <div>
             <label htmlFor="career-intro" className="block text-sm font-bold mb-1 opacity-70">Einleitungstext</label>
             <textarea id="career-intro" value={content.intro} maxLength={2000} rows={4} onChange={event => patch({ intro: event.target.value })} className={`${inputClass} resize-y`} />
+          </div>
+          <div>
+            <label htmlFor="career-intro-en" className="block text-sm font-bold mb-1 opacity-70">Einleitungstext (Englisch)</label>
+            <textarea id="career-intro-en" value={content.introEn ?? ''} maxLength={2000} rows={4} onChange={event => patch({ introEn: event.target.value })} className={`${inputClass} resize-y`} />
           </div>
         </div>
       </section>
@@ -88,6 +96,10 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
                   <label htmlFor={`title-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Stellenbezeichnung</label>
                   <input id={`title-${position.id}`} value={position.title} maxLength={120} onChange={event => patchPosition(position.id, { title: event.target.value })} className={inputClass} />
                 </div>
+                <div>
+                  <label htmlFor={`title-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Stellenbezeichnung (Englisch)</label>
+                  <input id={`title-en-${position.id}`} value={position.titleEn ?? ''} maxLength={120} onChange={event => patchPosition(position.id, { titleEn: event.target.value })} className={inputClass} />
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -100,9 +112,24 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor={`badge-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Hinweis (Englisch)</label>
+                    <input id={`badge-en-${position.id}`} value={position.badgeEn ?? ''} maxLength={60} onChange={event => patchPosition(position.id, { badgeEn: event.target.value })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label htmlFor={`employment-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Anstellungsart (Englisch)</label>
+                    <input id={`employment-en-${position.id}`} value={position.employmentEn ?? ''} maxLength={60} onChange={event => patchPosition(position.id, { employmentEn: event.target.value })} className={inputClass} />
+                  </div>
+                </div>
+
                 <div>
                   <label htmlFor={`description-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Beschreibung</label>
                   <textarea id={`description-${position.id}`} value={position.description} maxLength={2000} rows={3} onChange={event => patchPosition(position.id, { description: event.target.value })} className={`${inputClass} resize-y`} />
+                </div>
+                <div>
+                  <label htmlFor={`description-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Beschreibung (Englisch)</label>
+                  <textarea id={`description-en-${position.id}`} value={position.descriptionEn ?? ''} maxLength={2000} rows={3} onChange={event => patchPosition(position.id, { descriptionEn: event.target.value })} className={`${inputClass} resize-y`} />
                 </div>
 
                 <div>
@@ -112,6 +139,16 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
                     value={position.benefits.join('\n')}
                     rows={3}
                     onChange={event => patchPosition(position.id, { benefits: event.target.value.split('\n') })}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`benefits-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Vorteile (Englisch, eine Zeile pro Punkt)</label>
+                  <textarea
+                    id={`benefits-en-${position.id}`}
+                    value={(position.benefitsEn ?? []).join('\n')}
+                    rows={3}
+                    onChange={event => patchPosition(position.id, { benefitsEn: event.target.value.split('\n') })}
                     className={`${inputClass} resize-y`}
                   />
                 </div>
@@ -133,8 +170,16 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
             <input id="career-closing-title" value={content.closingTitle} maxLength={120} onChange={event => patch({ closingTitle: event.target.value })} className={inputClass} />
           </div>
           <div>
+            <label htmlFor="career-closing-title-en" className="block text-sm font-bold mb-1 opacity-70">Überschrift (Englisch)</label>
+            <input id="career-closing-title-en" value={content.closingTitleEn ?? ''} maxLength={120} onChange={event => patch({ closingTitleEn: event.target.value })} className={inputClass} />
+          </div>
+          <div>
             <label htmlFor="career-closing-text" className="block text-sm font-bold mb-1 opacity-70">Text</label>
             <textarea id="career-closing-text" value={content.closingText} maxLength={1000} rows={3} onChange={event => patch({ closingText: event.target.value })} className={`${inputClass} resize-y`} />
+          </div>
+          <div>
+            <label htmlFor="career-closing-text-en" className="block text-sm font-bold mb-1 opacity-70">Text (Englisch)</label>
+            <textarea id="career-closing-text-en" value={content.closingTextEn ?? ''} maxLength={1000} rows={3} onChange={event => patch({ closingTextEn: event.target.value })} className={`${inputClass} resize-y`} />
           </div>
         </div>
       </section>

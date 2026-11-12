@@ -1,0 +1,3 @@
+ALTER TABLE "public"."event_settings" ADD COLUMN "slip_note" text DEFAULT 'Dieser Tisch muss ab 15 Minuten vor der Reservierung freigehalten werden.' NOT NULL;--> statement-breakpoint
+ALTER TABLE "public"."event_settings" ADD COLUMN "slip_free_after_minutes" integer DEFAULT 15 NOT NULL;--> statement-breakpoint
+ALTER TABLE "public"."event_settings" ADD CONSTRAINT "event_settings_slip_free_after_minutes_check" CHECK ("public"."event_settings"."slip_free_after_minutes" >= 0 and "public"."event_settings"."slip_free_after_minutes" <= 720);

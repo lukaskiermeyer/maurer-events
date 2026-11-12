@@ -21,6 +21,11 @@ export async function createEvent(data: {
   link: string;
   reservable: boolean;
   allowTableSelection?: boolean;
+  reservationMode?: 'none' | 'email' | 'online';
+  reservationEmail?: string;
+  reservationNote?: string;
+  reservationDeadline?: Date;
+  expectedGuests?: number;
   maxCapacity?: number;
   minimumConsumption?: number;
   walkInReserve?: number;
@@ -28,7 +33,18 @@ export async function createEvent(data: {
   type?: string;
 }) {
   await requireAdmin();
-  validateEventUpdate({ ...data, type: data.type as 'event' | 'gallery', minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption) });
+  const reservationMode = data.reservationMode || 'none';
+  const reservable = reservationMode === 'online';
+  if (reservable) throw new Error('Online-Reservierung ist derzeit deaktiviert.');
+  const reservationEmail = (data.reservationEmail || 'servus@maurer-events.com').trim().toLowerCase();
+  validateEventUpdate({
+    ...data,
+    reservable,
+    reservationMode,
+    reservationEmail,
+    type: data.type as 'event' | 'gallery',
+    minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption)
+  });
   if (data.maxCapacity > 0 && data.walkInReserve > data.maxCapacity) throw new Error('Walk-in-Reserve überschreitet die Kapazität.');
   const [titleEn, locationEn, descriptionEn] = await Promise.all([
     translateContent(data.title),
@@ -45,8 +61,13 @@ export async function createEvent(data: {
     description: data.description,
     imageUrl: data.imageUrl,
     link: data.link,
-    reservable: data.reservable,
+    reservable,
     allowTableSelection: data.allowTableSelection ?? true,
+    reservationMode,
+    reservationEmail,
+    reservationNote: data.reservationNote,
+    reservationDeadline: data.reservationDeadline,
+    expectedGuests: data.expectedGuests,
     maxCapacity: data.maxCapacity || 0,
     reservableDates: data.reservableDates,
     minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption),
@@ -70,6 +91,16 @@ export async function createEvent(data: {
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
   await requireAdmin(); uuid(id); validateEventUpdate(data);
   const updates: Partial<typeof events.$inferInsert> = { ...data, updatedAt: new Date() };
+
+  if (typeof data.reservationEmail === 'string') {
+    updates.reservationEmail = data.reservationEmail.trim().toLowerCase();
+  }
+  if (data.reservationMode !== undefined) {
+    updates.reservable = data.reservationMode === 'online';
+    if (data.reservationMode === 'none' && Array.isArray(data.reservableDates) && data.reservableDates.length === 0) {
+      delete updates.reservableDates;
+    }
+  }
 
   // If any of the translatable fields changed, re-translate them
   if (data.title !== undefined || data.location !== undefined || data.description !== undefined) {
@@ -218,7 +249,7 @@ export async function getAdminStats() {
 
   return {
     totalEvents: allEvents.length,
-    reservableEvents: allEvents.filter(e => e.reservable).length,
+    reservableEvents: allEvents.filter(e => e.reservationMode === 'online').length,
     totalReservations,
     totalGuests: statsAgg[0]?.totalGuests || 0,
     waitlistCount,

@@ -20,6 +20,17 @@ import { validateEventSettings } from '../src/lib/event-settings';
 import { activeReservation, lockLayout } from '../src/lib/reservation-db';
 import { takeRateLimit } from '../src/lib/rate-limit';
 import { assertEventUpdate, validateEventUpdate } from '../src/lib/event-policy';
+import { reservationBadge, reservationMailto, reservationStatusLabel, resolveReservationMode } from '../src/lib/reservation-mode';
+import { packageTax } from '../src/lib/pricing';
+import { redeemVoucher } from '../src/lib/vouchers';
+import { mapImportRows, normalizeEmail, normalizePhone, parseCsv } from '../src/lib/customer-import';
+import { ensureCustomerForReservation, linkReservationCustomer } from '../src/lib/customers';
+import { hashPassword, verifyPassword, hashToken, randomToken } from '../src/lib/staff-auth';
+import { decryptField, encryptField, maskField } from '../src/lib/secure-fields';
+import { renderContract } from '../src/lib/contracts';
+import { demandFor, planStaffing, shiftHours } from '../src/lib/staffing';
+import { buildPayrollCsv, missingPayrollFields, payrollRow } from '../src/lib/payroll';
+import { runRetentionCleanup } from '../src/lib/retention';
 import { consumeAdminOtp } from '../src/lib/admin-otp';
 import { isAdminEmail, otpHash } from '../src/lib/admin-identity';
 import { assertStaffPermission, grantScannerAccess, revokeScannerAccess, resolveStaffAccess, staffSession, scanForStaff } from '../src/lib/staff-access';
@@ -31,6 +42,11 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { NextIntlClientProvider } from 'next-intl';
 import ReservationSection from '../src/components/ReservationSection';
+import PlanSvg from '../src/app/[locale]/admin/events/[id]/tischplan/PlanSvg';
+import SlipCard from '../src/app/[locale]/admin/events/[id]/zettel/SlipCard';
+import EventDocuments from '../src/components/EventDocuments';
+import type { EventDocument } from '../src/types/domain';
+import type { ReservationRow, TableRecord } from '../src/types/domain';
 
 const databaseName = `reservation_security_${randomUUID().replaceAll('-', '')}`;
 const admin = postgres('postgres://reservation_test@127.0.0.1:55439/postgres', { max: 1, connect_timeout: 5 });
@@ -55,7 +71,7 @@ after(async () => {
 
 async function fixture(options: { capacity?: number; full?: boolean; table?: boolean; maxBookings?: number } = {}) {
   const day = calendarDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
-  const [event] = await connection.insert(schema.events).values({ title: 'Security test', date: day, location: 'Test', description: 'Test', reservable: true, allowTableSelection: options.table ?? true, maxCapacity: options.capacity ?? 100 }).returning();
+  const [event] = await connection.insert(schema.events).values({ title: 'Security test', date: day, location: 'Test', description: 'Test', reservable: true, reservationMode: 'online', allowTableSelection: options.table ?? true, maxCapacity: options.capacity ?? 100 }).returning();
   await connection.insert(schema.eventSettings).values({ eventId: event.id, requireFullTable: options.full ?? false, maxBookingsPerEmail: options.maxBookings ?? 100 });
   const [table] = await connection.insert(schema.tables).values({ name: randomUUID(), capacity: options.capacity ?? 8 }).returning();
   const input = { eventId: event.id, tableId: event.allowTableSelection ? table.id : null, reservationDate: day.toISOString().slice(0, 10), selectedTime: '18:00', selectedPackage: 'brotzeit', guestCount: 1, name: 'Test Guest', email: `${randomUUID()}@example.com`, idempotencyKey: randomUUID(), turnstileToken: 'fake-test-captcha' };
@@ -504,4 +520,457 @@ test('Reservation wizard renders single-day events with actual RSC Date values',
     assert.ok(!html.includes('Uhrzeit ist wegen'));
     assert.ok(html.replaceAll('<!-- -->', '').includes(`${table ? 10 : 1} Personen`));
   }
+});
+test('Reservation modes map to public badges and a prefilled mailto link', () => {
+  assert.equal(resolveReservationMode({ reservable: true, reservationMode: 'email' }), 'email');
+  assert.equal(resolveReservationMode({ reservable: true, reservationMode: 'none' }), 'none');
+  assert.equal(resolveReservationMode({ reservable: true }), 'online');
+  assert.equal(resolveReservationMode({ reservable: false }), 'none');
+  assert.equal(reservationBadge('email', 'de'), 'Reservierung per E-Mail');
+  assert.equal(reservationBadge('email', 'en'), 'Reservation by email');
+  assert.equal(reservationBadge('online', 'de'), 'Tische reservierbar');
+  assert.equal(reservationBadge('none', 'de'), null);
+  assert.equal(reservationStatusLabel('none', 'de'), 'Freie Platzwahl');
+  assert.equal(reservationStatusLabel('email', 'en'), 'Reservation by email');
+
+  const href = reservationMailto({
+    title: 'Vereinsfest', date: new Date('2026-09-03T12:00:00Z'), location: 'Zelt',
+    reservationEmail: 'verein@example.com',
+  }, 'de');
+  assert.ok(href.startsWith('mailto:verein@example.com?subject='));
+  assert.ok(decodeURIComponent(href).includes('Reservierungsanfrage: Vereinsfest'));
+  assert.ok(decodeURIComponent(href).includes('03.09.2026'));
+});
+
+test('Event policy accepts reservation mode fields and rejects invalid values', () => {
+  const accepted = validateEventUpdate({
+    reservationMode: 'email',
+    reservationEmail: 'Verein@Example.com',
+    reservationNote: 'Nur für Vereine',
+    reservationDeadline: new Date('2026-08-30T12:00:00Z'),
+    expectedGuests: 120,
+  });
+  assert.equal(accepted.reservationMode, 'email');
+  assert.equal(accepted.expectedGuests, 120);
+  assert.throws(() => validateEventUpdate({ reservationMode: 'bogus' }), /Reservierungsmodus/);
+  assert.throws(() => validateEventUpdate({ reservationEmail: 'keine-mail' }), /Reservierungs-E-Mail/);
+  assert.throws(() => validateEventUpdate({ reservationNote: 'x'.repeat(2001) }), /zu lang/);
+  assert.throws(() => validateEventUpdate({ reservationDeadline: new Date('invalid') }), /Eventdatum/);
+  assert.throws(() => validateEventUpdate({ expectedGuests: -1 }), /Kapazität/);
+});
+
+test('Package tax options calculate gross, net and VAT and validate voucher bundles', () => {
+  const gross = packageTax({ price: 120, priceIncludesVat: true, vatRate: 19 }, 'standard');
+  assert.equal(gross?.grossCents, 12000);
+  assert.equal(gross?.netCents, 10084);
+  assert.equal(gross?.vatCents, 1916);
+
+  const net = packageTax({ price: 120, priceIncludesVat: false, vatRate: 19 }, 'standard');
+  assert.equal(net?.grossCents, 14280);
+  assert.equal(net?.vatCents, 2280);
+
+  const seven = packageTax({ price: 107, priceIncludesVat: true, vatRate: 7 }, 'standard');
+  assert.equal(seven?.netCents, 10000);
+  assert.equal(seven?.vatCents, 700);
+
+  const small = packageTax({ price: 120, vatRate: 19 }, 'small_business');
+  assert.equal(small?.grossCents, 12000);
+  assert.equal(small?.vatCents, 0);
+
+  const voucher = {
+    id: 'getraenke', name: 'Getränkepaket', description: '10 Gutscheine', price: 120,
+    unit: 'per_table', type: 'voucher_bundle', priceIncludesVat: true, vatRate: 19,
+    vatNote: 'Getränke', voucherCount: 10, voucherValueCents: 1200, active: true,
+  };
+  const valid = validateEventSettings({ packages: [voucher] });
+  assert.equal(valid.packages?.[0]?.voucherCount, 10);
+  assert.equal(valid.packages?.[0]?.unit, 'per_table');
+  assert.throws(
+    () => validateEventSettings({ packages: [{ ...voucher, unit: 'per_person' }] }),
+    /pro Tisch/,
+  );
+  assert.throws(
+    () => validateEventSettings({ packages: [{ ...voucher, vatRate: 12 }] }),
+    /MwSt./,
+  );
+  const slip = validateEventSettings({ slipNote: 'Bitte freihalten.', slipFreeAfterMinutes: 20 });
+  assert.equal(slip.slipFreeAfterMinutes, 20);
+  assert.equal(slip.slipNote, 'Bitte freihalten.');
+  assert.throws(() => validateEventSettings({ slipFreeAfterMinutes: 721 }), /Ungültige Einstellung/);
+});
+
+test('Table plan renders internal names and hides them in the public version', () => {
+  const table = {
+    id: randomUUID(), name: 'Tisch 1', capacity: 10, positionX: 1, positionY: 2,
+    section: 'Mittelschiff', rowLabel: '10', displayNumber: 'T120', shape: 'rect',
+    widthM: null, heightM: null, rotation: 0, isBlocked: false, isVip: false, vipPrice: 0,
+  } as TableRecord;
+  const row = {
+    reservation: {
+      id: randomUUID(), eventId: randomUUID(), tableId: table.id, reservationDate: new Date(),
+      guestName: 'Max Mustermann', email: 'max@example.com', phone: null, guestCount: 8,
+      selectedTime: '18:00', amountTotal: 0, status: 'confirmed', source: 'email',
+      groupLabel: 'SV Test', groupSize: 1,
+    },
+    eventTitle: 'Vereinsfest', eventDate: new Date(), tableName: table.name,
+  } as unknown as ReservationRow;
+  const tent = { width: 10, height: 10, cellSizeM: 1.2 };
+  const internal = renderToString(createElement(PlanSvg, { tables: [table], reservations: [row], tent, mode: 'internal' }));
+  assert.ok(internal.includes('T120'));
+  assert.ok(internal.includes('Mittelschiff'));
+  assert.ok(internal.includes('Max Mustermann'));
+  const publicHtml = renderToString(createElement(PlanSvg, { tables: [table], reservations: [row], tent, mode: 'public' }));
+  assert.ok(publicHtml.includes('T120'));
+  assert.ok(publicHtml.includes('reserviert'));
+  assert.ok(!publicHtml.includes('Max Mustermann'));
+});
+
+test('Reservation slips support full, initial and club name modes', () => {
+  const table = {
+    id: randomUUID(), name: 'Tisch 1', capacity: 10, positionX: 1, positionY: 2,
+    section: 'Mittelschiff', rowLabel: '10', displayNumber: 'T120', shape: 'rect',
+    widthM: null, heightM: null, rotation: 0, isBlocked: false, isVip: false, vipPrice: 0,
+  } as TableRecord;
+  const row = {
+    reservation: {
+      id: randomUUID(), eventId: randomUUID(), tableId: table.id, reservationDate: new Date(),
+      guestName: 'Max Mustermann', email: 'max@example.com', phone: null, guestCount: 8,
+      selectedTime: '18:00', amountTotal: 0, status: 'confirmed', source: 'email',
+      groupLabel: 'SV Müchsmünster', groupSize: 1,
+    },
+    eventTitle: 'Vereinsfest', eventDate: new Date(), tableName: table.name,
+  } as unknown as ReservationRow;
+  const render = (nameMode: 'full' | 'initial' | 'club') => renderToString(createElement(SlipCard, {
+    row, table, nameMode, note: 'Bitte freihalten.', format: 'a6', eventTitle: 'Vereinsfest',
+  }));
+  const full = render('full');
+  assert.ok(full.includes('Max Mustermann'));
+  assert.ok(full.includes('T120'));
+  assert.ok(full.includes('Mittelschiff'));
+  const initial = render('initial');
+  assert.ok(initial.includes('Max M.'));
+  assert.ok(!initial.includes('Max Mustermann'));
+  const club = render('club');
+  assert.ok(club.includes('SV Müchsmünster'));
+  assert.ok(!club.includes('Max Mustermann'));
+});
+
+test('Public event documents render menu and program quick actions', () => {
+  const base = {
+    eventId: randomUUID(), fileUrl: 'https://example.com/file.pdf', previewUrl: 'https://example.com/preview.webp',
+    publicId: randomUUID(), mimeType: 'application/pdf', sizeBytes: 1000, isPublic: true,
+    sortOrder: 0, createdBy: null, createdAt: new Date(), updatedAt: new Date(),
+  };
+  const documents = [
+    { ...base, id: randomUUID(), kind: 'menu', title: 'Speisekarte 2026', titleEn: null },
+    { ...base, id: randomUUID(), kind: 'program', title: 'Programm', titleEn: null },
+  ] as EventDocument[];
+  const html = renderToString(createElement(EventDocuments, { documents, title: 'Vereinsfest', locale: 'de' }));
+  assert.ok(html.includes('Speisekarte &amp; Programm'));
+  assert.ok(html.includes('>Speisekarte<'));
+  assert.ok(html.includes('Programm / Bands'));
+});
+
+test('Customer CSV import maps headers, quoted cells and normalizes contact data', () => {
+  const parsed = parseCsv('Name;E-Mail;Telefon;Verein\n"Mustermann, Max";max@example.com;0170 123456;SV Test\n"Zweiter";;0841 999;');
+  assert.deepEqual(parsed.headers, ['Name', 'E-Mail', 'Telefon', 'Verein']);
+  assert.equal(parsed.rows.length, 2);
+  const mapped = mapImportRows(parsed.headers, parsed.rows, { displayName: 0, email: 1, phone: 2, company: 3 });
+  assert.equal(mapped[0].displayName, 'Mustermann, Max');
+  assert.equal(mapped[0].email, 'max@example.com');
+  assert.equal(mapped[1].displayName, 'Zweiter');
+  assert.equal(normalizeEmail(' MAX@Example.com '), 'max@example.com');
+  assert.equal(normalizeEmail('keine-mail'), null);
+  assert.equal(normalizePhone('+49 (0) 170 123 456'), '490170123456');
+});
+
+test('Confirming a request creates or reuses one customer and links the reservation', async () => {
+  const f = await fixture();
+  const reservation = await booked(f, { guestName: 'Max Mustermann', email: 'max@example.com', guestCount: 4, status: 'requested', source: 'email' });
+  const first = await ensureCustomerForReservation(connection, reservation);
+  const second = await ensureCustomerForReservation(connection, reservation);
+  assert.equal(first.id, second.id);
+  assert.equal(first.displayName, 'Max Mustermann');
+  assert.equal(first.email, 'max@example.com');
+  await linkReservationCustomer(connection, reservation.id, first.id);
+  const [linked] = await rows(f.event.id);
+  assert.equal(linked.customerId, first.id);
+});
+
+test('Staff passwords and invite tokens are hashed, not stored in plain text', async () => {
+  process.env.AUTH_SECRET = 'test-auth-secret-that-is-long-enough-123456';
+  const hash = await hashPassword('sicheres-passwort-123');
+  assert.ok(hash.startsWith('scrypt$'));
+  assert.equal(await verifyPassword('sicheres-passwort-123', hash), true);
+  assert.equal(await verifyPassword('falsch', hash), false);
+  assert.equal(await verifyPassword('sicheres-passwort-123', null), false);
+  const token = randomToken();
+  assert.equal(hashToken(token), hashToken(token));
+  assert.notEqual(hashToken(token), token);
+  assert.equal(hashToken(token).length, 64);
+});
+
+test('Sensitive staff fields are encrypted, decryptable and maskable', () => {
+  process.env.STAFF_DATA_KEY = 'test-staff-data-key-32-characters';
+  const encrypted = encryptField('DE89370400440532013000');
+  assert.ok(encrypted?.startsWith('v1:'));
+  assert.equal(decryptField(encrypted), 'DE89370400440532013000');
+  assert.equal(decryptField(null), null);
+  assert.ok(maskField(encrypted, 4).endsWith('3000'));
+  assert.ok(!maskField(encrypted, 4).includes('DE893704'));
+});
+
+test('Contract rendering fills staff variables and remains a versioned snapshot', () => {
+  const staff = {
+    firstName: 'Max', lastName: 'Mustermann', email: 'max@example.com', phone: null,
+    street: 'Hauptstraße 1', zip: '80331', city: 'München', hourlyRateCents: 1500,
+    entryDate: new Date('2026-09-01'),
+  } as unknown as typeof schema.staff.$inferSelect;
+  const role = { name: 'Bedienung' } as unknown as typeof schema.staffRoles.$inferSelect;
+  const templateV1 = '<p>{{name}} · {{rolle}} · {{stundensatz}} € · {{adresse}}</p>';
+  const contractV1 = renderContract(templateV1, staff, role);
+  assert.ok(contractV1.includes('Max Mustermann'));
+  assert.ok(contractV1.includes('Bedienung'));
+  assert.ok(contractV1.includes('15,00 €'));
+  assert.ok(contractV1.includes('Hauptstraße 1'));
+  const templateV2 = '<p>Neue Fassung für {{name}}</p>';
+  assert.notEqual(renderContract(templateV2, staff, role), contractV1);
+  assert.ok(contractV1.includes('Bedienung'));
+  assert.ok(!contractV1.includes('Neue Fassung'));
+});
+
+test('Staffing demand and assignment respect qualification, availability and gaps', () => {
+  assert.equal(demandFor(100, { guestsPerStaff: 40, minStaff: 2, fixedStaff: 0 }), 3);
+  assert.equal(demandFor(10, { guestsPerStaff: 40, minStaff: 2, fixedStaff: 1 }), 3);
+  const requirements = [{ id: 'req-1', roleId: 'role-1', date: '2026-09-03', startTime: '18:00', endTime: '23:00', requiredCount: 2 }];
+  const availability = [
+    { staffId: 'staff-1', eventId: 'event-1', date: '2026-09-03', startTime: '17:00', endTime: '23:30', kind: 'preferred' as const },
+    { staffId: 'staff-2', eventId: 'event-1', date: '2026-09-03', startTime: '17:00', endTime: '23:30', kind: 'unavailable' as const },
+  ];
+  const staff = [
+    { id: 'staff-1', firstName: 'Anna', lastName: 'A', roleId: 'role-1', status: 'active', employmentType: 'minijob', birthDate: '1990-01-01', hourlyRateCents: 1500 },
+    { id: 'staff-2', firstName: 'Ben', lastName: 'B', roleId: 'role-1', status: 'active', employmentType: 'minijob', birthDate: '1990-01-01', hourlyRateCents: 1500 },
+  ];
+  const rules = [{ roleId: 'role-1', guestsPerStaff: 40, minStaff: 1, fixedStaff: 0, maxHoursPerDay: 10, minRestHours: 11, minAge: 18, active: true }];
+  const plan = planStaffing({ eventId: 'event-1', requirements, availability, staff, rules });
+  assert.equal(shiftHours('18:00', '23:00'), 5);
+  assert.equal(plan.assignments.length, 1);
+  assert.equal(plan.assignments[0].staffId, 'staff-1');
+  assert.equal(plan.assignments[0].costCents, 7500);
+  assert.equal(plan.gaps[0].missing, 1);
+  assert.equal(plan.coverage, 50);
+
+  const minor = planStaffing({
+    eventId: 'event-1', requirements, availability,
+    staff: [{ ...staff[0], birthDate: '2012-01-01' }], rules,
+  });
+  assert.equal(minor.assignments.length, 0);
+  assert.ok(minor.warnings.some(warning => warning.type === 'minor'));
+
+  const noAvailability = planStaffing({ eventId: 'event-1', requirements, availability: [], staff, rules });
+  assert.equal(noAvailability.assignments.length, 0);
+  assert.ok(noAvailability.warnings.some(warning => warning.type === 'no_availability'));
+});
+
+test('DATEV payroll CSV includes required fields, decrypted values and escaping', () => {
+  process.env.STAFF_DATA_KEY = 'test-staff-data-key-32-characters';
+  const member = {
+    id: '12345678-1234-1234-1234-123456789012', firstName: 'Max', lastName: 'Mustermann',
+    birthDate: new Date('1990-01-01'), street: 'Hauptstraße 1', zip: '80331', city: 'München',
+    entryDate: new Date('2026-09-01'), exitDate: null, employmentType: 'minijob',
+    hourlyRateCents: 1500, monthlySalaryCents: 0, taxIdEnc: encryptField('12345'),
+    taxClass: '1', childAllowances: 0, socialSecurityEnc: encryptField('12345678'),
+    healthInsurance: 'AOK', ibanEnc: encryptField('DE89370400440532013000'), bic: 'COBADEFFXXX',
+    status: 'active',
+  } as unknown as typeof schema.staff.$inferSelect;
+  const role = { name: 'Bedienung' } as unknown as typeof schema.staffRoles.$inferSelect;
+  const csv = buildPayrollCsv([payrollRow(member, role)]);
+  assert.ok(csv.startsWith('\uFEFF'));
+  assert.ok(csv.includes('Personalnummer;Anrede;Titel;Vorname;Nachname'));
+  assert.ok(csv.includes('Max;Mustermann'));
+  assert.ok(csv.includes('15,00'));
+  assert.ok(csv.includes('12345'));
+  assert.ok(csv.includes('DE89370400440532013000'));
+  assert.equal(missingPayrollFields(member).length, 0);
+  assert.deepEqual(missingPayrollFields({ ...member, ibanEnc: null }), ['IBAN']);
+  assert.ok(buildPayrollCsv([['a;b']]).includes('"a;b"'));
+});
+
+test('Retention cleanup removes expired invites, sessions and old export/audit records', async () => {
+  const [role] = await connection.insert(schema.staffRoles).values({ key: `role-${randomUUID()}`, name: 'Testrolle' }).returning();
+  const [member] = await connection.insert(schema.staff).values({ email: `${randomUUID()}@example.com`, firstName: 'Test', lastName: 'Person', roleId: role.id }).returning();
+  await connection.insert(schema.staffInvites).values({ staffId: member.id, tokenHash: randomUUID(), expiresAt: new Date(0), createdBy: 'test@example.com' });
+  await connection.insert(schema.staffSessions).values({ staffId: member.id, validUntil: new Date(0) });
+  await connection.insert(schema.auditLog).values({ actorType: 'test', actorId: 'test', action: 'old', entityType: 'test', entityId: null, createdAt: new Date('2020-01-01') });
+  const result = await runRetentionCleanup(connection, new Date());
+  assert.ok(result.staffInvites >= 1);
+  assert.ok(result.staffSessions >= 1);
+  assert.ok(result.auditLogs >= 1);
+});
+
+test('Voucher package checkout charges per table and snapshots VAT', async () => {
+  const day = calendarDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+  const [event] = await connection.insert(schema.events).values({
+    title: 'Gutschein-Checkout', date: day, location: 'Zelt', description: 'Test',
+    reservable: true, reservationMode: 'online', maxCapacity: 100,
+  }).returning();
+  await connection.insert(schema.eventSettings).values({
+    eventId: event.id, requireFullTable: false,
+    packages: [{
+      id: 'getraenke', name: 'Getränkepaket', description: '10 Gutscheine', price: 120,
+      unit: 'per_table', type: 'voucher_bundle', priceIncludesVat: true, vatRate: 19,
+      vatNote: 'Getränke', voucherCount: 10, voucherValueCents: 1200, active: true,
+    }],
+  });
+  const [table] = await connection.insert(schema.tables).values({ name: randomUUID(), capacity: 10 }).returning();
+  const checkout = createCheckoutService(connection, fakeStripe().stripe, captcha);
+  await checkout({
+    eventId: event.id, tableId: table.id, reservationDate: day.toISOString().slice(0, 10),
+    selectedTime: '18:00', selectedPackage: 'getraenke', guestCount: 10,
+    name: 'Gutschein Gast', email: `${randomUUID()}@example.com`,
+    idempotencyKey: randomUUID(), turnstileToken: 'fake-test-captcha', locale: 'de',
+  });
+  const [reservation] = await connection.select().from(schema.reservations).where(eq(schema.reservations.eventId, event.id));
+  assert.equal(reservation.packageId, 'getraenke');
+  assert.equal(reservation.source, 'online');
+  assert.equal(reservation.priceGrossCents, 12000);
+  assert.equal(reservation.priceNetCents, 10084);
+  assert.equal(reservation.vatCents, 1916);
+  assert.equal(reservation.vatRate, 19);
+  assert.equal(reservation.amountTotal, 12205);
+});
+
+test('Event-bound vouchers are issued once, redeemable only at their event and void on cancel', async () => {
+  const day = calendarDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+  const [event] = await connection.insert(schema.events).values({
+    title: 'Gutschein-Fest', date: day, location: 'Zelt', description: 'Test',
+    reservable: true, reservationMode: 'online', maxCapacity: 100,
+  }).returning();
+  await connection.insert(schema.eventSettings).values({
+    eventId: event.id,
+    packages: [{
+      id: 'getraenke', name: 'Getränkepaket', description: '10 Gutscheine', price: 120,
+      unit: 'per_table', type: 'voucher_bundle', priceIncludesVat: true, vatRate: 19,
+      vatNote: 'Getränke', voucherCount: 10, voucherValueCents: 1200, active: true,
+    }],
+  });
+  const [table] = await connection.insert(schema.tables).values({ name: randomUUID(), capacity: 10 }).returning();
+  const [reservation] = await connection.insert(schema.reservations).values({
+    eventId: event.id, tableId: table.id, guestName: 'Gutschein Gast', email: `${randomUUID()}@example.com`,
+    guestCount: 10, reservationDate: day, amountTotal: 12000, status: 'paid', source: 'online',
+    packageId: 'getraenke', packageName: 'Getränkepaket',
+    priceGrossCents: 12000, priceNetCents: 10084, vatCents: 1916, vatRate: 19,
+  }).returning();
+
+  const admin = reservationAdmin(connection);
+  await admin.status(reservation.id, 'confirmed');
+  const issued = await connection.select().from(schema.vouchers).where(eq(schema.vouchers.reservationId, reservation.id));
+  assert.equal(issued.length, 10);
+  assert.ok(issued.every(voucher => voucher.eventId === event.id && voucher.valueCents === 1200 && voucher.status === 'issued'));
+
+  const code = issued[0].code;
+  const redeemed = await redeemVoucher(connection, { code, eventId: event.id, redeemedBy: 'admin@example.com' });
+  assert.equal(redeemed.voucher.status, 'redeemed');
+  assert.equal(redeemed.voucher.redeemedBy, 'admin@example.com');
+  await assert.rejects(redeemVoucher(connection, { code, eventId: event.id, redeemedBy: 'admin@example.com' }), /bereits eingelöst/);
+
+  const [otherEvent] = await connection.insert(schema.events).values({
+    title: 'Anderes Fest', date: day, location: 'Zelt', description: 'Test',
+    reservable: true, reservationMode: 'online', maxCapacity: 100,
+  }).returning();
+  await assert.rejects(
+    redeemVoucher(connection, { code: issued[1].code, eventId: otherEvent.id, redeemedBy: 'admin@example.com' }),
+    /anderen Event/,
+  );
+
+  await admin.status(reservation.id, 'confirmed');
+  const afterConfirmation = await connection.select().from(schema.vouchers).where(eq(schema.vouchers.reservationId, reservation.id));
+  assert.equal(afterConfirmation.length, 10);
+
+  await admin.status(reservation.id, 'cancelled');
+  const afterCancel = await connection.select().from(schema.vouchers).where(eq(schema.vouchers.reservationId, reservation.id));
+  assert.ok(afterCancel.filter(voucher => voucher.code !== code).every(voucher => voucher.status === 'void'));
+  assert.equal(afterCancel.find(voucher => voucher.code === code)?.status, 'redeemed');
+});
+
+test('Reservation modes, request status and event-bound vouchers are enforced', async () => {
+  const day = calendarDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+  const hasConstraint = (constraint: string) => (error: unknown) => {
+    const stack: unknown[] = [error];
+    const seen = new Set<unknown>();
+    while (stack.length) {
+      const current = stack.pop();
+      if (!current || typeof current !== 'object' || seen.has(current)) continue;
+      seen.add(current);
+      const record = current as { constraint_name?: string; cause?: unknown };
+      if (record.constraint_name === constraint) return true;
+      if (record.cause) stack.push(record.cause);
+    }
+    return false;
+  };
+  const [emailEvent] = await connection.insert(schema.events).values({
+    title: 'Vereinsfest', date: day, location: 'Zelt', description: 'Test',
+    reservable: true, reservationMode: 'email', maxCapacity: 100,
+  }).returning();
+  assert.equal(emailEvent.reservationMode, 'email');
+
+  await assert.rejects(
+    connection.insert(schema.events).values({ title: 'Invalid', date: day, location: 'Zelt', description: 'Test', reservationMode: 'bogus' }),
+    hasConstraint('events_reservation_mode_check'),
+  );
+
+  const [request] = await connection.insert(schema.reservations).values({
+    eventId: emailEvent.id, guestName: 'Verein', email: `${randomUUID()}@example.com`,
+    guestCount: 20, reservationDate: day, amountTotal: 0, status: 'requested', source: 'email',
+  }).returning();
+  assert.equal(request.status, 'requested');
+
+  const code = `V-${randomUUID()}`;
+  const [voucher] = await connection.insert(schema.vouchers).values({
+    eventId: emailEvent.id, reservationId: request.id, code, valueCents: 1200,
+  }).returning();
+  assert.equal(voucher.eventId, emailEvent.id);
+
+  await assert.rejects(
+    connection.insert(schema.vouchers).values({ eventId: randomUUID(), code: `V-${randomUUID()}`, valueCents: 1200 }),
+    hasConstraint('vouchers_event_id_events_id_fk'),
+  );
+});
+
+test('Email requests can be confirmed or declined without occupying capacity', async () => {
+  const day = calendarDate(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+  const [emailEvent] = await connection.insert(schema.events).values({
+    title: 'Vereinsfest', date: day, location: 'Zelt', description: 'Test',
+    reservable: false, reservationMode: 'email', maxCapacity: 100,
+  }).returning();
+  const [table] = await connection.insert(schema.tables).values({ name: randomUUID(), capacity: 10 }).returning();
+  const [request] = await connection.insert(schema.reservations).values({
+    eventId: emailEvent.id, guestName: 'SV Müchsmünster', email: `${randomUUID()}@example.com`,
+    phone: '0123456', guestCount: 5, reservationDate: day, amountTotal: 0,
+    status: 'requested', source: 'email', groupLabel: 'SV Müchsmünster', groupSize: 2,
+    notes: 'Bitte nebeneinander',
+  }).returning();
+
+  const confirmed = await reservationAdmin(connection).confirmRequest(request.id, {
+    tableId: table.id, priceCents: 12000, actor: 'admin@example.com',
+  });
+  assert.equal(confirmed.reservation.status, 'confirmed');
+  assert.equal(confirmed.reservation.tableId, table.id);
+  assert.equal(confirmed.reservation.agreedPriceCents, 12000);
+  assert.equal(confirmed.reservation.confirmedBy, 'admin@example.com');
+
+  const [declineCandidate] = await connection.insert(schema.reservations).values({
+    eventId: emailEvent.id, guestName: 'TSV Test', email: `${randomUUID()}@example.com`,
+    guestCount: 4, reservationDate: day, amountTotal: 0, status: 'requested', source: 'email',
+  }).returning();
+  const declined = await reservationAdmin(connection).declineRequest(declineCandidate.id, {
+    actor: 'admin@example.com', reason: 'Kein Platz mehr',
+  });
+  assert.equal(declined.reservation.status, 'declined');
+  assert.ok(declined.reservation.internalNotes?.includes('Kein Platz mehr'));
+
+  await assert.rejects(
+    reservationAdmin(connection).confirmRequest(declineCandidate.id, { actor: 'admin@example.com' }),
+    /offene Anfragen/,
+  );
 });

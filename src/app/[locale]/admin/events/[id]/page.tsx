@@ -1,9 +1,10 @@
 import { getReservationsByEvent } from "@/app/actions/reservations";
 import { getTables } from "@/app/actions/tables";
-import { getTentSettings, getPackagePresets } from "@/app/actions/settings";
+import { getTentSettings, getPackagePresets, getTaxStatus } from "@/app/actions/settings";
 import { getGalleryImages } from "@/app/actions/gallery";
 import { getWaitlist } from "@/app/actions/waitlist";
 import { getEventSettings } from "@/app/actions/eventSettings";
+import { getAdminEventDocuments } from "@/app/actions/eventDocuments";
 import { db } from "@/db";
 import { events, scannerAccess } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -24,7 +25,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants, packagePresets] = await Promise.all([
+  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants, packagePresets, taxStatus, documents] = await Promise.all([
     getReservationsByEvent(resolvedParams.id),
     getTables(),
     getTentSettings(),
@@ -32,7 +33,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     getWaitlist(resolvedParams.id),
     getEventSettings(resolvedParams.id),
     db.select({ id: scannerAccess.id, email: scannerAccess.email, validUntil: scannerAccess.validUntil }).from(scannerAccess).where(eq(scannerAccess.eventId, resolvedParams.id)),
-    getPackagePresets()
+    getPackagePresets(),
+    getTaxStatus(),
+    getAdminEventDocuments(resolvedParams.id)
   ]);
 
   return (
@@ -48,7 +51,13 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
               {eventData.title}
             </h1>
           </div>
-          <Link href={`/admin/events/${eventData.id}/scanner`} className="min-h-12 inline-flex items-center px-5 bg-accent-green text-white rounded-xl font-bold">Einlass starten</Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/admin/events/${eventData.id}/tischplan`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Tischplan</Link>
+            <Link href={`/admin/events/${eventData.id}/zettel`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Zettel</Link>
+            <Link href={`/admin/events/${eventData.id}/personal`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Personal</Link>
+            <Link href={`/admin/events/${eventData.id}/gutscheine`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Gutscheine</Link>
+            <Link href={`/admin/events/${eventData.id}/scanner`} className="min-h-12 inline-flex items-center px-5 bg-accent-green text-white rounded-xl font-bold">Einlass starten</Link>
+          </div>
         </div>
         
         <EventDetailDashboard 
@@ -60,6 +69,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           initialWaitlist={waitlistEntries}
           initialEventSettings={eventSettings}
           initialPackagePresets={packagePresets}
+          taxStatus={taxStatus}
+          initialDocuments={documents}
           scannerGrants={scannerGrants}
         />
       </div>

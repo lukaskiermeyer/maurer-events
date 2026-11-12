@@ -13,7 +13,23 @@ import type { FoodPackage, PackagePreset } from '@/types/domain';
 
 const TENT_KEY = "tent_dimensions";
 const PRESETS_KEY = "package_presets";
+const TAX_STATUS_KEY = "tax_status";
 const MAX_PRESETS = 20;
+
+export async function getTaxStatus(): Promise<'standard' | 'small_business'> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, TAX_STATUS_KEY));
+  return row?.value === 'small_business' ? 'small_business' : 'standard';
+}
+
+export async function saveTaxStatus(value: string) {
+  await requireAdmin();
+  if (value !== 'standard' && value !== 'small_business') throw new BookingError('Ungültiger Steuerstatus.');
+  await db.transaction(async tx => {
+    await lockLayout(tx, true);
+    await tx.insert(settings).values({ key: TAX_STATUS_KEY, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
+  });
+  revalidatePath('/[locale]', 'layout');
+}
 
 export async function getTentSettings() {
   const result = await db.select().from(settings).where(eq(settings.key, TENT_KEY));

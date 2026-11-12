@@ -8,6 +8,7 @@ import { reconcileExpiredReservations } from '@/lib/reservation-cleanup';
 import { deliverTicket } from '@/lib/ticket-delivery';
 import { reservationAdmin } from '@/lib/reservation-admin';
 import { eventSettings } from '@/db/schema';
+import { runRetentionCleanup } from '@/lib/retention';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -16,12 +17,22 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (!process.env.STRIPE_SECRET_KEY) return NextResponse.json({ error: 'Stripe nicht konfiguriert.' }, { status: 503 });
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-06-24.dahlia', timeout: 10000, maxNetworkRetries: 1 });
-    const updatedReservationsCount = await reconcileExpiredReservations(db, stripe);
+    let updatedReservationsCount = 0;
+    if (process.env.STRIPE_SECRET_KEY) {
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-06-24.dahlia', timeout: 10000, maxNetworkRetries: 1 });
+      updatedReservationsCount = await reconcileExpiredReservations(db, stripe);
+    }
     await db.delete(adminAuth).where(lt(adminAuth.expiresAt, new Date()));
     await db.delete(adminSessions).where(lt(adminSessions.validUntil, new Date()));
     await db.delete(securityRateLimits).where(lt(securityRateLimits.resetAt, new Date()));
+    const retention = await runRetentionCleanup(db);
+    // Cloudinary-Purge für gelöschte Staff-Dokumente/Verträge (Best Effort).
+    let purgedCloudinary = 0;
+    for (const url of [...(retention.purgedIdDocUrls || []), ...(retention.purgedAnonymizeUrls || [])]) {
+      try {
+        if (await deleteCloudinaryImage(url)) purgedCloudinary++;
+      } catch { /* best effort */ }
+    }
     // Payment commits are independent from email availability. Retry unsent tickets.
     const tickets = await db.select({ reservation: reservations, autoSend: eventSettings.autoSendTicket })
       .from(reservations).leftJoin(eventSettings, eq(eventSettings.eventId, reservations.eventId))
@@ -98,7 +109,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ 
       success: true, 
       message: `Cleaned up ${deletedCount} events and ${blobsDeleted} blobs. Updated ${updatedReservationsCount} expired reservations.`,
-      updatedReservationsCount
+      updatedReservationsCount,
+      purgedCloudinary,
+      retention,
     });
 
   } catch (error) {

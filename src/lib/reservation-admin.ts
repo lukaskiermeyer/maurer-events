@@ -5,6 +5,7 @@ import { events, reservations, tables } from '@/db/schema';
 import { assertCapacity, lockEvent, lockLayout, lockReservation } from './reservation-db';
 import { ADMIN_TRANSITIONS, assertEventDay, BookingError, calendarDate, guestDetails, uuid } from './reservation-policy';
 import { toCalendarDay } from './date';
+import { issueVouchersForReservation, voidVouchersForReservation } from './vouchers';
 
 export function reservationAdmin(connection: typeof db) {
   return {
@@ -29,7 +30,10 @@ export function reservationAdmin(connection: typeof db) {
       return connection.transaction(async tx => {
         await lockLayout(tx);
         const { event, reservation } = await lockReservation(tx, reservationId);
-        if (reservation.status === status) return reservation;
+        if (reservation.status === status) {
+          if (status === 'confirmed') await issueVouchersForReservation(tx, event, reservation);
+          return reservation;
+        }
         if (!ADMIN_TRANSITIONS[reservation.status]?.includes(status)) throw new BookingError(`Status-Übergang von '${reservation.status}' zu '${status}' nicht erlaubt.`);
         if ((reservation.stripeSessionId || reservation.checkoutParams) && ['paid', 'confirmed'].includes(status) && !['paid', 'confirmed'].includes(reservation.status)) throw new BookingError('Online-Zahlungen werden ausschließlich durch den Zahlungsdienst bestätigt.');
         if (['paid', 'confirmed', 'checked_in'].includes(status)) {
@@ -43,6 +47,8 @@ export function reservationAdmin(connection: typeof db) {
           pdfUrl: status === 'cancelled' ? null : reservation.pdfUrl,
           scannedAt: status === 'checked_in' ? new Date() : reservation.scannedAt,
         }).where(eq(reservations.id, reservation.id)).returning();
+        if (status === 'confirmed') await issueVouchersForReservation(tx, event, updated);
+        if (status === 'cancelled' || status === 'refunded') await voidVouchersForReservation(tx, updated.id);
         return updated;
       });
     },
@@ -64,6 +70,46 @@ export function reservationAdmin(connection: typeof db) {
         await assertCapacity(tx, event, day, details.guestCount, null);
         const [created] = await tx.insert(reservations).values({ id, eventId, ...details, reservationDate: day, status: 'paid', amountTotal: 0 }).returning();
         return created;
+      });
+    },
+    async confirmRequest(reservationId: string, data: { tableId?: string | null; priceCents?: number | null; actor: string }) {
+      uuid(reservationId);
+      if (data.tableId) uuid(data.tableId);
+      return connection.transaction(async tx => {
+        await lockLayout(tx);
+        const { event, reservation } = await lockReservation(tx, reservationId);
+        if (reservation.status !== 'requested') throw new BookingError('Nur offene Anfragen können bestätigt werden.');
+        const day = toCalendarDay(reservation.reservationDate);
+        assertEventDay(event, day);
+        const tableId = data.tableId || null;
+        await assertCapacity(tx, event, day, reservation.guestCount, tableId, reservation.id);
+        const [updated] = await tx.update(reservations).set({
+          tableId,
+          status: 'confirmed',
+          confirmedAt: new Date(),
+          confirmedBy: data.actor,
+          agreedPriceCents: data.priceCents ?? null,
+          updatedAt: new Date(),
+        }).where(eq(reservations.id, reservationId)).returning();
+        return { event, reservation: updated };
+      });
+    },
+    async declineRequest(reservationId: string, data: { actor: string; reason?: string | null }) {
+      uuid(reservationId);
+      return connection.transaction(async tx => {
+        await lockLayout(tx);
+        const { event, reservation } = await lockReservation(tx, reservationId);
+        if (reservation.status !== 'requested') throw new BookingError('Nur offene Anfragen können abgelehnt werden.');
+        const reason = data.reason?.trim();
+        const internalNotes = reason
+          ? [reservation.internalNotes, `Ablehnung (${data.actor}): ${reason}`].filter(Boolean).join('\n')
+          : reservation.internalNotes;
+        const [updated] = await tx.update(reservations).set({
+          status: 'declined',
+          internalNotes,
+          updatedAt: new Date(),
+        }).where(eq(reservations.id, reservationId)).returning();
+        return { event, reservation: updated };
       });
     },
     async scan(qrCodeText: string, eventId?: string, allowedEventIds?: string[]) {

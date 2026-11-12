@@ -7,7 +7,7 @@ import { updateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
-import type { EventRecord, ReservationRow, TableRecord, GalleryImage, WaitlistEntry, EventSettings, TentDimensions, PackagePreset } from '@/types/domain';
+import type { EventRecord, ReservationRow, TableRecord, GalleryImage, WaitlistEntry, EventSettings, TentDimensions, PackagePreset, EventDocument } from '@/types/domain';
 import type { ScannerGrant } from '@/components/admin/ScannerAccessPanel';
 
 function stringToColor(str: string) {
@@ -31,12 +31,25 @@ const ReactQuill = dynamic(() => import("react-quill-new"), {
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 
 import { updateEventSettings } from "@/app/actions/eventSettings";
-import { deletePackagePreset, getPackagePresets, savePackagePreset } from "@/app/actions/settings";
+import { deletePackagePreset, getPackagePresets, savePackagePreset, saveTaxStatus } from "@/app/actions/settings";
 import ScannerAccessPanel from '@/components/admin/ScannerAccessPanel';
+import ReservationRequestsPanel from '@/components/admin/ReservationRequestsPanel';
+import EventDocumentsPanel from '@/components/admin/EventDocumentsPanel';
+import CustomerAssignPanel from './tischplan/CustomerAssignPanel';
+import PlanSvg from './tischplan/PlanSvg';
+import PrintPlanButton from './tischplan/PrintPlanButton';
 import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
+import { resolveReservationMode } from '@/lib/reservation-mode';
+import { formatEuroCents, packageTax, type TaxStatus } from '@/lib/pricing';
+import type { CustomerRecord } from '@/types/domain';
 
-const statusNames: Record<string, string> = { pending: 'Ausstehend', paid: 'Bezahlt', confirmed: 'Bestätigt', checked_in: 'Eingecheckt', cancelled: 'Storniert', expired: 'Abgelaufen', refunded: 'Erstattet', payment_pending: 'Zahlung wird verarbeitet', payment_review: 'Zahlung prüfen', disputed: 'Zahlung angefochten' };
+type DashboardTab = "overview" | "reservations" | "tables" | "documents" | "settings" | "waitlist" | "team" | "gallery";
+
+const statusNames: Record<string, string> = { pending: 'Ausstehend', paid: 'Bezahlt', confirmed: 'Bestätigt', checked_in: 'Eingecheckt', cancelled: 'Storniert', expired: 'Abgelaufen', refunded: 'Erstattet', payment_pending: 'Zahlung wird verarbeitet', payment_review: 'Zahlung prüfen', disputed: 'Zahlung angefochten', requested: 'Anfrage offen', declined: 'Abgelehnt' };
 const statusOptions = (status: string) => [status, ...(ADMIN_TRANSITIONS[status] || [])].filter(next => next !== 'checked_in' || next === status);
+function taxSummaryPrefix(status: TaxStatus) {
+  return status === 'small_business' ? 'Ohne USt. (§ 19 UStG):' : 'Steuer:';
+}
 
 interface EventDetailProps {
   event: EventRecord;
@@ -47,15 +60,20 @@ interface EventDetailProps {
   initialWaitlist?: WaitlistEntry[];
   initialEventSettings?: EventSettings;
   initialPackagePresets?: PackagePreset[];
+  taxStatus?: TaxStatus;
+  initialDocuments?: EventDocument[];
   scannerGrants?: ScannerGrant[];
+  customers?: CustomerRecord[];
 }
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], scannerGrants = [] }: EventDetailProps) {
-  const [activeTab, setActiveTab] = useState<"edit" | "reservations" | "tables" | "gallery" | "waitlist" | "settings" | "team">(event.type === 'event' ? 'reservations' : 'edit');
-  const [tableMode, setTableMode] = useState<"edit" | "assign">("edit");
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], customers = [] }: EventDetailProps) {
+  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
+  const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [taxStatus, setTaxStatus] = useState<TaxStatus>(initialTaxStatus);
   const [selectedResId, setSelectedResId] = useState<string | null>(null);
   const [selectedBulkIds, setSelectedBulkIds] = useState<string[]>([]);
+  const requestCount = initialReservations.filter(row => row.reservation.status === 'requested').length;
 
   const [formData, setFormData] = useState({
     title: event.title,
@@ -68,6 +86,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     link: event.link,
     reservable: event.reservable,
     allowTableSelection: event.allowTableSelection ?? true,
+    reservationMode: resolveReservationMode(event),
+    reservationEmail: event.reservationEmail,
+    reservationNote: event.reservationNote || "",
     maxCapacity: event.maxCapacity || 0,
     walkInReserve: event.walkInReserve || 0
   });
@@ -90,6 +111,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     bookingWindowStartDays: initialEventSettings?.bookingWindowStartDays ?? 90,
     bookingWindowEndHours: initialEventSettings?.bookingWindowEndHours ?? 2,
     autoSendTicket: initialEventSettings?.autoSendTicket ?? true,
+    slipNote: initialEventSettings?.slipNote ?? 'Dieser Tisch muss ab 15 Minuten vor der Reservierung freigehalten werden.',
+    slipFreeAfterMinutes: initialEventSettings?.slipFreeAfterMinutes ?? 15,
   });
 
   const [presets, setPresets] = useState<PackagePreset[]>(initialPackagePresets);
@@ -138,10 +161,11 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(true);
     try {
       await updateEventSettings(event.id, settingsData);
+      await saveTaxStatus(taxStatus);
       alert("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
       console.error(error);
-      alert("Fehler beim Speichern der Einstellungen");
+      alert(error instanceof Error ? error.message : "Fehler beim Speichern der Einstellungen");
     } finally {
       setIsUpdating(false);
     }
@@ -168,6 +192,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         : [...prev.reservableDates, dateStr];
       return { ...prev, reservableDates: dates };
     });
+  };
+
+  const updatePackage = (index: number, patch: Partial<EventSettings['packages'][number]>) => {
+    setSettingsData(prev => ({
+      ...prev,
+      packages: prev.packages.map((pkg, i) => i === index ? { ...pkg, ...patch } : pkg),
+    }));
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(event.reservableDates?.[0] || new Date(event.date).toISOString().slice(0, 10));
@@ -236,6 +267,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
       await updateEvent(event.id, {
         ...formData,
+        reservationMode: formData.reservationMode as 'none' | 'email' | 'online',
+        reservable: formData.reservationMode === 'online',
+        reservationEmail: formData.reservationEmail,
+        reservationNote: formData.reservationNote || null,
         imageUrl: finalImageUrl,
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
@@ -507,62 +542,104 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     );
   };
 
+  const busyCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && r.reservation.tableId).length;
+  const unassignedCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && !r.reservation.tableId).length;
+  const guestsTotal = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status)).reduce((sum, r) => sum + r.reservation.guestCount, 0);
+  const revenueCents = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status)).reduce((sum, r) => sum + r.reservation.amountTotal, 0);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-border-light overflow-hidden mt-8">
       {/* Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 border-b border-border-light [&>button]:px-3 [&>button]:py-3 [&>button]:min-h-12 [&>button]:text-sm [&>button]:whitespace-normal">
-        <button
-          onClick={() => setActiveTab("edit")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "edit" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          Event bearbeiten
-        </button>
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "settings" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-        >
-          Einstellungen
-        </button>
-        {event.type === 'event' && (
-          <>
-            <button
-              onClick={() => setActiveTab("reservations")}
-              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors border-r border-border-light/50 ${activeTab === "reservations" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-            >
-              Gäste ({initialReservations.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("tables")}
-              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "tables" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-            >
-              Tische & Zeltplan
-            </button>
-            <button
-              onClick={() => setActiveTab("waitlist")}
-              className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "waitlist" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
-            >
-              Warteliste ({initialWaitlist.length})
-            </button>
-            <button onClick={() => setActiveTab('team')} className={`font-bold transition-colors ${activeTab === 'team' ? 'bg-accent-green text-white' : 'bg-base-light text-base-dark'}`}>Einlass-Team</button>
-          </>
-        )}
-        {event.type === 'gallery' && (
+      <div className="flex flex-wrap border-b border-border-light bg-base-light/60">
+        {([
+          { key: 'overview', label: 'Übersicht' },
+          ...(event.type === 'event' ? [
+            { key: 'reservations', label: `Gäste & Anfragen${requestCount ? ` (${requestCount} offen)` : ''}` },
+            { key: 'tables', label: 'Tisch & Zelt' },
+            { key: 'documents', label: `Dokumente (${initialDocuments.length})` },
+            { key: 'waitlist', label: `Warteliste (${initialWaitlist.length})` },
+            { key: 'team', label: 'Einlass' },
+          ] as const : [
+            { key: 'gallery', label: `📸 Galerie (${initialGallery.length})` },
+          ] as const),
+          { key: 'settings', label: 'Event & Buchung' },
+        ] as const).map((tab) => (
           <button
-            onClick={() => setActiveTab("gallery")}
-            className={`whitespace-nowrap px-8 py-4 font-bold font-sans transition-colors ${activeTab === "gallery" ? "bg-accent-green text-white" : "bg-base-light text-base-dark hover:bg-canvas-light"}`}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            aria-pressed={activeTab === tab.key}
+            className={`px-4 sm:px-5 py-3.5 min-h-12 font-bold font-sans text-sm transition-colors ${activeTab === tab.key ? "bg-accent-green text-white" : "text-base-dark hover:bg-canvas-light"}`}
           >
-            📸 Galerie ({initialGallery.length})
+            {tab.label}
           </button>
-        )}
+        ))}
       </div>
 
       <div className="p-4 sm:p-6 lg:p-10 min-w-0">
         {activeTab === 'team' && <ScannerAccessPanel eventId={event.id} eventDate={event.endDate || event.date} grants={scannerGrants} />}
+        {activeTab === 'documents' && <EventDocumentsPanel eventId={event.id} initialDocuments={initialDocuments} />}
 
-        {/* EDIT TAB */}
-        {activeTab === "edit" && (
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              <div className="bg-canvas-light border border-border-light rounded-2xl p-5">
+                <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Gäste (bestätigt)</div>
+                <div className="text-3xl font-display font-black">{guestsTotal}</div>
+                <div className="text-xs font-bold opacity-50 mt-1">Personen bei {busyCount} Reservierungen</div>
+              </div>
+              <div className="bg-canvas-light border border-border-light rounded-2xl p-5">
+                <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Umsatz</div>
+                <div className="text-3xl font-display font-black text-accent-green">{(revenueCents / 100).toFixed(2)} €</div>
+              </div>
+              <div className="bg-canvas-light border border-border-light rounded-2xl p-5">
+                <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Offene Anfragen</div>
+                <div className={`text-3xl font-display font-black ${requestCount > 0 ? 'text-amber-600' : ''}`}>{requestCount}</div>
+              </div>
+              <div className="bg-canvas-light border border-border-light rounded-2xl p-5">
+                <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Tische belegt</div>
+                <div className="text-3xl font-display font-black">{busyCount}<span className="text-lg opacity-50"> / {initialTables.length}</span></div>
+                {unassignedCount > 0 && <div className="text-xs font-bold text-amber-700 mt-1">{unassignedCount} noch ohne Tisch</div>}
+              </div>
+            </div>
+
+            <section className="bg-canvas-light border border-border-light rounded-2xl p-5">
+              <h2 className="font-display font-bold text-lg mb-4">🗺️ Nächste Schritte</h2>
+              <ul className="space-y-3">
+                {[
+                  { done: requestCount === 0, label: requestCount === 0 ? 'Alle Anfragen bearbeitet' : `${requestCount} Anfrage(n) prüfen`, tab: 'reservations' as const },
+                  { done: unassignedCount === 0, label: unassignedCount === 0 ? 'Alle Gäste haben einen Tisch' : `${unassignedCount} Gäste noch einem Tisch zuweisen`, tab: 'tables' as const },
+                  { done: scannerGrants.length > 0, label: scannerGrants.length > 0 ? `Einlass-Team freigegeben (${scannerGrants.length})` : 'Einlass-Team freigeben', tab: 'team' as const },
+                ].map((step, index) => (
+                  <li key={index}>
+                    <button type="button" onClick={() => setActiveTab(step.tab)} className="w-full flex items-center gap-3 text-left bg-white border border-border-light rounded-xl px-4 py-3 hover:border-accent-green transition-colors">
+                      <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${step.done ? 'bg-accent-green text-white' : 'bg-amber-400 text-white'}`}>{step.done ? '✓' : '!'}</span>
+                      <span className="font-bold text-sm">{step.label}</span>
+                      <span aria-hidden className="ml-auto text-accent-green font-black">→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Tisch & Zelt öffnen', tab: 'tables' as const },
+                { label: 'Gäste verwalten', tab: 'reservations' as const },
+                { label: 'Einlass starten', href: `/admin/events/${event.id}/scanner` },
+                { label: 'Zettel drucken', href: `/admin/events/${event.id}/zettel` },
+              ].map((action) => (
+                action.href
+                  ? <a key={action.label} href={action.href} className="bg-accent-green text-white font-bold text-center py-3 rounded-xl hover:bg-accent-green/90 transition-colors">{action.label}</a>
+                  : <button key={action.label} type="button" onClick={() => setActiveTab(action.tab)} className="bg-accent-green text-white font-bold py-3 rounded-xl hover:bg-accent-green/90 transition-colors">{action.label}</button>
+              ))}
+            </section>
+          </div>
+        )}
+
+        {/* SETTINGS TAB: Event & Buchung */}
+        {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto">
-            {/* Same as before */}
             <h2 className="text-2xl font-display font-bold mb-6">Event Details anpassen</h2>
             <form onSubmit={handleEventUpdate} className="space-y-4 font-sans">
               <div>
@@ -601,18 +678,53 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
               {event.type === 'event' && (
                 <>
-                  <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light mt-4">
-                    <input type="checkbox" id="resEdit" className="w-5 h-5 accent-accent-green" checked={formData.reservable}
+                  <div className="space-y-2 bg-base-light p-3 rounded-lg border border-border-light mt-4">
+                    <label htmlFor="resEdit" className="block text-sm font-bold">Reservierungsmodus</label>
+                    <select
+                      id="resEdit"
+                      value={formData.reservationMode}
                       onChange={e => {
+                        const mode = e.target.value as 'none' | 'email' | 'online';
                         setFormData({
                           ...formData,
-                          reservable: e.target.checked,
-                          reservableDates: e.target.checked ? availableDays : []
+                          reservationMode: mode,
+                          reservable: mode === 'online',
+                          reservableDates: mode === 'none' ? [] : formData.reservableDates
                         });
                       }}
-                    />
-                    <label htmlFor="resEdit" className="text-sm font-bold cursor-pointer">Tische reservierbar?</label>
+                      className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+                    >
+                      <option value="none">Keine Reservierung</option>
+                      <option value="email">Reservierung per E-Mail</option>
+                      {(event.reservationMode === 'online' || event.reservable) && (
+                        <option value="online">Online-Reservierung (bestehend)</option>
+                      )}
+                    </select>
                   </div>
+
+                  {formData.reservationMode === 'email' && (
+                    <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg mt-2 space-y-3">
+                      <div>
+                        <label className="block text-sm font-bold mb-1 opacity-70">Reservierungs-E-Mail</label>
+                        <input
+                          type="email"
+                          required
+                          value={formData.reservationEmail}
+                          onChange={e => setFormData({ ...formData, reservationEmail: e.target.value })}
+                          className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold mb-1 opacity-70">Hinweis für Gäste (optional)</label>
+                        <textarea
+                          value={formData.reservationNote}
+                          onChange={e => setFormData({ ...formData, reservationNote: e.target.value })}
+                          className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green min-h-[80px]"
+                          placeholder="z.B. Reservierungen nur für Vereine ab 20 Personen."
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {formData.reservable && (
                     <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg mt-2 space-y-4">
@@ -705,6 +817,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   className="p-2 rounded border border-border-light text-sm bg-white"
                 >
                   <option value="all">Alle Status</option>
+                  <option value="requested">Anfrage offen</option>
+                  <option value="declined">Abgelehnt</option>
                   <option value="pending">Ausstehend</option>
                   <option value="paid">Bezahlt</option>
                   <option value="confirmed">Bestätigt</option>
@@ -1266,10 +1380,28 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </section>
 
+              {/* C) Steuerstatus */}
+              <section>
+                <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Steuerstatus</h3>
+                <div className="max-w-xl space-y-3">
+                  <select
+                    value={taxStatus}
+                    onChange={e => setTaxStatus(e.target.value as TaxStatus)}
+                    className="w-full bg-canvas-light border border-border-light rounded-xl p-3 font-bold min-h-11"
+                  >
+                    <option value="standard">Regelbesteuert (MwSt. ausweisen)</option>
+                    <option value="small_business">Kleinunternehmer nach § 19 UStG</option>
+                  </select>
+                  <p className="text-xs text-base-dark/60">
+                    Gilt global für alle Events. Bei Kleinunternehmerstatus werden keine MwSt.-Beträge ausgewiesen.
+                  </p>
+                </div>
+              </section>
+
               {/* D) Pakete */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Konsumations-Pakete</h3>
-                <p className="text-sm text-base-dark/60 mb-4">Der Paketpreis pro Person ist der Betrag, den der Gast vorab zahlt. Er ersetzt den früheren Mindestverzehr.</p>
+                <p className="text-sm text-base-dark/60 mb-4">Paketpreis pro Person oder pro Tisch. Die steuerliche Einordnung wird pro Paket hinterlegt; sie gilt nur für den Online-Reservierungsflow.</p>
 
                 <div className="mb-6 rounded-xl border border-border-light bg-white p-4">
                   <label htmlFor="preset-select" className="block text-xs font-bold uppercase mb-2 opacity-70">Vorlage</label>
@@ -1301,19 +1433,94 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
 
                 <div className="space-y-4 mb-4">
-                  {settingsData.packages.map((pkg, i) => (
-                    <div key={pkg.id} className="bg-canvas-light p-4 rounded-xl border border-border-light relative">
-                      <button type="button" onClick={() => setSettingsData(p => ({ ...p, packages: p.packages.filter((_, idx) => idx !== i) }))} className="absolute top-4 right-4 text-red-500 font-bold text-xl hover:text-red-700">×</button>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pr-6 [&>div]:min-w-0">
-                        <div><label className="text-xs font-bold uppercase">Name</label><input type="text" value={pkg.name} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].name = e.target.value; setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
-                        <div><label className="text-xs font-bold uppercase">Preis (€)</label><input type="number" value={pkg.price} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].price = parseFloat(e.target.value); setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
+                  {settingsData.packages.map((pkg, i) => {
+                    const tax = packageTax(pkg, taxStatus);
+                    const isVoucher = pkg.type === 'voucher_bundle';
+                    return (
+                      <div key={pkg.id} className="bg-canvas-light p-4 rounded-xl border border-border-light relative">
+                        <button type="button" onClick={() => setSettingsData(p => ({ ...p, packages: p.packages.filter((_, idx) => idx !== i) }))} className="absolute top-4 right-4 text-red-500 font-bold text-xl hover:text-red-700">×</button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pr-6 [&>div]:min-w-0">
+                          <div className="lg:col-span-2"><label className="text-xs font-bold uppercase">Name</label><input type="text" value={pkg.name} onChange={(e) => updatePackage(i, { name: e.target.value })} className="w-full bg-white border border-border-light rounded p-2" /></div>
+                          <div><label className="text-xs font-bold uppercase">Preis (€)</label><input type="number" min="0" step="0.01" value={pkg.price} onChange={(e) => updatePackage(i, { price: parseFloat(e.target.value) || 0 })} className="w-full bg-white border border-border-light rounded p-2" /></div>
+                          <div>
+                            <label className="text-xs font-bold uppercase">Einheit</label>
+                            <select value={pkg.unit ?? 'per_person'} disabled={isVoucher} onChange={(e) => updatePackage(i, { unit: e.target.value as 'per_person' | 'per_table' })} className="w-full bg-white border border-border-light rounded p-2 disabled:opacity-60">
+                              <option value="per_person">pro Person</option>
+                              <option value="per_table">pro Tisch</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold uppercase">Typ</label>
+                            <select
+                              value={pkg.type ?? 'food_package'}
+                              onChange={(e) => {
+                                const type = e.target.value as 'food_package' | 'voucher_bundle' | 'other';
+                                updatePackage(i, type === 'voucher_bundle'
+                                  ? { type, unit: 'per_table', voucherCount: pkg.voucherCount ?? 10, voucherValueCents: pkg.voucherValueCents ?? 1200 }
+                                  : { type });
+                              }}
+                              className="w-full bg-white border border-border-light rounded p-2"
+                            >
+                              <option value="food_package">Speisen-Paket</option>
+                              <option value="voucher_bundle">Gutscheinpaket</option>
+                              <option value="other">Sonstiges</option>
+                            </select>
+                          </div>
+                          <div className="flex items-end pb-2">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold">
+                              <input type="checkbox" checked={pkg.priceIncludesVat !== false} onChange={(e) => updatePackage(i, { priceIncludesVat: e.target.checked })} className="w-5 h-5 accent-accent-green" />
+                              Preis inkl. MwSt.
+                            </label>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold uppercase">MwSt.-Satz</label>
+                            <select
+                              value={pkg.vatRate ?? ''}
+                              onChange={(e) => updatePackage(i, { vatRate: e.target.value === '' ? undefined : Number(e.target.value) as 0 | 7 | 19 })}
+                              className="w-full bg-white border border-border-light rounded p-2"
+                            >
+                              <option value="">– wählen –</option>
+                              <option value="0">0 %</option>
+                              <option value="7">7 %</option>
+                              <option value="19">19 %</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold uppercase">Steuerhinweis</label>
+                            <input type="text" maxLength={100} value={pkg.vatNote ?? ''} onChange={(e) => updatePackage(i, { vatNote: e.target.value })} placeholder="z.B. Getränke" className="w-full bg-white border border-border-light rounded p-2" />
+                          </div>
+                        </div>
+                        <div className="mb-3"><label className="text-xs font-bold uppercase">Beschreibung</label><input type="text" value={pkg.description} onChange={(e) => updatePackage(i, { description: e.target.value })} className="w-full bg-white border border-border-light rounded p-2" /></div>
+
+                        {isVoucher && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 p-3 bg-white/70 border border-border-light rounded-lg">
+                            <div><label className="text-xs font-bold uppercase">Gutscheine</label><input type="number" min="1" value={pkg.voucherCount ?? 10} onChange={(e) => updatePackage(i, { voucherCount: parseInt(e.target.value) || 1 })} className="w-full bg-white border border-border-light rounded p-2" /></div>
+                            <div><label className="text-xs font-bold uppercase">Wert je Gutschein (€)</label><input type="number" min="0.01" step="0.01" value={pkg.voucherValueCents ? pkg.voucherValueCents / 100 : ''} onChange={(e) => updatePackage(i, { voucherValueCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full bg-white border border-border-light rounded p-2" /></div>
+                            <div className="sm:col-span-1 flex items-end pb-2 text-sm font-bold text-base-dark/70">
+                              Gesamtwert: {formatEuroCents((pkg.voucherCount ?? 0) * (pkg.voucherValueCents ?? 0))}
+                            </div>
+                            <div className="sm:col-span-3"><label className="text-xs font-bold uppercase">Gutscheinbedingungen</label><textarea value={pkg.voucherTerms ?? ''} onChange={(e) => updatePackage(i, { voucherTerms: e.target.value })} maxLength={2000} className="w-full bg-white border border-border-light rounded p-2 min-h-[70px]" placeholder="Nur am Eventtag im Zelt einlösbar, keine Barauszahlung." /></div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-4 mb-3">
+                          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={pkg.popular} onChange={(e) => updatePackage(i, { popular: e.target.checked })} className="text-accent-green rounded" /> <span className="text-sm font-bold">Als &quot;Beliebt&quot; markieren</span></label>
+                          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={pkg.active !== false} onChange={(e) => updatePackage(i, { active: e.target.checked })} className="text-accent-green rounded" /> <span className="text-sm font-bold">Aktiv</span></label>
+                        </div>
+
+                        {tax ? (
+                          <p className="text-xs font-bold text-base-dark/60 bg-white/70 border border-border-light rounded-lg p-2">
+                            {taxSummaryPrefix(taxStatus)} {formatEuroCents(tax.grossCents)} brutto · {formatEuroCents(tax.netCents)} netto · {formatEuroCents(tax.vatCents)} MwSt. ({tax.vatRate} %)
+                            {pkg.unit === 'per_table' ? ' · Abrechnung pro Tisch' : ''}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">Bitte MwSt.-Satz wählen, damit Netto/Brutto berechnet werden können.</p>
+                        )}
                       </div>
-                      <div className="mb-3"><label className="text-xs font-bold uppercase">Beschreibung</label><input type="text" value={pkg.description} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].description = e.target.value; setSettingsData(p => ({ ...p, packages: newP })); }} className="w-full bg-white border border-border-light rounded p-2" /></div>
-                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={pkg.popular} onChange={(e) => { const newP = [...settingsData.packages]; newP[i].popular = e.target.checked; setSettingsData(p => ({ ...p, packages: newP })); }} className="text-accent-green rounded" /> <span className="text-sm font-bold">Als &quot;Beliebt&quot; markieren</span></label>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-                <button type="button" onClick={() => setSettingsData(p => ({ ...p, packages: [...p.packages, { id: 'pkg_' + Date.now(), name: 'Neues Paket', price: 0, description: '', popular: false }] }))} className="bg-base-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-accent-green transition-colors">+ Paket hinzufügen</button>
+                <button type="button" onClick={() => setSettingsData(p => ({ ...p, packages: [...p.packages, { id: 'pkg_' + Date.now(), name: 'Neues Paket', price: 0, description: '', popular: false, unit: 'per_person', type: 'food_package', priceIncludesVat: true, vatRate: 19, vatNote: '', active: true }] }))} className="bg-base-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-accent-green transition-colors">+ Paket hinzufügen</button>
               </section>
 
               {/* E) Storno-Bedingungen */}
@@ -1326,7 +1533,28 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </section>
 
-              {/* F) Limitierungen */}
+              {/* F) Reservierungszettel */}
+              <section>
+                <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Reservierungszettel</h3>
+                <div className="max-w-xl space-y-3">
+                  <div>
+                    <label className="block text-sm font-bold mb-1">Hinweis auf dem Zettel</label>
+                    <textarea
+                      value={settingsData.slipNote}
+                      onChange={(e) => setSettingsData(p => ({ ...p, slipNote: e.target.value }))}
+                      maxLength={500}
+                      className="w-full bg-canvas-light border border-border-light rounded-xl p-3 min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span>Tisch freihalten ab</span>
+                    <input type="number" min="0" max="720" value={settingsData.slipFreeAfterMinutes} onChange={(e) => setSettingsData(p => ({ ...p, slipFreeAfterMinutes: parseInt(e.target.value) }))} className="w-20 bg-canvas-light border border-border-light rounded-xl p-2 text-center font-bold" />
+                    <span>Minuten vor Reservierung</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* G) Limitierungen */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Limitierungen</h3>
                 <div className="max-w-sm flex items-center justify-between">
@@ -1335,7 +1563,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </section>
 
-              {/* G) Service-Fee */}
+              {/* H) Service-Fee */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Service-Gebühr (Stripe)</h3>
                 <label className="flex items-center gap-3 cursor-pointer mb-4">
@@ -1356,7 +1584,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 )}
               </section>
 
-              {/* H) Buchungszeitraum */}
+              {/* I) Buchungszeitraum */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Buchungszeitraum</h3>
                 <div className="space-y-3 max-w-sm">
@@ -1371,7 +1599,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </section>
 
-              {/* I) Ticket-Versand */}
+              {/* J) Ticket-Versand */}
               <section>
                 <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Ticket-Versand</h3>
                 <label className="flex items-center gap-3 cursor-pointer">

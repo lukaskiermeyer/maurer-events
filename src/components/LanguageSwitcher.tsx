@@ -4,7 +4,7 @@ import { useLocale } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/routing';
 import { useTransition } from 'react';
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ glass = false }: { glass?: boolean }) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +22,11 @@ export default function LanguageSwitcher() {
     <button
       onClick={toggleLocale}
       disabled={isPending}
-      className="group flex items-center justify-center w-10 h-10 bg-canvas-light hover:bg-white border-2 border-border-light hover:border-accent-green rounded-full shadow-sm transition-all duration-300 disabled:opacity-50"
+      className={`group flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 disabled:opacity-50 ${
+        glass
+          ? "bg-white/15 backdrop-blur-md border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_16px_rgba(0,0,0,0.18)] hover:bg-white/25 hover:border-white/55"
+          : "bg-canvas-light hover:bg-white border-2 border-border-light hover:border-accent-green shadow-sm"
+      }`}
       aria-label={locale === 'de' ? "Switch to English" : "Auf Deutsch wechseln"}
       title={locale === 'de' ? "English" : "Deutsch"}
     >

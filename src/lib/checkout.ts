@@ -2,9 +2,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import Stripe from 'stripe';
 import { and, eq, sql, count } from 'drizzle-orm';
 import { db } from '@/db';
-import { eventSettings, reservations } from '@/db/schema';
+import { eventSettings, reservations, settings as globalSettings } from '@/db/schema';
 import { activeReservation, assertCapacity, lockEvent, lockLayout } from './reservation-db';
 import { assertBookingWindow, assertEventDay, bookingInstant, bookingPrice, BookingError, calendarDate, cleanTime, DEFAULT_PACKAGES, DEFAULT_TIMES, guestDetails, uuid } from './reservation-policy';
+import { packageTax } from './pricing';
 import { verifyTurnstile } from './turnstile';
 import { takeRateLimit } from './rate-limit';
 
@@ -56,12 +57,16 @@ export function createCheckoutService(connection: typeof db, stripe: Pick<Stripe
       const table = await assertCapacity(tx, event, input.day, input.guestCount, input.tableId);
       if (table && (settings?.requireFullTable ?? true) && input.guestCount !== table.capacity) throw new BookingError(`Bitte die gesamte Tischkapazität (${table.capacity} Personen) buchen.`);
       const vipCents = table?.isVip ? table.vipPrice ?? 0 : 0;
-      const price = bookingPrice(pkg.price, input.guestCount, vipCents, settings?.customServiceFee ? settings.serviceFeePercent : undefined, settings?.customServiceFee ? settings.serviceFeeFixedCents : undefined);
+      const unitCount = ((pkg as { unit?: 'per_person' | 'per_table' }).unit ?? 'per_person') === 'per_table' ? 1 : input.guestCount;
+      const price = bookingPrice(pkg.price, unitCount, vipCents, settings?.customServiceFee ? settings.serviceFeePercent : undefined, settings?.customServiceFee ? settings.serviceFeeFixedCents : undefined);
+      const [taxRow] = await tx.select({ value: globalSettings.value }).from(globalSettings).where(eq(globalSettings.key, 'tax_status'));
+      const taxStatus = taxRow?.value === 'small_business' ? 'small_business' : 'standard';
+      const tax = packageTax(pkg, taxStatus);
       const baseUrl = new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
       if (process.env.NODE_ENV === 'production' && baseUrl.protocol !== 'https:') throw new BookingError('Checkout ist nicht korrekt konfiguriert.', 503);
       const id = randomUUID();
       const expires = Math.floor(Date.now() / 1000) + 31 * 60;
-      const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price_data: { currency: 'eur', product_data: { name: `Reservierung: ${event.title}`, description: `${pkg.name} für ${input.guestCount} Personen` }, unit_amount: price.unitAmount }, quantity: input.guestCount }];
+      const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price_data: { currency: 'eur', product_data: { name: `Reservierung: ${event.title}`, description: `${pkg.name} für ${input.guestCount} Personen` }, unit_amount: price.unitAmount }, quantity: unitCount }];
       if (vipCents > 0) line_items.push({ price_data: { currency: 'eur', product_data: { name: 'VIP Aufpreis', description: table.name }, unit_amount: vipCents }, quantity: 1 });
       if (price.fee > 0) line_items.push({ price_data: { currency: 'eur', product_data: { name: 'Service- & Buchungsgebühr' }, unit_amount: price.fee }, quantity: 1 });
       const params: Stripe.Checkout.SessionCreateParams = {
@@ -73,6 +78,11 @@ export function createCheckoutService(connection: typeof db, stripe: Pick<Stripe
         guestName: input.guestName, email: input.email, guestCount: input.guestCount, reservationDate: input.day,
         selectedTime: input.selectedTime, amountTotal: price.total, status: 'pending', expiresAt: new Date((expires + 4 * 60) * 1000),
         idempotencyKey: input.idempotencyKey, requestHash, checkoutParams: params as unknown as Record<string, unknown>,
+        source: 'online', packageId: pkg.id, packageName: pkg.name,
+        priceGrossCents: tax ? tax.grossCents * unitCount : null,
+        priceNetCents: tax ? tax.netCents * unitCount : null,
+        vatCents: tax ? tax.vatCents * unitCount : null,
+        vatRate: tax?.vatRate ?? null,
       }).returning();
       return created;
     });

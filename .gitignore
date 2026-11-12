@@ -30,6 +30,9 @@
 .DS_Store
 *.pem
 
+# agent scratch (preview/screenshot tools live in .qwen/tmp)
+.qwen/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

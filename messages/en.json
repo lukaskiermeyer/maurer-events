@@ -42,8 +42,8 @@
         "description": "Professional B2B events with that special touch."
       },
       "vereinsfest": {
-        "title": "Club Party",
-        "description": "Celebrate together, live tradition. We take care of everything."
+        "title": "Club Anniversary",
+        "description": "From the 50th to the 150th anniversary – we make your club anniversary one to remember."
       },
       "tagesveranstaltung": {
         "title": "Day Events",
@@ -55,11 +55,14 @@
     "title_1_alt": "Our",
     "title_2_alt": "Events",
     "title": "Upcoming Events",
-    "subtitle": "Come by and celebrate with us",
+    "subtitle": "",
     "view_all": "View all dates",
     "date_label": "Date",
     "details_btn": "Details",
-    "no_events": "No events found."
+    "no_events": "No events found.",
+    "empty_title_1": "Something's",
+    "empty_title_2": "cooking!",
+    "empty_text": "The host is still fine-tuning the program. As soon as the next dates are set, you'll find them right here. Check back soon!"
   },
   "Contact": {
     "title": "Let's Talk!",
@@ -79,13 +82,36 @@
     "option_default": "Please select...",
     "option_volksfest": "Folk Festival / Beer Tent",
     "option_firma": "Company Event / Anniversary",
-    "option_verein": "Club Party",
+    "option_verein": "Club Anniversary",
     "option_privat": "Private Celebration / Wedding",
     "option_other": "Other",
     "label_message": "Your Message",
     "placeholder_message": "Tell us a bit about your planned event...",
     "btn_submit": "Send Inquiry",
-    "btn_submitting": "Sending..."
+    "btn_submitting": "Sending...",
+    "heading_prefix": "Send us an",
+    "heading_accent": "enquiry",
+    "heading_subtitle": "Let's plan something great together.",
+    "info_title": "We look forward to hearing from you",
+    "info_text": "Whether it's a traditional beer tent or an elegant corporate event.",
+    "step_of": "Step {step} of {total}",
+    "steps_anlass": "Occasion",
+    "steps_kontakt": "Contact",
+    "steps_nachricht": "Message",
+    "step1_title": "What's coming up?",
+    "step1_hint": "Choose the type of event you are planning.",
+    "step2_title": "Who's planning the party?",
+    "step2_hint": "So we can get back to you.",
+    "step3_title": "Almost there!",
+    "step3_hint": "Tell us a little about your plans.",
+    "back": "Back",
+    "next": "Continue",
+    "your_occasion": "Your occasion:",
+    "change": "Change",
+    "err_event_type": "Please choose a type of event.",
+    "err_contact": "Please enter your name and a valid email address.",
+    "err_message": "Please write us a few lines about your party.",
+    "err_robot": "Please confirm that you are not a robot."
   },
   "Footer": {
     "brand_desc": "We plan, you celebrate. Since 2025, we bring Bavarian tradition and professional event expertise together.",
@@ -166,5 +192,12 @@
     "empty_homepage": "No galleries have been selected for the homepage yet.",
     "images": "Pictures",
     "back_to_overview": "Back to overview"
+  },
+  "CareersTeaser": {
+    "eyebrow": "Careers",
+    "cta_positions": "View all positions",
+    "cta_apply": "Apply spontaneously",
+    "empty_hint": "No open positions right now – spontaneous applications are always welcome.",
+    "caption": "Your uniform when you join the team"
   }
 }

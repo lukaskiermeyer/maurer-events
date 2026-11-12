@@ -42,8 +42,8 @@
         "description": "Professionelle B2B-Veranstaltungen mit dem gewissen Etwas."
       },
       "vereinsfest": {
-        "title": "Vereinsfest",
-        "description": "Gemeinsam feiern, Tradition leben. Wir kümmern uns um alles."
+        "title": "Vereinsjubiläum",
+        "description": "Vom 50-jährigen bis zum 150-jährigen: Wir machen euer Vereinsjubiläum zu einem Fest, das in Erinnerung bleibt."
       },
       "tagesveranstaltung": {
         "title": "Tagesveranstaltungen",
@@ -53,13 +53,16 @@
   },
   "Events": {
     "title_1_alt": "Unsere",
-    "title_2_alt": "Termine",
+    "title_2_alt": "Events",
     "title": "Nächste Feste",
-    "subtitle": "Komm vorbei und feier mit uns",
+    "subtitle": "",
     "view_all": "Alle Termine ansehen",
     "date_label": "Datum",
     "details_btn": "Details",
-    "no_events": "Keine Veranstaltungen gefunden."
+    "no_events": "Keine Veranstaltungen gefunden.",
+    "empty_title_1": "Bald gibt's was zu",
+    "empty_title_2": "feiern!",
+    "empty_text": "Der Wirt feilt gerade noch am Programm. Sobald die nächsten Termine feststehen, findest du sie genau hier. Schau bald wieder vorbei!"
   },
   "Contact": {
     "title": "Lass uns reden!",
@@ -79,13 +82,36 @@
     "option_default": "Bitte wählen...",
     "option_volksfest": "Volksfest / Bierzelt",
     "option_firma": "Firmenevent / Jubiläum",
-    "option_verein": "Vereinsfest",
+    "option_verein": "Vereinsjubiläum",
     "option_privat": "Private Feier / Hochzeit",
     "option_other": "Sonstiges",
     "label_message": "Deine Nachricht",
     "placeholder_message": "Erzähl uns etwas über dein geplantes Event...",
     "btn_submit": "Anfrage senden",
-    "btn_submitting": "Wird gesendet..."
+    "btn_submitting": "Wird gesendet...",
+    "heading_prefix": "Sende uns eine",
+    "heading_accent": "Anfrage",
+    "heading_subtitle": "Lass uns gemeinsam Großes planen.",
+    "info_title": "Wir freuen uns auf dich",
+    "info_text": "Egal ob zünftiges Bierzelt oder elegantes Firmenevent.",
+    "step_of": "Schritt {step} von {total}",
+    "steps_anlass": "Anlass",
+    "steps_kontakt": "Kontakt",
+    "steps_nachricht": "Nachricht",
+    "step1_title": "Was steht an?",
+    "step1_hint": "Wähle die Art deiner Veranstaltung.",
+    "step2_title": "Wer plant das Fest?",
+    "step2_hint": "Damit wir uns bei dir melden können.",
+    "step3_title": "Fast geschafft!",
+    "step3_hint": "Erzähl uns kurz von deinen Plänen.",
+    "back": "Zurück",
+    "next": "Weiter",
+    "your_occasion": "Dein Anlass:",
+    "change": "Ändern",
+    "err_event_type": "Bitte wähle eine Art der Veranstaltung.",
+    "err_contact": "Bitte gib deinen Namen und eine gültige E-Mail-Adresse an.",
+    "err_message": "Bitte schreib uns noch ein paar Zeilen zu deinem Fest.",
+    "err_robot": "Bitte bestätige, dass du kein Roboter bist."
   },
   "Footer": {
     "brand_desc": "Wir planen, du feierst. Seit 2025 bringen wir bayerische Tradition und professionelle Event-Expertise zusammen.",
@@ -166,5 +192,12 @@
     "empty_homepage": "Es wurden noch keine Galerien für die Startseite markiert.",
     "images": "Bilder",
     "back_to_overview": "Zurück zur Übersicht"
+  },
+  "CareersTeaser": {
+    "eyebrow": "Karriere",
+    "cta_positions": "Alle Stellen ansehen",
+    "cta_apply": "Initiativ bewerben",
+    "empty_hint": "Aktuell sind keine Stellen ausgeschrieben – Initiativbewerbungen sind jederzeit willkommen.",
+    "caption": "Deine Uniform, wenn du dabei bist"
   }
 }

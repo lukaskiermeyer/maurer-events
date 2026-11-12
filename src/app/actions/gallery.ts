@@ -51,14 +51,14 @@ export async function getGalleryAlbums() {
     locationEn: events.locationEn,
     eventImageUrl: events.imageUrl,
     isFeaturedGallery: events.isFeaturedGallery,
-    fallbackImageUrl: sql<string>`min(${galleries.imageUrl})`,
-    imageCount: sql<number>`count(${galleries.id})`
+    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
+    imageCount: sql<number>`count(${galleries.id})::int`
   })
-  .from(events)
-  .leftJoin(galleries, eq(events.id, galleries.eventId))
-  .where(and(eq(events.type, 'gallery'), isNull(events.deletedAt)))
-  .groupBy(events.id, events.title, events.titleEn, events.date, events.description, events.descriptionEn, events.location, events.locationEn, events.imageUrl, events.isFeaturedGallery)
-  .orderBy(events.date);
+      .from(events)
+      .leftJoin(galleries, eq(events.id, galleries.eventId))
+      .where(and(eq(events.type, 'gallery'), isNull(events.deletedAt)))
+      .groupBy(events.id, events.title, events.titleEn, events.date, events.description, events.descriptionEn, events.location, events.locationEn, events.imageUrl, events.isFeaturedGallery)
+      .orderBy(events.date);
 
   return result.reverse().map(album => ({
     ...album,

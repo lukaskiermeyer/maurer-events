@@ -1,6 +1,7 @@
 import React from "react";
 import { getEvents } from "@/app/actions/events";
 import { Link } from "@/i18n/routing";
+import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 
 export const metadata = {
   title: "Alle Termine & Events | MAURER EVENTS",
@@ -40,6 +41,7 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
           const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
           const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
           const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+          const badge = reservationBadge(resolveReservationMode(event), locale);
 
           return (
             <Link href={`/termine/${event.id}`} key={event.id} className="group bg-white border border-border-light rounded-2xl flex flex-col sm:flex-row sm:items-stretch relative hover:border-accent-green hover:shadow-xl transition-all duration-300 overflow-hidden block">
@@ -58,9 +60,9 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
               
               <div className="sm:w-2/3 p-6 sm:p-8 flex flex-col">
                 <h3 className="font-display font-bold text-2xl sm:text-3xl mb-2 text-base-dark">{title}</h3>
-                {event.reservable && (
+                {badge && (
                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-4 shadow-md rounded-sm self-start">
-                    {locale === 'en' ? "Tables reservable" : "Tische reservierbar"}
+                    {badge}
                   </span>
                 )}
                 <p className="font-sans text-sm sm:text-base text-base-dark/70 mb-6 flex-grow">{description}</p>

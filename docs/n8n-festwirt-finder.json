@@ -1,0 +1,385 @@
+{
+  "meta": {
+    "instanceId": "maurer-events-festfinder"
+  },
+  "name": "Maurer Events - Festwirt Finder (Vereinsjubiläum)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "path": "festfinder-start",
+        "options": {}
+      },
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Webhook Trigger (Admin Button)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 560],
+      "webhookId": "festfinder-start-webhook",
+      "notes": "Du kannst diesen Webhook später aus dem Admin Button aufrufen. URL ist: https://DEIN-N8N-HOST/webhook/festfinder-start"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cron",
+              "expression": "0 7 * * 1,4"
+            }
+          ]
+        }
+      },
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "Schedule Trigger (Mo + Do 07:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 720],
+      "notes": "Europe/Berlin 07:00 Uhr Mo + Do"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "regions",
+              "type": "array",
+              "value": ["Ingolstadt", "Kelheim", "Regensburg", "München"]
+            },
+            {
+              "id": "cfg-2",
+              "name": "minScore",
+              "type": "number",
+              "value": 60
+            },
+            {
+              "id": "cfg-3",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "Config - Regionen + Schwelle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Baut Such-Queries pro Region (Vereinsjubiläum + Festwirt)\n// Regionen kommen aus vorherigem Node\nconst regions = $json.regions || ['Ingolstadt','Kelheim','Regensburg','München'];\nconst runId = $json.runId || '';\nconst minScore = $json.minScore || 60;\n\nconst templates = [\n  (r) => `Vereinsjubiläum 125 Jahre Festwirt gesucht ${r} 2027`,\n  (r) => `Vereinsjubiläum 100 Jahre Festwirt gesucht ${r} 2028`,\n  (r) => `Schützenfest 100 Jahre Festwirt Ausschreibung ${r}`,\n  (r) => `Trachtenfest Jubiläum Festwirt gesucht ${r} 2027 OR 2028`,\n  (r) => `Feuerwehrfest Jubiläum Festwirt gesucht ${r}`,\n  (r) => `Volksfest Festwirt Ausschreibung ${r} 2027 2028`,\n  (r) => `Kirchweih Festwirt gesucht ${r} 2027`,\n  (r) => `Musikfest Jubiläum Festwirt gesucht ${r}`,\n];\n\nconst items = [];\nfor (const region of regions) {\n  for (const tpl of templates) {\n    items.push({ json: { query: tpl(region), region, runId, minScore } });\n  }\n}\nreturn items;"
+      },
+      "id": "55555555-5555-4555-8555-555555555555",
+      "name": "Queries generieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.query, max_results: 6, search_depth: \"basic\", include_answer: false, include_raw_content: true, country: \"de\", language: \"de\", exclude_domains: [\"facebook.com\", \"instagram.com\", \"tiktok.com\", \"youtube.com\"] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "66666666-6666-4666-8666-666666666666",
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 560],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "TfOEMdPaz5HdkgTx",
+          "name": "Tavily"
+        }
+      },
+      "notes": "Tavily Search ersetzt Serper (API-Probleme). Auth ueber n8n Credentials (HTTP Bearer Auth, Name 'Tavily'), KEIN Env-Var. Free-Tier reicht fuer 2x/Woche (~120 Requests/Monat). include_raw_content=true liefert sauberen Seiten-Text, daher ist der separate Website laden + Text extrahieren Schritt deaktiviert."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tavily-Antwort: results[] -> einzelne Items je Treffer (mit raw_content als Text)\nconst items = [];\nfor (const item of $input.all()) {\n  const src = item.pairedItem?.item?.json || {};\n  const query = src.query || item.json.query || '';\n  const region = src.region || '';\n  const runId = src.runId || '';\n  const minScore = src.minScore || 60;\n  const results = item.json.results || [];\n  for (const hit of results.slice(0, 6)) {\n    if (!hit.url) continue;\n    const url = hit.url;\n    if (/\\.(jpg|jpeg|png|gif|bmp|webp|mp4|mp3|pdf)(\\?.*)?$/i.test(url)) continue;\n    const raw = (hit.raw_content || hit.content || '').replace(/\\s+/g, ' ').trim();\n    items.push({\n      json: {\n        url,\n        title: hit.title || '',\n        snippet: (raw || hit.content || '').slice(0, 2000),\n        text: raw ? raw.slice(0, 6000) : '',\n        score: hit.score ?? null,\n        query,\n        region,\n        runId,\n        minScore\n      }\n    });\n  }\n}\nreturn items;"
+      },
+      "id": "77777777-7777-4777-8777-777777777777",
+      "name": "Suchtreffer parsen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 560]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "88888888-8888-4888-8888-888888888888",
+      "name": "Website laden (Fallback - deaktiviert)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 560],
+      "disabled": true,
+      "onError": "continueRegularOutput",
+      "notes": "DEAKTIVIERT seit Umstellung auf Tavily (include_raw_content liefert Text direkt). Nur als Fallback behalten."
+    },
+    {
+      "parameters": {
+        "jsCode": "// HTML zu Text machen + kürzen + URL-Kontext behalten\nlet html = '';\ntry {\n  const data = $json.data;\n  html = typeof data === 'string' ? data : (data?.toString?.() || JSON.stringify(data || ''));\n} catch(e) { html = ''; }\n\n// Skripte + Styles raus\nlet text = html.replace(/<(script|style)[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ');\ntext = text.replace(/<[^>]+>/g, ' '); // Tags raus\ntext = text.replace(/&nbsp;|&#160;/g, ' ')\n           .replace(/&amp;/g, '&').replace(/&quot;/g, '\"')\n           .replace(/&#39;|&apos;/g, \"'\").replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n           .replace(/\\s+/g, ' ').trim();\n\nif (!text || text.length < 200) {\n  // Zu wenig Inhalt -> skip (wird beim nächsten Node gefiltert)\n  text = '';\n}\n\nreturn [{\n  json: {\n    url: $('Suchtreffer parsen').item.json.url,\n    title: $('Suchtreffer parsen').item.json.title || '',\n    snippet: $('Suchtreffer parsen').item.json.snippet || '',\n    region: $('Suchtreffer parsen').item.json.region || '',\n    runId: $('Suchtreffer parsen').item.json.runId || '',\n    minScore: $('Suchtreffer parsen').item.json.minScore || 60,\n    text: text.slice(0, 4000)\n  }\n}];"
+      },
+      "id": "99999999-9999-4999-8999-999999999999",
+      "name": "Text extrahieren (Fallback - deaktiviert)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 560],
+      "disabled": true,
+      "notes": "DEAKTIVIERT seit Tavily-Umstellung. Tavily liefert raw_content direkt als Text. Nur als Fallback behalten."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_BASE_URL || 'https://integrate.api.nvidia.com/v1' }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.LLM_API_KEY || 'DEIN_LLM_API_KEY' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "{\n  \"model\": {{ JSON.stringify($env.LLM_MODEL || 'meta/llama-3.1-8b-instruct') }},\n  \"temperature\": 0.1,\n  \"max_tokens\": 600,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Du bist Event-Scout für einen bayerischen Festwirt (Maurer Events). Regionen: Ingolstadt, Kelheim, Regensburg, München. Heute ist 2026-11-07. Sweet Spot für Bewerbung: Fest in 9-24 Monaten (also 2027-08 bis 2028-11). Es reicht NICHT ein Datum zu erraten – wenn kein Datum auf der Seite steht, lasse eventDate null.\\n\\nScoring-Regel (0-100):\\n+40 Jubiläum 50/75/100/125/150 Jahre\\n+25 Festwirt offen / Ausschreibung / Bewerbung gesucht / unklar (nicht vergeben)\\n+20 Ort in Kernregion (Ingolstadt/Kelheim/Regensburg/München)\\n+15 Fest in 9-24 Monaten\\n+10 Volksfest / Schützen / Trachten / Feuerwehr / Musik / Kirchweih\\n-30 Festwirt bereits vergeben oder kein Festwirt gesucht\\n-20 Fest in <6 Monaten ohne Notfall-Hinweis (abgesprungen, Notfall, neu zu vergeben)\\n-20 Fest in >36 Monaten (zu früh)\\n\\nAntworte NUR mit JSON (kein Markdown, kein Text drumherum) in exakt diesem Schema:\\n{\\\"title\\\":\\\"string|null\\\",\\\"organizer\\\":\\\"string|null\\\",\\\"location\\\":\\\"string|null\\\",\\\"region\\\":\\\"string|null\\\",\\\"eventDate\\\":\\\"YYYY-MM-DD|null\\\",\\\"jubileeYears\\\":number|null,\\\"festwirtStatus\\\":\\\"open|unknown|taken|closed\\\",\\\"contactName\\\":\\\"string|null\\\",\\\"contactEmail\\\":\\\"string|null\\\",\\\"contactPhone\\\":\\\"string|null\\\",\\\"sourceUrl\\\":\\\"string\\\",\\\"score\\\":number 0-100,\\\"scoreReason\\\":\\\"kurz, max 1 Satz\\\"}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify('URL: ' + $json.url + '\\nTitel: ' + $json.title + '\\nSnippet: ' + $json.snippet + '\\nRegion (aus Suche): ' + $json.region + '\\n\\nText (gekürzt):\\n' + ($json.text || $json.snippet)) }}\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+      "name": "LLM extrahieren + scoren",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 560],
+      "onError": "continueRegularOutput",
+      "notes": "OpenAI-kompatibel: NVIDIA NIM, Groq, Together, OpenRouter, Gemini (via OpenAI-Endpunkt) oder Ollama. Env: LLM_BASE_URL, LLM_API_KEY, LLM_MODEL. Alles austauschbar ohne Umbau."
+    },
+    {
+      "parameters": {
+        "jsCode": "// LLM-Antwort parsen, Score filtern, Datum-Check, nur valide Items weiter\nconst today = new Date('2026-11-07T00:00:00Z');\nconst minScore = 60;\nconst out = [];\n\nfor (const item of $input.all()) {\n  let content = '';\n  try {\n    content = item.json.choices?.[0]?.message?.content || item.json.message?.content || '';\n  } catch(e) {}\n  if (!content) continue;\n  // Markdown-Codefence entfernen\n  content = content.replace(/```json|```/gi, '').trim();\n  let parsed;\n  try { parsed = JSON.parse(content); } catch(e) { continue; }\n  if (!parsed || typeof parsed.score !== 'number') continue;\n  if (parsed.score < minScore) continue;\n  if (parsed.festwirtStatus === 'taken' || parsed.festwirtStatus === 'closed') continue;\n\n  // Datum-Check: >36 Monate zu früh -> skip; <4 Monate -> skip (außer Notfall im Reason)\n  if (parsed.eventDate) {\n    const d = new Date(parsed.eventDate + 'T00:00:00Z');\n    if (!isNaN(d)) {\n      const months = (d - today) / (1000*60*60*24*30.44);\n      if (months > 36) continue;\n      if (months < 4 && !/notfall|abgesprungen|frei|offen.*kurzfristig/i.test(parsed.scoreReason || '')) continue;\n      parsed.monthsAhead = Math.round(months);\n    }\n  }\n  parsed.sourceUrl = parsed.sourceUrl || ($('Suchtreffer parsen').item?.json?.url || '');\n  parsed.runId = $('Suchtreffer parsen').item?.json?.runId || '';\n  parsed.status = 'new';\n  parsed.discoveredAt = new Date().toISOString();\n  out.push({ json: parsed });\n}\nreturn out;"
+      },
+      "id": "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb",
+      "name": "Score filtern (≥60)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 560],
+      "notes": "Nur Score >=60, nicht vergeben/zu früh (>36 Monate) fliegt raus. Score-Logik stammt aus LLM-Prompt."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MAURER_API_URL || 'https://DEINE-DOMAIN.de/api/admin/fest-chancen/ingest' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.MAURER_N8N_KEY || 'DEIN_N8N_KEY' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "cccccccc-cccc-4ccc-cccc-cccccccccccc",
+      "name": "An Maurer Events senden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 560],
+      "notes": "Ziel-Endpoint muss noch in Maurer Events existieren: POST /api/admin/fest-chancen/ingest mit X-N8N-API-KEY Schutz. Env: MAURER_API_URL, MAURER_N8N_KEY."
+    },
+    {
+      "parameters": {
+        "jsCode": "const n = $input.all().length;\nreturn [{ json: { ok: true, synced: n, message: 'Gesendet an Maurer Events' } }];"
+      },
+      "id": "dddddddd-dddd-4ddd-dddd-dddddddddddd",
+      "name": "Fertig - Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 560]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config - Regionen + Schwelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (Admin Button)": {
+      "main": [
+        [
+          {
+            "node": "Config - Regionen + Schwelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (Mo + Do 07:00)": {
+      "main": [
+        [
+          {
+            "node": "Config - Regionen + Schwelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config - Regionen + Schwelle": {
+      "main": [
+        [
+          {
+            "node": "Queries generieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queries generieren": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Suchtreffer parsen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suchtreffer parsen": {
+      "main": [
+        [
+          {
+            "node": "LLM extrahieren + scoren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website laden (Fallback - deaktiviert)": {
+      "main": [
+        [
+          {
+            "node": "Text extrahieren (Fallback - deaktiviert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text extrahieren (Fallback - deaktiviert)": {
+      "main": [
+        [
+          {
+            "node": "LLM extrahieren + scoren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM extrahieren + scoren": {
+      "main": [
+        [
+          {
+            "node": "Score filtern (≥60)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score filtern (≥60)": {
+      "main": [
+        [
+          {
+            "node": "An Maurer Events senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "An Maurer Events senden": {
+      "main": [
+        [
+          {
+            "node": "Fertig - Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {}
+}

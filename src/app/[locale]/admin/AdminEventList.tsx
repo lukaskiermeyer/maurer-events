@@ -6,6 +6,7 @@ import { useState, useMemo } from "react";
 import { createEvent, deleteEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { Link } from "@/i18n/routing";
+import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 
 export default function AdminEventList({ initialEvents, stats }: { initialEvents: EventRecord[], stats?: AdminStats }) {
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,9 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     link: "/termine/ohne-reservierung",
     reservable: false,
     allowTableSelection: true,
+    reservationMode: "none",
+    reservationEmail: "servus@maurer-events.com",
+    reservationNote: "",
     maxCapacity: 0,
     walkInReserve: 0, // default
     reservableDates: [] as string[],
@@ -69,6 +73,8 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
       await createEvent({
         ...formData,
+        reservationMode: formData.reservationMode as 'none' | 'email',
+        reservable: formData.reservationMode === 'online',
         imageUrl: finalImageUrl,
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
@@ -79,7 +85,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         publishTablesAt: formData.publishTablesAt ? new Date(formData.publishTablesAt) : undefined
       });
       setFormData({
-        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
+        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
       });
       setFile(null);
       window.location.reload();
@@ -102,7 +108,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
             </div>
             <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
               <div className="text-3xl font-black text-accent-green mb-1">{stats.reservableEvents}</div>
-              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Davon Reservierbar</div>
+              <div className="text-xs uppercase font-bold opacity-50 tracking-wider">Davon online reservierbar</div>
             </div>
             <div className="bg-white p-4 rounded-xl border border-border-light shadow-sm text-center">
               <div className="text-3xl font-black text-accent-green mb-1">{stats.totalReservations}</div>
@@ -130,7 +136,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                   {event.endDate && event.endDate !== event.date && ` - ${new Date(event.endDate).toLocaleDateString('de-DE')}`}
                   {' | '}{event.location}
                 </p>
-                {event.reservable && <span className="inline-block mt-2 text-xs font-bold uppercase tracking-widest bg-base-dark text-white px-3 py-1">Reservierbar</span>}
+                {(() => {
+                  const badge = reservationBadge(resolveReservationMode(event), 'de');
+                  return badge ? (
+                    <span className="inline-block mt-2 text-xs font-bold uppercase tracking-widest bg-base-dark text-white px-3 py-1">{badge}</span>
+                  ) : null;
+                })()}
               </div>
             </Link>
             
@@ -211,24 +222,52 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
             </div>
           </div>
           
-          <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">
-            <input 
-              type="checkbox" 
-              id="res" 
-              className="w-5 h-5 accent-accent-green"
-              checked={formData.reservable} 
+          <div className="space-y-2 bg-base-light p-3 rounded-lg border border-border-light">
+            <label htmlFor="res" className="block text-sm font-bold">Reservierungsmodus</label>
+            <select
+              id="res"
+              value={formData.reservationMode}
               onChange={e => {
-                const isReservable = e.target.checked;
+                const mode = e.target.value;
                 setFormData({
-                  ...formData, 
-                  reservable: isReservable,
-                  link: isReservable ? "/termine/mit-reservierung" : "/termine/ohne-reservierung",
-                  reservableDates: isReservable ? availableDays : []
+                  ...formData,
+                  reservationMode: mode,
+                  reservable: mode === 'online',
+                  link: mode === 'online' ? "/termine/mit-reservierung" : "/termine/ohne-reservierung",
+                  reservableDates: mode === 'none' ? [] : formData.reservableDates
                 });
-              }} 
-            />
-            <label htmlFor="res" className="text-sm font-bold cursor-pointer">Tische reservierbar?</label>
+              }}
+              className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+            >
+              <option value="none">Keine Reservierung</option>
+              <option value="email">Reservierung per E-Mail</option>
+            </select>
+            <p className="text-xs opacity-60">Online-Reservierungen sind derzeit nur für bestehende Events aktiv.</p>
           </div>
+
+          {formData.reservationMode === 'email' && (
+            <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg animate-fade-in space-y-3">
+              <div>
+                <label className="block text-sm font-bold mb-1 opacity-70">Reservierungs-E-Mail</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.reservationEmail}
+                  onChange={e => setFormData({ ...formData, reservationEmail: e.target.value })}
+                  className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1 opacity-70">Hinweis für Gäste (optional)</label>
+                <textarea
+                  value={formData.reservationNote}
+                  onChange={e => setFormData({ ...formData, reservationNote: e.target.value })}
+                  className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green min-h-[80px]"
+                  placeholder="z.B. Reservierungen nur für Vereine ab 20 Personen."
+                />
+              </div>
+            </div>
+          )}
 
           {formData.reservable && (
             <div className="bg-accent-green/10 border border-accent-green p-4 rounded-lg animate-fade-in space-y-4">

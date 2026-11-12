@@ -7,6 +7,10 @@ import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
 import parse from 'html-react-parser';
 import sanitizeHtml from 'sanitize-html';
+import EmailReservationCard from "@/components/EmailReservationCard";
+import EventDocuments from "@/components/EventDocuments";
+import { getPublicEventDocuments } from "@/app/actions/eventDocuments";
+import { reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
 
 export const revalidate = 60;
 
@@ -44,10 +48,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
   
-  const [event, galleryImages, upcomingEvents] = await Promise.all([
+  const [event, galleryImages, upcomingEvents, documents] = await Promise.all([
     getEventById(id),
     getGalleryImages(id),
-    getEvents()
+    getEvents(),
+    getPublicEventDocuments(id)
   ]);
 
   if (!event) {
@@ -57,6 +62,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const reservationMode = resolveReservationMode(event);
+  const statusLabel = reservationStatusLabel(reservationMode, locale);
 
   const dateObj = new Date(event.date);
   const dateStr = dateObj.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', {
@@ -196,7 +203,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <li className="pt-6 border-t border-border-light">
                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">Status</span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-accent-green/10 text-accent-green font-bold text-sm">
-                    Plätze verfügbar
+                    {statusLabel}
                   </span>
                 </li>
               </ul>
@@ -206,7 +213,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Reservation Section */}
-      {event.reservable && (
+      <EventDocuments documents={documents} title={title} locale={locale} />
+      {reservationMode === "online" && (
         <div className="mt-32">
           {/* ReservationSection loaded dynamically */}
           <ReservationSection
@@ -215,6 +223,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           />
         </div>
       )}
+      {reservationMode === "email" && <EmailReservationCard event={event} locale={locale} />}
 
       {/* Gallery Section */}
       {galleryImages.length > 0 && (
