@@ -96,22 +96,19 @@
        (100vh statt %, % wuerde sich gegen die Gradientenlinie aufloesen). */
     --hero-row-h: calc((100vh - var(--hero-ground-top)) / 6);
     --hero-tent-top: 15vh;
-    /* Kleineres Schild, damit die Zelteingangstuer darunter sichtbar bleibt. */
-    --hero-sign-w: 56vw;
+    /* Schildgroesse dynamisch im Verhaeltnis zum Eingang (ca. 27 % der
+       Eingangsbreite), damit sie mit dem Eingang mitwächst/schrumpft
+       statt bei jeder Bildschirmgroesse fix zu bleiben. */
+    --hero-sign-w: calc(var(--hero-gate-w) * 0.27);
     /* Tafel-Unterkante = 35,5 % der (gedehnten) Eingangshoehe
        = im oberen Drittel (-25vh + 0.355*130vh = 21,2vh). Das Schild
-       haengt mit konstantem Abstand von 5vh darunter (bei jeder
-       Bildschirmgroesse gleich), damit die Plakette nicht mehr zur
-       Haelfte hinter dem Eingang liegt. */
-    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 5vh);
+       haengt DYNAMISCH darunter: Abstand skaliert mit der Bildschirm-
+       breite (groesser auf kleinen Handys, kleiner auf grossen), ohne
+       harten Sprung - damit die Plakette nicht mehr zur Haelfte hinter
+       dem Eingang liegt und die Position sich mit dem Querbalken
+       mitbewegt. */
+    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 5vh + max(0px, (450px - min(100vw, 450px)) * 0.5) + max(0px, min(100vw - 376px, 623px - 100vw)) * 0.2);
     --hero-sign-shift: 0%;
-  }
-}
-/* Kleine Handys (z.B. iPhone SE 375px): Schild weiter nach unten,
-   sonst sitzt es zu hoch ueber dem Zelt. */
-@media (max-width: 400px) and (max-aspect-ratio: 1/1) {
-  .hero-scene {
-    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 12vh);
   }
 }
 /* Ab 529px Breite (Portrait): kein zusaetzlicher Nebel mehr - der wuerde
@@ -142,16 +139,6 @@
   top: var(--hero-ground-top);
   bottom: 0;
   background:
-    /* Nebelwolken unten: Das Zelt-Artboard liefert sie auf Mobile nicht
-       (220vw schneidet sie seitlich weg), deshalb als eigene
-       Boden-Hintergrundschicht. Groesse per --hero-fog-* je Breakpoint
-       (Mobile gross, Web/Tablet klein wie vorher). */
-    radial-gradient(ellipse var(--hero-fog-main) at 0% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
-    radial-gradient(ellipse var(--hero-fog-main) at 50% 100%, rgba(230, 240, 250, 0.95) 0 60%, transparent 61%),
-    radial-gradient(ellipse var(--hero-fog-main) at 100% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
-    radial-gradient(ellipse var(--hero-fog-puff) at 25% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
-    radial-gradient(ellipse var(--hero-fog-puff) at 75% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
-    radial-gradient(ellipse var(--hero-fog-mid) at 50% 92%, rgba(230, 240, 250, 0.7) 0 60%, transparent 61%),
     repeating-linear-gradient(
       180deg,
       rgba(62, 32, 6, 0.38) 0,
@@ -169,6 +156,27 @@
       transparent calc(var(--hero-row-h) * 3)
     ),
     linear-gradient(#c08c52 0%, #a9713a 45%, #8a5a2e 100%);
+}
+
+/* Nebel-Schicht ueber dem Zelt (Z-Index: Himmel > Boden > Zelt > Nebel >
+   Schild > Eingang). Die Nebelwolken sind im Zelt-Artboard nicht fuer
+   Mobile vorhanden (220vw schneidet sie weg), deshalb als eigene Schicht
+   ueber dem Zelt. */
+.hero-fog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28vh;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse var(--hero-fog-main) at 0% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-main) at 50% 100%, rgba(230, 240, 250, 0.95) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-main) at 100% 100%, rgba(230, 240, 250, 0.97) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-puff) at 25% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-puff) at 75% 100%, rgba(230, 240, 250, 0.85) 0 60%, transparent 61%),
+    radial-gradient(ellipse var(--hero-fog-mid) at 50% 92%, rgba(230, 240, 250, 0.7) 0 60%, transparent 61%);
 }
 .hero-stage {
   left: 50%;

@@ -27,6 +27,8 @@ export default function HeroScene() {
                 <HeroLights lights={tentLights} />
             </div>
 
+            <div className="hero-fog" />
+
             <HeroPubSign />
 
             <div className="hero-stage hero-gate z-[6]">

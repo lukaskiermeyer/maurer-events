@@ -1,10 +1,12 @@
 import { Link } from "@/i18n/routing";
 import { getMyProfile } from "@/app/actions/staff";
+import { getMyOpenShifts } from "@/app/actions/staffing";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamDashboard() {
   const { member, role, documents, contracts } = await getMyProfile();
+  const { offers } = await getMyOpenShifts().catch(() => ({ offers: [] }));
   const contract = contracts[0];
   const hasPersonalData = !!(member.street && member.city && member.birthDate);
   const hasPayrollData = !!(member.taxIdEnc && member.socialSecurityEnc && member.ibanEnc);
@@ -39,8 +41,8 @@ export default async function TeamDashboard() {
           <p className="text-sm text-base-dark/60">Trage ein, wann du an den Festen kannst.</p>
         </Link>
         <Link href="/team/schichten" className="bg-white border border-border-light rounded-2xl p-5 hover:border-accent-green transition-colors">
-          <h2 className="font-display font-bold text-xl mb-1">Meine Schichten</h2>
-          <p className="text-sm text-base-dark/60">Vorgeschlagene Einsätze annehmen oder ablehnen.</p>
+          <h2 className="font-display font-bold text-xl mb-1">Schichten{offers.length > 0 ? ` (${offers.length} offen)` : ""}</h2>
+          <p className="text-sm text-base-dark/60">{offers.length > 0 ? `${offers.length} offene Schicht${offers.length === 1 ? "" : "en"} – jetzt eintragen.` : "Vorgeschlagene Einsätze annehmen oder ablehnen."}</p>
         </Link>
       </div>
 
