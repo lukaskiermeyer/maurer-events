@@ -37,17 +37,9 @@
         "title": "Folk Festival",
         "description": "Large festival tents, traditional music, and the best Bavarian atmosphere."
       },
-      "firmenevent": {
-        "title": "Corporate Event",
-        "description": "Professional B2B events with that special touch."
-      },
       "vereinsfest": {
         "title": "Club Anniversary",
         "description": "From the 50th to the 150th anniversary – we make your club anniversary one to remember."
-      },
-      "tagesveranstaltung": {
-        "title": "Day Events",
-        "description": "From small celebrations to large day trips."
       }
     }
   },

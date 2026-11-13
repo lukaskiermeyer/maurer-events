@@ -37,17 +37,9 @@
         "title": "Volksfest",
         "description": "Große Festzelte, traditionelle Musik und beste bayerische Stimmung."
       },
-      "firmenevent": {
-        "title": "Firmenevent",
-        "description": "Professionelle B2B-Veranstaltungen mit dem gewissen Etwas."
-      },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
         "description": "Vom 50-jährigen bis zum 150-jährigen: Wir machen euer Vereinsjubiläum zu einem Fest, das in Erinnerung bleibt."
-      },
-      "tagesveranstaltung": {
-        "title": "Tagesveranstaltungen",
-        "description": "Von der kleinen Feier bis zum großen Tagesausflug."
       }
     }
   },

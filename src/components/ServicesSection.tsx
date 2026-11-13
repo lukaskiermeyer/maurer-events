@@ -2,7 +2,7 @@
 import Image from 'next/image';
 
 import type { SVGProps } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { services } from "@/data/services";
@@ -69,6 +69,15 @@ const itemVariants: Variants = {
 export default function ServicesSection() {
   const t = useTranslations("Services");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ vereinsfest: true });
+  const [isLg, setIsLg] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false));
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsLg(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const toggle = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -113,7 +122,7 @@ export default function ServicesSection() {
         </div>
 
         <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 md:gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-5 md:gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -123,21 +132,21 @@ export default function ServicesSection() {
             const Icon = Icons[service.iconType as keyof typeof Icons];
             const featured = service.featured === true;
             const isBig = index === 0;
-            const isOpen = expanded[service.id] === true;
+            const isOpen = isLg || expanded[service.id] === true;
             return (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
                 className={`group relative min-w-0 h-full rounded-3xl shadow-lg border-b-8 border-accent-wood bg-white text-base-dark transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden ${
                   featured
-                    ? `sm:col-span-2 lg:col-span-2 ${isBig ? "lg:row-span-2 " : ""}p-4 sm:p-6 md:p-8`
+                    ? `sm:col-span-2 lg:col-span-1 ${isBig ? "lg:row-span-2 " : ""}p-4 sm:p-6 md:p-8`
                     : "p-4 sm:p-5"
                 }`}
               >
                 <div className="relative z-10 min-w-0">
                   <button
                     type="button"
-                    onClick={() => toggle(service.id)}
+                    onClick={() => { if (!isLg) toggle(service.id); }}
                     aria-expanded={isOpen}
                     aria-controls={`service-desc-${service.id}`}
                     className="flex w-full items-center gap-4 text-left cursor-pointer"
@@ -153,7 +162,7 @@ export default function ServicesSection() {
                     <motion.span
                       animate={{ rotate: isOpen ? 180 : 0 }}
                       transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="shrink-0 text-accent-wood"
+                      className="shrink-0 text-accent-wood lg:hidden"
                       aria-hidden="true"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -68,20 +68,28 @@
 @media (max-aspect-ratio: 1/1) {
   .hero-scene {
     /* Mobile: Eingang groesser als die sichtbare Breite (210vw,
-       Querbalken-Text bleibt lesbar, ca. 95vw breit), noch hoeher
-       (Top -25vh) und von fast ganz unten (Hoehe 130vh, unten aus dem
-       Bild laufend) bis ins obere Drittel - die Box wird in die Hoehe
-       gedehnt (object-fill). Tafel-Unterkante liegt im oberen Drittel
-       (-25vh + 0.355*130vh = 21,2vh) und fungiert als Aufhaengung
-       fuer das Pubschild, sodass der Zelteingang sichtbar bleibt. */
+       Querbalken-Text bleibt lesbar, ca. 95vw breit), von fast ganz
+       unten bis ins obere Drittel. Die Box behaelt das SVG-Seiten-
+       verhaeltnis (kein Stretch - sonst sitzen die Lichter neben den
+       Birnen, s. --hero-gate-h) und ist in der alten 130vh-Box
+       zentriert. Die Tafel-Unterkante fungiert als Aufhaengung fuer
+       das Pubschild, sodass der Zelteingang sichtbar bleibt. */
     /* Zelthoehe muss in den Viewport passen (Top 15vh + Hoehe <= 100vh):
        Breite auf 152vh gedeckelt - auf Zwischen-Groessen (~708/919px)
        wird das Zelt kleiner, damit Tuer/Tische sichtbar bleiben.
        Auf Handys greift 220vw (unveraendert). */
     --hero-stage-w: min(220vw, 152vh);
     --hero-gate-w: 210vw;
-    --hero-gate-top: -25vh;
-    --hero-gate-h: 130vh;
+    /* Gate-Box im echten SVG-Seitenverhaeltnis (1920x1071.6): Das <img>
+       rendert das SVG per preserveAspectRatio="meet" (letterbox) - eine
+       Box mit anderem Seitenverhaeltnis wuerde das Bild zwar mittig
+       einpassen, die Prozentkoordinaten der Lichter (relativ zur Box)
+       laegen dann aber bis zu 214px neben den gezeichneten Birnen.
+       Die Box wird deshalb in der alten 130vh-Box zentriert, sodass die
+       sichtbare Komposition pixelgleich bleibt. Das Pubschild haengt
+       davon unabhaengig an der alten 130vh-Referenz (s. --hero-sign-top). */
+    --hero-gate-h: calc(var(--hero-gate-w) * 1071.6 / 1920);
+    --hero-gate-top: calc(-25vh + (130vh - var(--hero-gate-h)) / 2);
     /* Nebel nur auf kleinen Mobile-Screens gross (Web/Tablet: kleiner,
        s. Grundwerte oben). */
     --hero-fog-main: 62vw 24vh;
@@ -100,14 +108,14 @@
        Eingangsbreite), damit sie mit dem Eingang mitwächst/schrumpft
        statt bei jeder Bildschirmgroesse fix zu bleiben. */
     --hero-sign-w: calc(var(--hero-gate-w) * 0.27);
-    /* Tafel-Unterkante = 35,5 % der (gedehnten) Eingangshoehe
-       = im oberen Drittel (-25vh + 0.355*130vh = 21,2vh). Das Schild
-       haengt DYNAMISCH darunter: Abstand skaliert mit der Bildschirm-
-       breite (groesser auf kleinen Handys, kleiner auf grossen), ohne
-       harten Sprung - damit die Plakette nicht mehr zur Haelfte hinter
-       dem Eingang liegt und die Position sich mit dem Querbalken
-       mitbewegt. */
-    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 5vh + max(0px, (450px - min(100vw, 450px)) * 0.5) + max(0px, min(100vw - 376px, 623px - 100vw)) * 0.2);
+    /* Schild haengt an der Tafel-Unterkante des Eingangs: Gate-Box
+       (im echten SVG-Seitenverhaeltnis) mal 0.355 = Unterkante des
+       Querbalkens, plus 1vh Luft fuer die Ketten. Da die Gate-Box bei
+       jedem Viewport das gleiche Seitenverhaeltnis hat, folgt das
+       Schild dem Querbalken bei jeder Hoehe mit (vorher hing es auf
+       hohen Screens wie iPhone 16 Pro Max bis zu 40px zu weit oben,
+       weil die Formel noch auf der alten 130vh-Huellbox basierte). */
+    --hero-sign-top: calc(var(--hero-gate-top) + 0.355 * var(--hero-gate-h) + 1vh);
     --hero-sign-shift: 0%;
   }
 }
@@ -185,7 +193,7 @@
   aspect-ratio: 1920 / 1071.5;
 }
 .hero-tent { top: var(--hero-tent-top); }
-/* Mobile: Hoehe explizit (gedehnt, object-fill) - Desktop: auto per Aspect. */
+/* Gate-Hoehe: Desktop auto per Aspect-Ratio, Mobile explizit im SVG-Seitenverhaeltnis. */
 .hero-gate { top: var(--hero-gate-top); width: var(--hero-gate-w); height: var(--hero-gate-h, auto); }
 /* Sign box is the plaque plus 6% padding so the pendulum swing never clips.
    The inner frame carries the full artwork; landscape shows beam+chains above

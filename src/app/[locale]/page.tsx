@@ -44,9 +44,9 @@ export default async function Home({ params, searchParams }: {
   return (
     <>
       <HeroSection />
-      <ServicesSection />
       <EventsSection initialEvents={events} documentsByEvent={documentsByEvent} />
         <AboutSection />
+      <ServicesSection />
       <GallerySection albums={galleryAlbums} sneakPeek={true} />
       <CareersTeaser content={careerContent} />
       <ContactSection />
