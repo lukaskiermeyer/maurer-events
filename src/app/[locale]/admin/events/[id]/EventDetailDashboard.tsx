@@ -33,11 +33,7 @@ import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist
 import { updateEventSettings } from "@/app/actions/eventSettings";
 import { deletePackagePreset, getPackagePresets, savePackagePreset, saveTaxStatus } from "@/app/actions/settings";
 import ScannerAccessPanel from '@/components/admin/ScannerAccessPanel';
-import ReservationRequestsPanel from '@/components/admin/ReservationRequestsPanel';
 import EventDocumentsPanel from '@/components/admin/EventDocumentsPanel';
-import CustomerAssignPanel from './tischplan/CustomerAssignPanel';
-import PlanSvg from './tischplan/PlanSvg';
-import PrintPlanButton from './tischplan/PrintPlanButton';
 import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
 import { resolveReservationMode } from '@/lib/reservation-mode';
 import { formatEuroCents, packageTax, type TaxStatus } from '@/lib/pricing';
@@ -66,7 +62,7 @@ interface EventDetailProps {
   customers?: CustomerRecord[];
 }
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], customers = [] }: EventDetailProps) {
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [] }: EventDetailProps) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
   const [isUpdating, setIsUpdating] = useState(false);

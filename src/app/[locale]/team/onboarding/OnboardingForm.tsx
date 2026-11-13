@@ -63,7 +63,8 @@ function OnboardingField({ label, error, children }: { label: React.ReactNode; e
 
 // Stabil außerhalb der Komponente definiert – sonst baut React das Feld bei
 // jedem Tastenschlag neu und der Fokus/die Eingabe geht verloren (1-Zeichen-Bug).
-export function Field({ field, label, error, children }: { field: FieldErrorKey; label: React.ReactNode; error?: string; children: React.ReactNode }) {
+export function Field(props: { field: FieldErrorKey; label: React.ReactNode; error?: string; children: React.ReactNode }) {
+  const { label, error, children } = props;
   return <OnboardingField label={label} error={error}>{children}</OnboardingField>;
 }
 

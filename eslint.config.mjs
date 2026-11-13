@@ -15,5 +15,6 @@ export default defineConfig([
   globalIgnores([
     'node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts',
     '.reservation-test-db/**', '.acceptance-backups/**', 'test-results/**', 'playwright-report/**',
+    '.qwen/**', 'scripts/**', '*.tmp.mjs', 'wheel-test*.mjs', 'shot.tmp.mjs', 'dump.tmp.mjs',
   ]),
 ]);

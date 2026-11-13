@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { festOpportunities, festRuns } from "@/db/schema";
-import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const items = Array.isArray(body) ? body : (body && Array.isArray((body as any).items) ? (body as any).items : null);
+  const items = Array.isArray(body) ? body : (body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items) ? (body as { items: unknown[] }).items : null);
   if (!items) {
     return NextResponse.json({ error: "Expected JSON array of opportunities" }, { status: 400 });
   }
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Too many items (max ${MAX_ITEMS})` }, { status: 413 });
   }
 
-  const runId = (items[0] && (items[0] as any).runId) ? String((items[0] as any).runId) : `run-${Date.now()}`;
+  const runId = (items[0] && typeof items[0] === "object" && (items[0] as { runId?: unknown }).runId) ? String((items[0] as { runId: unknown }).runId) : `run-${Date.now()}`;
 
   let synced = 0;
   const errors: string[] = [];

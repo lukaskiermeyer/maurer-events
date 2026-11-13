@@ -63,18 +63,19 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
     return days.length ? days : [new Date(selectedEvent.date).toISOString().slice(0, 10)];
   }, [selectedEvent]);
 
-  useEffect(() => {
-    if (!eventDays.includes(assignDate)) setAssignDate(eventDays[0] || "");
-  }, [eventDays, assignDate]);
+  const effectiveAssignDate = eventDays.includes(assignDate) ? assignDate : (eventDays[0] || "");
 
   useEffect(() => {
-    if (!assignEventId || !assignDate) { setBooked([]); return; }
+    if (!assignEventId || !effectiveAssignDate) {
+      const timer = setTimeout(() => setBooked([]), 0);
+      return () => clearTimeout(timer);
+    }
     let active = true;
-    getBookedTableIds(assignEventId, assignDate)
+    getBookedTableIds(assignEventId, effectiveAssignDate)
       .then(ids => { if (active) setBooked(ids.map(id => String(id))); })
       .catch(() => { if (active) setBooked([]); });
     return () => { active = false; };
-  }, [assignEventId, assignDate]);
+  }, [assignEventId, effectiveAssignDate]);
 
   const hasEmail = Boolean(customer.email?.trim());
 
@@ -86,7 +87,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
       const result = await assignTableToCustomer({
         customerId: customer.id,
         eventId: assignEventId,
-        reservationDate: assignDate,
+        reservationDate: effectiveAssignDate,
         tableId: assignTableId,
         guestCount: Number(assignGuests),
         sendEmail,
@@ -175,7 +176,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
             </div>
             <div>
               <label className="block text-xs font-bold uppercase mb-1">Datum</label>
-              <select required value={assignDate} onChange={event => setAssignDate(event.target.value)} className="w-full bg-base-light border border-border-light rounded-lg p-3 disabled:opacity-50" disabled={!eventDays.length}>
+              <select required value={effectiveAssignDate} onChange={event => setAssignDate(event.target.value)} className="w-full bg-base-light border border-border-light rounded-lg p-3 disabled:opacity-50" disabled={!eventDays.length}>
                 {eventDays.map(day => <option key={day} value={day}>{new Date(`${day}T12:00:00Z`).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</option>)}
               </select>
             </div>
@@ -198,7 +199,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
               Bestätigungsmail mit Tisch automatisch an {customer.email || "Kunden"} senden (PDF-Ticket mit QR-Code)
             </label>
             <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
-              <button type="submit" disabled={assignBusy || !hasEmail || !assignEventId || !assignDate || !assignTableId} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{assignBusy ? "Wird zugewiesen …" : "Tisch zuweisen"}</button>
+              <button type="submit" disabled={assignBusy || !hasEmail || !assignEventId || !effectiveAssignDate || !assignTableId} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{assignBusy ? "Wird zugewiesen …" : "Tisch zuweisen"}</button>
               {assignMessage && <p className={`text-sm font-bold rounded-xl p-3 ${assignMessage.includes("zugewiesen") ? "bg-accent-green/10 text-accent-green" : "bg-red-50 text-red-700"}`}>{assignMessage}</p>}
             </div>
           </form>

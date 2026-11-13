@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { contracts, staffDocuments } from "@/db/schema";
 import { staffSession as adminSession } from "@/lib/staff-access";
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
   if (!upstream.ok || !upstream.body) return NextResponse.json({ error: "Datei konnte nicht geladen werden." }, { status: upstream.status || 502 });
   const contentType = upstream.headers.get("content-type") || mimeType;
   const disposition = target.pathname.split("/").pop() || "datei";
-  return new NextResponse(upstream.body as any, {
+  return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `inline; filename="${disposition.replace(/["\n]/g, "")}"`,

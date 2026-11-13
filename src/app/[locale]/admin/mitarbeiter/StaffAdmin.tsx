@@ -381,7 +381,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
       </div>
 
       {message && <p className="text-sm font-bold bg-accent-green/10 text-accent-green border border-accent-green/30 rounded-xl p-3">{message}</p>}
-      {isDev && <p className="text-xs font-bold bg-purple-50 border border-purple-200 text-purple-800 rounded-xl p-3">🗑 Dev-Modus: „Dev löschen" löscht endgültig (ohne Aufbewahrungs-Check, ohne Anonymisierung). In Produktion ausgeblendet und blockiert.</p>}
+      {isDev && <p className="text-xs font-bold bg-purple-50 border border-purple-200 text-purple-800 rounded-xl p-3">🗑 Dev-Modus: &ldquo;Dev löschen&rdquo; löscht endgültig (ohne Aufbewahrungs-Check, ohne Anonymisierung). In Produktion ausgeblendet und blockiert.</p>}
       {inviteUrl && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm break-all"><p className="font-bold mb-1">Einladungslink (falls die Mail nicht ankam):</p><a href={inviteUrl} className="text-accent-green underline">{inviteUrl}</a></div>}
 
       {tab === "team" && (
@@ -662,7 +662,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                       {templateForm.signatureMode === "text" ? (
                         <div className="mt-3 bg-white rounded-lg border border-border-light p-3 text-sm space-y-2">
                           <label className="flex gap-2 items-center"><input type="checkbox" readOnly checked={false} className="w-5 h-5 accent-accent-green" /> Ich habe den Vertrag gelesen und akzeptiere ihn</label>
-                          <p className="text-xs text-base-dark/50">Name: <strong>{previewExample.name || "Max Mustermann"}</strong> · Button: „Digital unterschreiben"</p>
+                          <p className="text-xs text-base-dark/50">Name: <strong>{previewExample.name || "Max Mustermann"}</strong> · Button: &ldquo;Digital unterschreiben&rdquo;</p>
                         </div>
                       ) : (
                         <div className="mt-3 bg-white rounded-lg border border-border-light p-3 text-sm">

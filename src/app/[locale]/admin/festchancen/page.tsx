@@ -49,7 +49,7 @@ export default async function FestChancenPage() {
         {/* Opportunities */}
         {opportunities.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl border border-border-light text-center text-base-dark/60">
-            Noch keine Fest-Chancen. Starte eine Suche mit „Jetzt in n8n suchen".
+            Noch keine Fest-Chancen. Starte eine Suche mit &ldquo;Jetzt in n8n suchen&rdquo;.
           </div>
         ) : (
           <div className="space-y-4">

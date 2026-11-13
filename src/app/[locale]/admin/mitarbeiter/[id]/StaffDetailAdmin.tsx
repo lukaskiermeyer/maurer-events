@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import type { ContractRecord, StaffDocumentRecord, StaffRecord, StaffRole } from "@/types/domain";
 import { DOCUMENT_KIND_LABELS } from "@/lib/required-documents";
@@ -11,6 +12,7 @@ type Detail = { member: StaffRecord; role: StaffRole | null; documents: StaffDoc
 
 export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; roles: StaffRole[] }) {
   const { member, role, documents, contracts } = detail;
+  const router = useRouter();
   const [form, setForm] = useState({
     firstName: member.firstName,
     lastName: member.lastName,
@@ -78,7 +80,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
   const devHardDelete = async () => {
     if (!confirm("DEV ONLY: Diesen Mitarbeiter ENDGÜLTIG löschen (Testmüll)? Alles (Verträge, Dokumente) verschwindet sofort. Nur für Tests!")) return;
     setBusy(true); setMessage("");
-    try { await deleteStaffHardDev(member.id); window.location.href = "/admin/mitarbeiter"; }
+    try { await deleteStaffHardDev(member.id); router.push("/admin/mitarbeiter"); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Löschen fehlgeschlagen."); }
     finally { setBusy(false); }
   };
@@ -133,7 +135,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
 
       <section className="bg-white border border-border-light rounded-2xl p-5">
         <h2 className="font-display font-bold text-xl mb-2">DSGVO · Löschung &amp; Anonymisierung</h2>
-        <p className="text-sm text-base-dark/60 mb-3">„Inaktiv" sperrt nur den Zugang – die Daten bleiben da. Bei einer Lösch-Anfrage (Art. 17 DSGVO) musst du zusätzlich anonymisieren. Lohn-/Steuerdaten sind bis 10 Jahre nach Austritt aufzubewahren (§§ 147 AO, 257 HGB).</p>
+        <p className="text-sm text-base-dark/60 mb-3">&ldquo;Inaktiv&rdquo; sperrt nur den Zugang – die Daten bleiben da. Bei einer Lösch-Anfrage (Art. 17 DSGVO) musst du zusätzlich anonymisieren. Lohn-/Steuerdaten sind bis 10 Jahre nach Austritt aufzubewahren (§§ 147 AO, 257 HGB).</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={checkErasure} disabled={busy} className="min-h-11 px-4 bg-white border border-border-light rounded-xl font-bold disabled:opacity-50">Lösch-Status prüfen</button>
           <button type="button" onClick={doPartialErasure} disabled={busy} className="min-h-11 px-4 border border-accent-green/40 text-accent-green rounded-xl font-bold disabled:opacity-50">Nur löschbare Daten entfernen</button>
