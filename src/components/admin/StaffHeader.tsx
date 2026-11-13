@@ -21,6 +21,11 @@ const NAV_ITEMS = [
     label: 'Mitarbeiter',
     isActive: (pathname: string) => pathname.startsWith('/admin/mitarbeiter'),
   },
+  {
+    href: '/admin/personal',
+    label: 'Personal',
+    isActive: (pathname: string) => pathname.startsWith('/admin/personal'),
+  },
 ] as const;
 
 function NavPill({ href, label, active }: { href: string; label: string; active: boolean }) {

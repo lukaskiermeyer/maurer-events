@@ -346,7 +346,7 @@ export const staffAssignments = pgTable('staff_assignments', {
   date: timestamp('date').notNull(),
   startTime: text('start_time').notNull(),
   endTime: text('end_time').notNull(),
-  status: text('status').default('proposed').notNull(), // proposed | accepted | declined | confirmed
+  status: text('status').default('proposed').notNull(), // proposed | requested | accepted | declined | confirmed
   source: text('source').default('auto').notNull(), // auto | manual
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -599,6 +599,22 @@ export const festRuns = pgTable('fest_runs', {
 }, (table) => ({
   runIdUnique: unique('fest_runs_run_id_unique').on(table.runId),
   createdIdx: index('fest_runs_created_idx').on(table.createdAt),
+}));
+
+export const shiftOffers = pgTable('shift_offers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
+  roleId: uuid('role_id').references(() => staffRoles.id, { onDelete: 'restrict' }).notNull(),
+  date: timestamp('date').notNull(),
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  requiredCount: integer('required_count').default(1).notNull(),
+  note: text('note'),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  eventIdx: index('shift_offers_event_idx').on(table.eventId),
+  countCheck: check('shift_offers_count_check', sql`${table.requiredCount} > 0`),
 }));
 
 export const eventSettings = pgTable('event_settings', {

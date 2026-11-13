@@ -7,7 +7,7 @@ import { events, eventStaffRequirements, staff, staffAssignments, staffAvailabil
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember } from "@/lib/staff-auth";
 import { BookingError, calendarDate, cleanTime, uuid } from "@/lib/reservation-policy";
-import { demandFor, planStaffing, shiftHours, type StaffingAssignmentInput } from "@/lib/staffing";
+import { demandFor, planStaffing, shiftHours, shiftOverlaps, type StaffingAssignmentInput } from "@/lib/staffing";
 import { audit } from "@/lib/audit";
 
 function int(value: unknown, min: number, max: number, label: string) {
@@ -173,6 +173,98 @@ export async function getMyStaffing() {
   return { member, upcoming, availability, assignments, roles };
 }
 
+export async function getMyOpenShifts() {
+  const member = await requireStaffMember(true);
+  const today = new Date();
+  const upcoming = await db.select().from(events).where(and(gte(events.date, today), isNull(events.deletedAt), eq(events.type, "event"))).orderBy(asc(events.date));
+  const eventIds = upcoming.map(e => e.id);
+  if (eventIds.length === 0) return { member, offers: [] };
+  const requirements = await db.select().from(eventStaffRequirements).where(inArray(eventStaffRequirements.eventId, eventIds)).orderBy(asc(eventStaffRequirements.date), asc(eventStaffRequirements.startTime));
+  const assignments = await db.select().from(staffAssignments).where(inArray(staffAssignments.eventId, eventIds));
+  const roles = await db.select().from(staffRoles);
+  const roleMap = new Map(roles.map(r => [r.id, r]));
+  const offers: Array<{ requirement: typeof eventStaffRequirements.$inferSelect; event: typeof events.$inferSelect; role: typeof staffRoles.$inferSelect | null; assigned: number; remaining: number; alreadySignedUp: boolean; conflict: boolean }> = [];
+  for (const req of requirements) {
+    const event = upcoming.find(e => e.id === req.eventId);
+    if (!event) continue;
+    const role = roleMap.get(req.roleId) || null;
+    if (!role) continue;
+    const reqAssignments = assignments.filter(a => a.roleId === req.roleId && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime);
+    const assigned = reqAssignments.filter(a => a.status !== "declined").length;
+    const remaining = Math.max(0, req.requiredCount - assigned);
+    if (remaining <= 0) continue;
+    // only show roles the member has
+    if (member.roleId !== req.roleId) continue;
+    const alreadySignedUp = reqAssignments.some(a => a.staffId === member.id);
+    const conflict = assignments.some(a => a.staffId === member.id && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
+    offers.push({ requirement: req, event, role, assigned, remaining, alreadySignedUp, conflict });
+  }
+  return { member, offers };
+}
+
+export async function signUpForShift(requirementId: string) {
+  const member = await requireStaffMember();
+  uuid(requirementId);
+  const [req] = await db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.id, requirementId));
+  if (!req) throw new BookingError("Schicht nicht gefunden.", 404);
+  // role match
+  if (member.roleId !== req.roleId) throw new BookingError("Diese Schicht ist nicht für deine Rolle.", 403);
+  // no duplicate signup
+  const existing = await db.select().from(staffAssignments).where(and(eq(staffAssignments.staffId, member.id), eq(staffAssignments.eventId, req.eventId)));
+  const dup = existing.find(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime);
+  if (dup) throw new BookingError("Du bist für diese Schicht bereits eingetragen.", 409);
+  // conflict check
+  const conflict = existing.find(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
+  if (conflict) throw new BookingError("Du hast in dieser Zeit schon eine andere Schicht.", 409);
+  // capacity check
+  const count = await db.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, req.eventId), eq(staffAssignments.roleId, req.roleId)));
+  const sameSlot = count.filter(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime && a.status !== "declined");
+  if (sameSlot.length >= req.requiredCount) throw new BookingError("Diese Schicht ist bereits voll.", 409);
+  await db.insert(staffAssignments).values({ eventId: req.eventId, staffId: member.id, roleId: req.roleId, date: req.date, startTime: req.startTime, endTime: req.endTime, status: "requested", source: "self" });
+  revalidatePath("/[locale]/team", "layout");
+  return { success: true };
+}
+
+export async function withdrawSignup(assignmentId: string) {
+  const member = await requireStaffMember();
+  uuid(assignmentId);
+  const [a] = await db.select().from(staffAssignments).where(and(eq(staffAssignments.id, assignmentId), eq(staffAssignments.staffId, member.id)));
+  if (!a) throw new BookingError("Eintragung nicht gefunden.", 404);
+  if (a.source !== "self" || a.status !== "requested") throw new BookingError("Nur eigene Eintragungen können zurückgezogen werden.", 403);
+  await db.delete(staffAssignments).where(eq(staffAssignments.id, assignmentId));
+  revalidatePath("/[locale]/team", "layout");
+  return { success: true };
+}
+
+export async function getStaffingOverview() {
+  await requireAdmin();
+  const today = new Date();
+  const upcoming = await db.select().from(events).where(and(gte(events.date, today), isNull(events.deletedAt), eq(events.type, "event"))).orderBy(asc(events.date));
+  const result = [];
+  for (const event of upcoming.slice(0, 20)) {
+    const [requirements, assignments] = await Promise.all([
+      db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.eventId, event.id)),
+      db.select().from(staffAssignments).where(eq(staffAssignments.eventId, event.id)),
+    ]);
+    const totalRequired = requirements.reduce((s, r) => s + r.requiredCount, 0);
+    const filled = assignments.filter(a => a.status !== "declined").length;
+    const selfSignups = assignments.filter(a => a.source === "self" && a.status === "requested").length;
+    const gaps = totalRequired - Math.min(totalRequired, filled);
+    result.push({ event, totalRequired, filled, selfSignups, gaps, requirements: requirements.length });
+  }
+  return { events: result };
+}
+
+export async function createManualAssignment(eventId: string, staffId: string, requirementId: string) {
+  await requireAdmin(); uuid(eventId); uuid(staffId); uuid(requirementId);
+  const [req] = await db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.id, requirementId));
+  if (!req || req.eventId !== eventId) throw new BookingError("Schicht nicht gefunden.", 404);
+  const [member] = await db.select().from(staff).where(eq(staff.id, staffId));
+  if (!member) throw new BookingError("Mitarbeiter nicht gefunden.", 404);
+  await db.insert(staffAssignments).values({ eventId, staffId, roleId: req.roleId, date: req.date, startTime: req.startTime, endTime: req.endTime, status: "confirmed", source: "manual" });
+  revalidatePath("/[locale]/admin", "layout");
+  return { success: true };
+}
 export async function respondToAssignment(id: string, status: "accepted" | "declined") {
   const member = await requireStaffMember();
   uuid(id);

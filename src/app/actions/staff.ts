@@ -133,6 +133,7 @@ export async function createStaff(data: { email: string; firstName: string; last
   const expiresAt = new Date(Date.now() + 7 * 86400000);
   await db.insert(staffInvites).values({ staffId: created.id, tokenHash: hashToken(token), expiresAt, createdBy: actor.email });
   const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/einladung?token=${encodeURIComponent(token)}`;
+const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/login`;
   const expiresLabel = expiresAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   let warning: string | undefined;
   if (process.env.RESEND_API_KEY) {
@@ -141,8 +142,8 @@ export async function createStaff(data: { email: string; firstName: string; last
         from: emailFrom(),
         to: [mail],
         subject: staffInviteSubject(role.name),
-        html: staffInviteHtml({ firstName, inviteUrl, expiresAt: expiresLabel, roleName: role.name }),
-        text: staffInviteText({ firstName, inviteUrl, expiresAt: expiresLabel, roleName: role.name }),
+        html: staffInviteHtml({ firstName, inviteUrl, expiresAt: expiresLabel, roleName: role.name, loginUrl }),
+        text: staffInviteText({ firstName, inviteUrl, expiresAt: expiresLabel, roleName: role.name, loginUrl }),
       }, { idempotencyKey: `staff-invite:${created.id}:${token.slice(0, 8)}` });
       if (result.error) warning = "Mitarbeiter angelegt, aber die Einladungsmail konnte nicht gesendet werden.";
     } catch {
@@ -165,6 +166,7 @@ export async function resendStaffInvite(staffId: string) {
   const expiresAt = new Date(Date.now() + 7 * 86400000);
   await db.insert(staffInvites).values({ staffId, tokenHash: hashToken(token), expiresAt, createdBy: actor.email });
   const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/einladung?token=${encodeURIComponent(token)}`;
+const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/login`;
   let warning: string | undefined;
   if (process.env.RESEND_API_KEY) {
     const [role] = member.roleId ? await db.select({ name: staffRoles.name }).from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
@@ -172,8 +174,8 @@ export async function resendStaffInvite(staffId: string) {
     try {
       const result = await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: emailFrom(), to: [member.email], subject: staffInviteSubject(role?.name || ""),
-        html: staffInviteHtml({ firstName: member.firstName, inviteUrl, expiresAt: expiresLabel, roleName: role?.name }),
-        text: staffInviteText({ firstName: member.firstName, inviteUrl, expiresAt: expiresLabel, roleName: role?.name }),
+        html: staffInviteHtml({ firstName: member.firstName, inviteUrl, expiresAt: expiresLabel, roleName: role?.name, loginUrl }),
+        text: staffInviteText({ firstName: member.firstName, inviteUrl, expiresAt: expiresLabel, roleName: role?.name, loginUrl }),
       }, { idempotencyKey: `staff-invite:${staffId}:${token.slice(0, 8)}` });
       if (result.error) warning = "Einladung erstellt, Mailversand fehlgeschlagen.";
     } catch { warning = "Einladung erstellt, Mailversand fehlgeschlagen."; }

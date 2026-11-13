@@ -167,7 +167,15 @@ export function planStaffing(input: {
     dailyEnd.set(key, Math.max(dailyEnd.get(key) || 0, timeMinutes(existing.endTime)));
   }
 
-  for (const requirement of input.requirements) {
+  // Scarcity-first: Schichten mit den wenigsten verfuegbaren Kandidaten zuerst zuteilen.
+  const requirementOrder = [...input.requirements].sort((a, b) => {
+    const countA = input.staff.filter(p => p.roleId === a.roleId && (p.status === "active" || p.status === "ready")).length;
+    const countB = input.staff.filter(p => p.roleId === b.roleId && (p.status === "active" || p.status === "ready")).length;
+    if (countA !== countB) return countA - countB;
+    return shiftHours(a.startTime, a.endTime) - shiftHours(b.startTime, b.endTime);
+  });
+
+  for (const requirement of requirementOrder) {
     let assigned = 0;
     const rule = rules.get(requirement.roleId);
     if (!rule || !rule.active) {

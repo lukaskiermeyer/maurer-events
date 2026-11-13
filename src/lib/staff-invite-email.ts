@@ -12,7 +12,7 @@ export function staffInviteSubject(roleName: string) {
   return roleName ? `Deine Einladung zum Maurer-Events Team (${roleName})` : "Deine Einladung zum Maurer-Events Team-Portal";
 }
 
-export function staffInviteHtml({ firstName, inviteUrl, expiresAt, roleName }: { firstName: string; inviteUrl: string; expiresAt: string; roleName?: string }) {
+export function staffInviteHtml({ firstName, inviteUrl, expiresAt, roleName, loginUrl }: { firstName: string; inviteUrl: string; expiresAt: string; roleName?: string; loginUrl?: string }) {
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -45,6 +45,13 @@ export function staffInviteHtml({ firstName, inviteUrl, expiresAt, roleName }: {
             Jetzt Einladung annehmen
           </a>
           <div style="font-size:13px;color:${MUTED};margin-top:12px;">Der Link ist gültig bis ${expiresAt} (7 Tage).</div>
+        </td></tr>
+        <!-- Login hint -->
+        <tr><td style="padding:8px 32px 0;">
+          <div style="background:${CANVAS};border:1px solid ${BORDER};border-radius:14px;padding:14px 18px;">
+            <div style="font-weight:700;font-size:13px;color:${INK};">Später einloggen</div>
+            <div style="font-size:13px;line-height:1.6;color:${MUTED};margin-top:4px;">Nach dem Setzen deines Passworts meldest du dich jederzeit unter <a href="${loginUrl || inviteUrl}" style="color:${GREEN};text-decoration:none;font-weight:700;">${loginUrl || inviteUrl}</a> mit deiner E-Mail-Adresse und dem Passwort an.</div>
+          </div>
         </td></tr>
         <!-- Steps -->
         <tr><td style="padding:8px 32px 4px;">
@@ -89,7 +96,7 @@ export function staffInviteHtml({ firstName, inviteUrl, expiresAt, roleName }: {
 </html>`;
 }
 
-export function staffInviteText({ firstName, inviteUrl, expiresAt, roleName }: { firstName: string; inviteUrl: string; expiresAt: string; roleName?: string }) {
+export function staffInviteText({ firstName, inviteUrl, expiresAt, roleName, loginUrl }: { firstName: string; inviteUrl: string; expiresAt: string; roleName?: string; loginUrl?: string }) {
   return [
     `Servus ${firstName},`,
     "",
@@ -98,6 +105,8 @@ export function staffInviteText({ firstName, inviteUrl, expiresAt, roleName }: {
     "",
     `Einladung annehmen: ${inviteUrl}`,
     `Der Link ist gültig bis ${expiresAt} (7 Tage).`,
+    "",
+    `Später einloggen: ${loginUrl || inviteUrl} (E-Mail + Passwort)`,
     "",
     "Schritte: 1) Daten + Dokumente ausfüllen, 2) Vertrag unterschreiben, 3) Schichten einsehen.",
     "",

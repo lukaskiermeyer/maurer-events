@@ -1,7 +1,7 @@
 import Image from "next/image";
 import HeroPubSign from "@/components/HeroPubSign";
 import HeroLights from "@/components/HeroLights";
-import { gateGarlandLights, tentDoorLights } from "@/components/heroLightPoints";
+import { gateGarlandLights, tentLights } from "@/components/heroLightPoints";
 
 /* Illustrierte Festzelt-Szene, Layer-Reihenfolge von hinten nach vorne:
    Himmel > Boden (CSS-Planken, .hero-ground) > Zelt > Schild > Eingang.
@@ -24,7 +24,7 @@ export default function HeroScene() {
 
             <div className="hero-stage hero-tent z-[4]">
                 <Image src="/Zelt.svg" alt="" fill sizes="100vw" />
-                <HeroLights lights={tentDoorLights} />
+                <HeroLights lights={tentLights} />
             </div>
 
             <HeroPubSign />
