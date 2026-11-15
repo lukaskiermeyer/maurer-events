@@ -21,22 +21,29 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
   return rows;
 }
 
-export async function addAdminUser(emailInput: string) {
+export type AddAdminResult =
+  | { ok: true; created: AdminUserRow }
+  | { ok: false; error: string };
+
+export async function addAdminUser(emailInput: string): Promise<AddAdminResult> {
   const actor = await requireAdmin(true);
   const email = guestDetails('Admin', emailInput, 1).email;
 
-  // Bereits in Env-Liste?
-  if (isAdminEmail(email)) throw new BookingError('Diese E-Mail hat bereits vollen Admin-Zugriff (Umgebungsvariable).');
+  // Bereits in Env-Liste? (Erwarteter Fall – kein Throw, um Server-Log-Rauschen zu vermeiden.)
+  if (isAdminEmail(email)) {
+    return { ok: false, error: 'Diese E-Mail hat bereits vollen Admin-Zugriff (Umgebungsvariable).' };
+  }
 
   // Bereits in DB?
   const [existing] = await db.select({ id: adminUsers.id }).from(adminUsers)
     .where(sql`lower(trim(${adminUsers.email})) = ${email}`);
-  if (existing) throw new BookingError('Diese E-Mail ist bereits als Admin eingetragen.');
+  if (existing) {
+    return { ok: false, error: 'Diese E-Mail ist bereits als Admin eingetragen.' };
+  }
 
-  // Mindestens ein weiterer Admin muss bleiben (Schutz vor Selbst-Aussperrung nicht nötig, da Env-Admins immer bleiben).
   const [created] = await db.insert(adminUsers).values({ email, createdBy: actor.email }).returning();
   await audit('admin', actor.email, 'admin_user.create', 'admin_user', created.id, { email });
-  return created;
+  return { ok: true, created: { id: created.id, email: created.email, createdBy: created.createdBy, createdAt: created.createdAt } };
 }
 
 export async function removeAdminUser(id: string) {

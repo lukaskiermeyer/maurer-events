@@ -16,8 +16,12 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
     e.preventDefault();
     setBusy(true); setMessage('');
     try {
-      const created = await addAdminUser(email);
-      setUsers(prev => [...prev, { id: created.id, email: created.email, createdBy: created.createdBy, createdAt: created.createdAt }]);
+      const result = await addAdminUser(email);
+      if (result.ok === false) {
+        setMessage(result.error);
+        return;
+      }
+      setUsers(prev => [...prev, result.created]);
       setEmail('');
       setMessage('Admin hinzugefügt. Die Person kann sich jetzt über /admin/login anmelden.');
     } catch (err) {
