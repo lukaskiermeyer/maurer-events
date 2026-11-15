@@ -116,7 +116,6 @@ export default function ServicesSection() {
         >
           {services.map((service) => {
             const Icon = Icons[service.iconType as keyof typeof Icons];
-            const featured = service.featured === true;
             return (
               <motion.div
                 key={service.id}

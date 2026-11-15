@@ -673,13 +673,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               {file && (
                 <div className="mt-2">
                   <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>
-                  <img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-40 rounded-lg border border-border-light" />
+                  {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-40 rounded-lg border border-border-light" />
                 </div>
               )}
               {!file && formData.imageUrl && (
                 <div className="mt-2">
                   <p className="text-xs font-bold text-base-dark/60 mb-1">Aktuelles Bild:</p>
-                  <img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
+                  {/* eslint-disable-line @next/next/no-img-element */}<img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
                 </div>
               )}
               </div>

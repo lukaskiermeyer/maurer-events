@@ -1,4 +1,5 @@
 import { requestPasswordReset } from "@/app/actions/staffAuth";
+import { Link } from "@/i18n/routing";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default function PasswordForgotPage() {
         <button type="submit" className="w-full bg-accent-green text-white py-3 rounded-xl font-bold">Link senden</button>
       </form>
       <p className="text-xs text-base-dark/50 mt-5">Hinweis: Wenn die E-Mail nicht ankommt, prüfe den Spam-Ordner oder wende dich an den Festwirt.</p>
-      <p className="text-xs mt-3"><a href="/team/login" className="text-accent-green underline">Zurück zum Login</a></p>
+      <p className="text-xs mt-3"><Link href="/team/login" className="text-accent-green underline">Zurück zum Login</Link></p>
     </div>
   );
 }

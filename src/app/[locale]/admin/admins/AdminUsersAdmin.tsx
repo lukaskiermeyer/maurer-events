@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from '@/i18n/routing';
 import { addAdminUser, removeAdminUser } from '@/app/actions/adminUsers';
 import type { AdminUserRow } from '@/app/actions/adminUsers';
 
@@ -12,7 +11,6 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const router = useRouter();
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

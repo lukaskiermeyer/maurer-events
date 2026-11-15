@@ -1,7 +1,7 @@
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { adminSessions, events, scannerAccess } from '@/db/schema';
-import { isAdminEmail, isAdminEmailWithDb } from './admin-identity';
+import { isAdminEmailWithDb } from './admin-identity';
 import { BookingError, guestDetails, UUID_PATTERN, uuid } from './reservation-policy';
 import { reservationAdmin } from './reservation-admin';
 

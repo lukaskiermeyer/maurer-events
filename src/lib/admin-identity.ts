@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { adminUsers } from '@/db/schema';
 import { BookingError } from './reservation-policy';

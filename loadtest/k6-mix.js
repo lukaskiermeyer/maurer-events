@@ -7,7 +7,7 @@ import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
 const BASE = __ENV.BASE_URL || 'https://maurer-events.madebylui.net';
-const CRON_SECRET = __ENV.CRON_SECRET || '';
+
 
 const errorRate = new Rate('errors');
 const p95Trend = new Trend('req_duration');
@@ -125,7 +125,7 @@ export function employeeFlow() {
 }
 
 // Contention: 50 parallele Buchungen auf denselben Slot
-let slotCounter = 0;
+
 export function contentionFlow() {
   const idem = `idem-${__VU}-${__ITER}`;
   const payload = JSON.stringify({

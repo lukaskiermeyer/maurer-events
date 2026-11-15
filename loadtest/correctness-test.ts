@@ -66,8 +66,8 @@ test('idempotency: gleicher Key zweimal -> 1 Datensatz', async () => {
     body,
   });
   // Beide sollten denselben Datensatz referenzieren (gleiche ID in Response)
-  const j1 = await r1.json().catch(() => ({}));
-  const j2 = await r2.json().catch(() => ({}));
+  await r1.json().catch(() => ({}));
+  await r2.json().catch(() => ({}));
   // An Response-Schema anpassen:
   // assert.equal(j1.reservationId, j2.reservationId);
   // DB-Count für diesen Key == 1

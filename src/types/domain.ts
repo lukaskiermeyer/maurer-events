@@ -1,4 +1,4 @@
-import type { events, tables, galleries, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments, staffPasswordResets } from '@/db/schema';
+import type { events, tables, galleries, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments } from '@/db/schema';
 import type { getAdminStats } from '@/app/actions/events';
 import type { getReservationsByEvent } from '@/app/actions/reservations';
 import type { getPublicEventSettings } from '@/app/actions/eventSettings';

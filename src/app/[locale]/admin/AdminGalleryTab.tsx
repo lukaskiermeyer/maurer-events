@@ -290,7 +290,7 @@ export default function AdminGalleryTab({
                           onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
                           className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" 
                         />
-                         {file && <img src={URL.createObjectURL(file)} alt="Vorschau" className="mt-2 max-h-32 rounded-lg border border-border-light" />}
+                         {file && (/* eslint-disable-line @next/next/no-img-element */ <img src={URL.createObjectURL(file)} alt="Vorschau" className="mt-2 max-h-32 rounded-lg border border-border-light" />)}
                       </div>
                       <div className="flex items-center text-sm font-bold opacity-50">ODER</div>
                       <div className="min-w-0">

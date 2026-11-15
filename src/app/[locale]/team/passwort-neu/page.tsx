@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/routing";
 import { resetPasswordWithToken } from "@/app/actions/staffAuth";
 
 export default function PasswordResetPage() {
@@ -41,7 +42,7 @@ export default function PasswordResetPage() {
           <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird gespeichert…" : "Passwort setzen"}</button>
         </form>
       )}
-      <p className="text-xs mt-3"><a href="/team/login" className="text-accent-green underline">Zurück zum Login</a></p>
+      <p className="text-xs mt-3"><Link href="/team/login" className="text-accent-green underline">Zurück zum Login</Link></p>
     </div>
   );
 }

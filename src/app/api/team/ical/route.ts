@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { events, staff, staffAssignments, staffRoles } from "@/db/schema";
+import { events, staffAssignments, staffRoles } from "@/db/schema";
 import { staffSession } from "@/lib/staff-auth";
 
 export const runtime = "nodejs";
