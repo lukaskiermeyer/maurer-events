@@ -72,7 +72,10 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
           <div key={u.id} className="border border-border-light p-4 rounded-xl flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="font-bold break-all">{u.email}</p>
-              <p className="text-sm text-base-dark/60">Angelegt von {u.createdBy} am {new Date(u.createdAt).toLocaleDateString('de-DE')}</p>
+              <p className="text-sm text-base-dark/60">
+                Angelegt von {u.createdBy || '—'} am{' '}
+                {u.createdAt ? new Date(u.createdAt).toLocaleDateString('de-DE') : '—'}
+              </p>
             </div>
             <button disabled={busy} className="min-h-11 px-4 rounded-lg bg-red-50 text-red-700 font-bold text-sm" onClick={() => handleRemove(u.id, u.email)}>
               Entfernen

@@ -18,7 +18,14 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
     createdBy: adminUsers.createdBy,
     createdAt: adminUsers.createdAt,
   }).from(adminUsers).orderBy(adminUsers.createdAt);
-  return rows;
+  // Normalisierung: fehlende/ungültige Werte defensiv auffangen, damit die UI
+  // keine "Invalid Date"-Anzeige produziert (z. B. bei Alt-Daten).
+  return rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    createdBy: r.createdBy && r.createdBy.trim() ? r.createdBy : 'system',
+    createdAt: r.createdAt instanceof Date && !isNaN(r.createdAt.getTime()) ? r.createdAt : new Date(),
+  }));
 }
 
 export type AddAdminResult =
