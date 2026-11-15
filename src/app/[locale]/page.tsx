@@ -1,8 +1,8 @@
-import nextDynamic from "next/dynamic";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import ServicesSection from "@/components/ServicesSection";
 import EventsSection from "@/components/EventsSection";
+import ContactSection from "@/components/ContactSection";
 import { getEvents } from "@/app/actions/events";
 import { getGalleryAlbums } from "@/app/actions/gallery";
 import { getPublicEventDocumentsForEvents } from "@/app/actions/eventDocuments";
@@ -12,10 +12,6 @@ import GallerySection from "@/components/GallerySection";
 import CareersTeaser from "@/components/CareersTeaser";
 import { notFound } from 'next/navigation';
 import { redirect, routing } from '@/i18n/routing';
-
-const ContactSection = nextDynamic(() => import("@/components/ContactSection"), {
-    loading: () => <div className="animate-pulse h-96 bg-base-light rounded-3xl mt-24"></div>
-})
 
 
 

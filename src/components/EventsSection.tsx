@@ -216,10 +216,10 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                         <Link href={`/termine/${event.id}`} className="absolute inset-0 z-0" aria-label={title} />
                         <div className="relative z-10 pointer-events-none flex flex-col md:flex-row">
                           
-                          {/* 16:9 Poster Area */}
-                          <div className="w-full md:w-2/5 aspect-video relative bg-border-light/30 overflow-hidden shrink-0">
+                          {/* Poster Area (hochkant, 3:4) */}
+                          <div className="w-full md:w-2/5 aspect-[3/4] relative bg-border-light/30 overflow-hidden shrink-0">
                             {event.imageUrl ? (
-                              <Image src={event.imageUrl} alt={title} fill sizes="(max-width: 767px) 100vw, 40vw" className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                              <Image src={event.imageUrl} alt={title} fill sizes="(max-width: 767px) 100vw, 40vw" className="object-contain group-hover:scale-105 transition-transform duration-700" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
                                 Kein Plakat

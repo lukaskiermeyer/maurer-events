@@ -153,12 +153,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
           {event.imageUrl && (
             <div className="w-full sm:w-[500px] lg:w-[600px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
-              <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border-8 border-white/90 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
+              <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-8 border-white/90 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
                 <Image 
                   src={event.imageUrl} 
                   alt={title} 
                   fill
-                  className="object-cover" 
+                  className="object-contain" 
                 />
               </div>
             </div>

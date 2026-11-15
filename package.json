@@ -69,6 +69,12 @@
     "tsx": "^4.23.1",
     "typescript": "^6.0.3"
   },
+  "browserslist": [
+    ">0.3%",
+    "not dead",
+    "not op_mini all",
+    "not IE 11"
+  ],
   "overrides": {
     "source-map-js": "^1.2.2",
     "quill": "2.0.2"

@@ -2,9 +2,8 @@
 import Image from 'next/image';
 
 import type { SVGProps } from 'react';
-import { useState, useEffect } from 'react';
 
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { services } from "@/data/services";
 import { useTranslations } from "next-intl";
 
@@ -68,19 +67,6 @@ const itemVariants: Variants = {
 
 export default function ServicesSection() {
   const t = useTranslations("Services");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ vereinsfest: true });
-  const [isLg, setIsLg] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false));
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsLg(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  const toggle = (id: string) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <section id="services" className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden border-t-4 border-base-dark">
@@ -117,7 +103,7 @@ export default function ServicesSection() {
             transition={{ duration: 1.2, ease: "easeOut" }}
             className="shrink-0 w-20 sm:w-40 lg:w-56 pointer-events-none"
           >
-            <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
+            <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} sizes="200px" className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
           </motion.div>
         </div>
 
@@ -131,61 +117,24 @@ export default function ServicesSection() {
           {services.map((service) => {
             const Icon = Icons[service.iconType as keyof typeof Icons];
             const featured = service.featured === true;
-            const isOpen = isLg || expanded[service.id] === true;
             return (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
-                className={`group relative min-w-0 h-full rounded-3xl shadow-lg border-b-8 border-accent-wood bg-white text-base-dark transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden ${
-                  featured
-                    ? `sm:col-span-2 lg:col-span-1 p-4 sm:p-6 md:p-8`
-                    : "p-4 sm:p-5"
-                }`}
+                className="group relative min-w-0 h-full rounded-3xl shadow-lg border-b-8 border-accent-wood bg-white text-base-dark transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden p-4 sm:p-6 md:p-8"
               >
                 <div className="relative z-10 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => { if (!isLg) toggle(service.id); }}
-                    aria-expanded={isOpen}
-                    aria-controls={`service-desc-${service.id}`}
-                    className="flex w-full items-center gap-4 text-left cursor-pointer"
-                  >
-                    <span className={`shrink-0 text-accent-gold bg-accent-gold/15 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300 ${
-                      featured ? "w-12 h-12 md:w-16 md:h-16" : "w-10 h-10 md:w-12 md:h-12"
-                    }`}>
-                      {Icon && <Icon className={featured ? "w-6 h-6 md:w-8 md:h-8" : "w-5 h-5 md:w-6 md:h-6"} />}
+                  <div className="flex w-full items-center gap-4 text-left">
+                    <span className="shrink-0 text-accent-gold bg-accent-gold/15 flex items-center justify-center rounded-2xl group-hover:scale-110 transition-transform duration-300 w-12 h-12 md:w-16 md:h-16">
+                      {Icon && <Icon className="w-6 h-6 md:w-8 md:h-8" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-display font-bold text-xl sm:text-2xl md:text-3xl leading-tight break-words hyphens-auto">{t(`items.${service.id}.title`)}</span>
                     </span>
-                    <motion.span
-                      animate={{ rotate: isOpen ? 180 : 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="shrink-0 text-accent-wood lg:hidden"
-                      aria-hidden="true"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </motion.span>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        id={`service-desc-${service.id}`}
-                        key="content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.35, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <p className="font-sans text-base md:text-lg leading-snug md:leading-relaxed break-words hyphens-auto text-base-dark/70 pt-3">
-                          {t(`items.${service.id}.description`)}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </div>
+                  <p className="font-sans text-base md:text-lg leading-snug md:leading-relaxed break-words hyphens-auto text-base-dark/70 pt-3">
+                    {t(`items.${service.id}.description`)}
+                  </p>
                 </div>
               </motion.div>
             );

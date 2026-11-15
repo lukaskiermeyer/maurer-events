@@ -13,7 +13,7 @@ export default function MadeByLui({ dark = false }: { dark?: boolean }) {
           target="_blank"
           rel="noopener noreferrer"
           className="group inline-block no-underline opacity-80 hover:opacity-100 transition-opacity"
-          aria-label="Website built by Lui"
+          aria-label="Made by Lui"
       >
         <SignatureLogo
             animated={true}

@@ -25,6 +25,7 @@ export default function HeroScene() {
                     fill
                     sizes="100vw"
                     priority
+                    fetchPriority="high"
                     className="object-cover object-[center_32%]"
                 />
             </div>

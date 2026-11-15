@@ -80,6 +80,7 @@ export default function AboutSection() {
                       width={600}
                       height={800}
                       sizes="(max-width: 768px) 100vw, 400px"
+                      quality={70}
                       className="w-full h-auto object-cover grayscale-[10%] contrast-110" // Leicht analoger Foto-Look
                   />
 

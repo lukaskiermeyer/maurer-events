@@ -221,6 +221,15 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 244, 200, 0.9) 0%, rgba(255, 205, 105, 0.5) 45%, rgba(255, 190, 80, 0) 70%);
   mix-blend-mode: screen;
+  opacity: 0.2;
+  will-change: opacity;
+}
+@keyframes hero-twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-light { animation: none !important; opacity: 0.5; }
 }
 
 @media (max-width: 639px) {

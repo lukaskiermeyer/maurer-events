@@ -212,11 +212,11 @@ export default function ContactSection() {
                     <span className="text-xs font-bold uppercase tracking-widest text-accent-green">
                       {t("step_of", { step: step + 1, total: STEPS.length })}
                     </span>
-                    <span className="text-xs font-bold uppercase tracking-widest text-base-dark/40">
+                    <span className="text-xs font-bold uppercase tracking-widest text-base-dark/60">
                       {Math.round(((step + 1) / STEPS.length) * 100)}%
                     </span>
                   </div>
-                  <ol className="relative flex items-start justify-between list-none p-0 m-0">
+                  <div className="relative flex items-start justify-between list-none p-0 m-0">
                     <span className="absolute left-0 right-0 top-5 h-1.5 -translate-y-1/2 rounded-full bg-border-light" />
                     <motion.span
                       className="absolute left-0 top-5 h-1.5 -translate-y-1/2 rounded-full bg-accent-green"
@@ -228,7 +228,7 @@ export default function ContactSection() {
                       const isDone = index < step;
                       const isCurrent = index === step;
                       return (
-                        <li key={stepItem.labelKey} className="relative z-10 flex flex-col items-center gap-2 w-16" aria-current={isCurrent ? "step" : undefined}>
+                        <div key={stepItem.labelKey} className="relative z-10 flex flex-col items-center gap-2 w-16" aria-current={isCurrent ? "step" : undefined}>
                           <motion.span
                             initial={false}
                             animate={{ scale: isCurrent ? 1.15 : 1 }}
@@ -236,7 +236,7 @@ export default function ContactSection() {
                             className={`flex w-11 h-11 items-center justify-center rounded-full font-display font-black text-sm shadow-sm transition-colors ${
                               isDone || isCurrent
                                 ? "bg-accent-green text-white"
-                                : "bg-border-light text-base-dark/40"
+                                : "bg-border-light text-base-dark/60"
                             }`}
                           >
                             {isDone ? (
@@ -245,13 +245,13 @@ export default function ContactSection() {
                               index + 1
                             )}
                           </motion.span>
-                          <span className={`text-xs font-bold uppercase tracking-wider ${isCurrent ? "text-base-dark" : "text-base-dark/40"}`}>
+                          <span className={`text-xs font-bold uppercase tracking-wider ${isCurrent ? "text-base-dark" : "text-base-dark/60"}`}>
                             {t(stepItem.labelKey)}
                           </span>
-                        </li>
+                        </div>
                       );
                     })}
-                  </ol>
+                  </div>
                 </div>
 
                 {formStatus === "error" && (

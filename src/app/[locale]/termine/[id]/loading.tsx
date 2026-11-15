@@ -20,7 +20,7 @@ export default function Loading() {
           </div>
 
           <div className="w-full sm:w-[500px] lg:w-[600px] flex-shrink-0 mt-8 lg:mt-0">
-            <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-white/80 border-8 border-white/90" />
+            <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden bg-white/80 border-8 border-white/90" />
           </div>
           
         </div>

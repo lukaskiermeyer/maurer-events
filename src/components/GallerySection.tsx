@@ -88,7 +88,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
 
         <div className={`grid ${sneakPeek ? 'grid-cols-2 gap-3 sm:gap-8 max-w-5xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8'}`}>
           {visibleAlbums.length === 0 ? (
-            <div className="col-span-full py-12 text-center text-base-dark/50 font-bold border border-dashed border-border-light rounded-2xl">
+            <div className="col-span-full py-12 text-center text-base-dark/70 font-bold border border-dashed border-border-light rounded-2xl">
               {sneakPeek ? t("empty_homepage") : locale === 'en' ? 'Photos from our events will appear here soon.' : 'Hier findest du bald Bilder unserer Veranstaltungen.'}
             </div>
           ) : visibleAlbums.map((album, i) => {
