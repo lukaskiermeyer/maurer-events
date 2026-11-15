@@ -60,16 +60,23 @@ zugesichert.
 7. Gemini-API-Vertrag, Datenverwendung, Speicher-/Trainingsbedingungen prüfen.
    Keine Gäste-, Bewerbungs-, Kontakt- oder Login-Daten in Übersetzungstexte geben.
 
+## Rechtliche Prüfung Datenkategorien
+
+Siehe `docs/rechtliche-pruefung-datenkategorien.md` für die Prüfung der
+Rechtsgrundlagen pro Datenkategorie (Gesundheitszeugnis/IfSG,
+Ausweis-Kopie, Datenminimierung, Schichtsystem, DSFA, Informationspflichten)
+mit `RECHTLICHE PRÜFUNG`-Flags.
+
 ## Offizielle Quellen
 
 Am 7. Oktober 2026 lesend geprüft:
 
-- [Vercel](https://vercel.com/legal/privacy-notice).
+- [netcup](https://www.netcup.de/datenschutz) (Hosting, Deutschland; ab Umzug). Vercel entfällt nach dem Umzug auf den Netcup-Server.
 - [Neon](https://neon.com/privacy-policy), derzeit Weiterleitung zu
   [Databricks](https://www.databricks.com/legal/privacynotice), unter anderem Neon, LLC.
 - [Resend](https://resend.com/legal/privacy-policy), Plus Five Five, Inc.
 - [Cloudinary](https://cloudinary.com/privacy), [Cloudflare](https://www.cloudflare.com/privacypolicy/),
-  [Stripe](https://stripe.com/de/privacy), [Unsplash](https://unsplash.com/privacy).
+  [Stripe](https://stripe.com/de/privacy).
 - [§ 147 AO](https://www.gesetze-im-internet.de/ao_1977/__147.html): grundsätzlich
   10 Jahre Bücher, 8 Jahre Buchungsbelege, 6 Jahre sonstige aufgeführte Unterlagen.
 - [§ 25 TDDDG](https://www.gesetze-im-internet.de/ttdsg/__25.html): Erforderlichkeit

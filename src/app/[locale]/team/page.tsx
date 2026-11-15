@@ -36,7 +36,11 @@ export default async function TeamDashboard() {
           <h2 className="font-display font-bold text-xl mb-1">Vertrag</h2>
           <p className="text-sm text-base-dark/60">{contract ? `Status: ${contract.status}` : "Noch kein Vertrag hinterlegt."}</p>
         </Link>
-        <Link href="/team/verfuegbarkeit" className="bg-white border border-border-light rounded-2xl p-5 hover:border-accent-green transition-colors">
+        <Link href="/team/profil" className="bg-white border border-border-light rounded-2xl p-5 hover:border-accent-green transition-colors">
+            <h2 className="font-display font-bold text-xl mb-1">Profil</h2>
+            <p className="text-sm text-base-dark/60">Eigene Daten bearbeiten.</p>
+          </Link>
+          <Link href="/team/verfuegbarkeit" className="bg-white border border-border-light rounded-2xl p-5 hover:border-accent-green transition-colors">
           <h2 className="font-display font-bold text-xl mb-1">Verfügbarkeit</h2>
           <p className="text-sm text-base-dark/60">Trage ein, wann du an den Festen kannst.</p>
         </Link>

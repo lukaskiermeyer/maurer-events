@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { eventDocuments, events } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { uuid } from "@/lib/reservation-policy";
 import type { EventDocument } from "@/types/domain";
 
@@ -41,6 +42,10 @@ export async function deleteEventDocument(id: string) {
   const [document] = await db.select().from(eventDocuments).where(eq(eventDocuments.id, id));
   if (!document) throw new Error("Dokument nicht gefunden.");
   await db.delete(eventDocuments).where(eq(eventDocuments.id, id));
+  // Cloudinary-Asset (inkl. abgeleitete Versionen) best effort purgen.
+  for (const url of [document.fileUrl, document.previewUrl].filter((u): u is string => Boolean(u))) {
+    try { await deleteCloudinaryImage(url); } catch { /* best effort */ }
+  }
   revalidatePath("/[locale]", "layout");
   return { success: true };
 }

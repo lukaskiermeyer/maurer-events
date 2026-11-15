@@ -1,6 +1,6 @@
 import { Link } from "@/i18n/routing";
 
-import { LEGAL_REVIEW_PENDING, type LegalDocument } from "@/lib/legal/terms";
+import { type LegalDocument } from "@/lib/legal/terms";
 
 const others = [
   { slug: 'agb', label: 'AGB' },
@@ -19,12 +19,6 @@ export default function LegalDocumentPage({ document }: { document: LegalDocumen
         </h1>
         <p className="mt-4 text-base-dark/60 text-sm">{document.updated}</p>
 
-        {LEGAL_REVIEW_PENDING && (
-          <p className="mt-5 text-sm rounded-xl border border-yellow-300 bg-yellow-50 text-yellow-900 p-4">
-            <strong className="font-bold">Hinweis:</strong> Diese Fassung wird derzeit rechtlich geprüft.
-            Bis zur Freigabe sind die Angaben unverbindlich.
-          </p>
-        )}
       </header>
 
       <p className="text-base-dark/80 font-sans leading-relaxed mb-10">{document.intro}</p>

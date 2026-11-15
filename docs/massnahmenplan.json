@@ -1,0 +1,60 @@
+{
+  "priorisierung": "Risiko fuer betroffene Personen zuerst, dann Aufwand",
+  "top10_sofortmassnahmen": [
+    {"nr": 1, "massnahme": "Log-Redaction einfuehren", "datei": "src/lib/redact.ts", "aenderung": "safeLog/safeError/safeWarn nutzen; PII maskieren"},
+    {"nr": 2, "massnahme": "Header haerten", "datei": "next.config.mjs", "aenderung": "HSTS + Referrer-Policy strict-origin (gepatcht)"},
+    {"nr": 3, "massnahme": "Passwort-Reset-Link nicht loggen", "datei": "src/app/actions/staffAuth.ts:90", "aenderung": "console.log entfernen, nur redacted Info"},
+    {"nr": 4, "massnahme": "Cloudinary-URLs aus Logs entfernen", "datei": "src/lib/cloudinary.ts, src/app/api/cron/cleanup/route.ts", "aenderung": "URLs nicht loggen"},
+    {"nr": 5, "massnahme": "Cloudinary-Secret rotieren + History bereinigen", "datei": "scripts/test-cloudinary-permissions.ts", "aenderung": "Secret rotieren, git filter-repo"},
+    {"nr": 6, "massnahme": "Unsigned Upload Preset deaktivieren", "datei": "Cloudinary-Console", "aenderung": "signed-only oder strikt begrenzen"},
+    {"nr": 7, "massnahme": "Event-Dokumente bei Event-Loeschung purgen", "datei": "src/app/api/cron/cleanup/route.ts", "aenderung": "Cloudinary-Purge ergaenzen"},
+    {"nr": 8, "massnahme": "EXIF/GPS strippen bei Team-Upload", "datei": "src/app/api/team/upload/route.ts", "aenderung": "sharp vor Upload"},
+    {"nr": 9, "massnahme": "Cleanup-Runs persistieren", "datei": "neue Tabelle cleanup_runs", "aenderung": "Start/Ende/Status/Zaehler + Alarmierung"},
+    {"nr": 10, "massnahme": "Redaction in Error-Tracking", "datei": "Sentry beforeSend", "aenderung": "sendDefaultPii:false, Bodies deaktivieren"}
+  ],
+  "go_live_blocker": [
+    "AVV Neon/Databricks",
+    "AVV Cloudinary (Plan-Upgrade)",
+    "AVV Resend, Stripe, Vercel/Coolify, Turnstile",
+    "Neon Prod-Region verifiziert",
+    "DB-Rolle Least Privilege",
+    "Backup/PITR + Restore-Test dokumentiert",
+    "Incident-Response-Runbook + 72h-Meldepfad",
+    "Loeschwirksamkeit in Backups",
+    "Korrektheitstest bestanden",
+    "Lasttest bestanden (p95<500ms, Fehler<1%)"
+  ],
+  "kunde": [
+    "Verarbeitungsverzeichnis aktualisieren",
+    "Datenschutzerklaerung anpassen",
+    "Loeschfristen festlegen",
+    "DSFA (Gesundheitsdaten)",
+    "Betriebsrat (Mitarbeiterdaten)",
+    "Kontaktpostfach Datenschutz",
+    "Entscheidung Art.-9-Feldverschluesselung"
+  ],
+  "auftragsverarbeiter": [
+    "Code-Fixes (Top-10)",
+    "TOMs-Dokument vervollstaendigen",
+    "Mess-Setup durchfuehren + dokumentieren",
+    "Audit-Logs manipulationssicher",
+    "Dependency-/Container-Scanning",
+    "Patch-Prozess dokumentieren",
+    "Restore-Test durchfuehren",
+    ".env.local entfernen"
+  ],
+  "anbieter_fragen": [
+    {"anbieter": "Neon", "themen": ["Region", "Tarif", "PITR", "Branches", "AVV", "at-rest-Encryption"]},
+    {"anbieter": "Cloudinary", "themen": ["Region", "Plan", "DPF", "Preset", "Backup", "at-rest-Encryption"]},
+    {"anbieter": "Google Gemini", "themen": ["AVV", "Zero-Retention", "Region"]},
+    {"anbieter": "Resend", "themen": ["AVV", "Region", "TLS"]},
+    {"anbieter": "Stripe", "themen": ["AVV", "Region"]},
+    {"anbieter": "Vercel/Coolify", "themen": ["AVV", "Logs-Retention"]},
+    {"anbieter": "Turnstile/Cloudflare", "themen": ["AVV", "Region"]}
+  ],
+  "zeitplan": {
+    "vor_go_live": ["Blocker", "Sofortmassnahmen", "AVVs", "Backup/Restore-Test", "Lasttest", "Korrektheitstest", "TOMs"],
+    "vor_festbeginn": ["Messung Nutzerzahlen/Saisonprofil", "Skalierung", "Monitoring/Alarmierung", "Cleanup-Run-Log"],
+    "laufend": ["Scanning", "Patch-Prozess", "Audit-Log-Review", "Incident-Drills", "Retention-Job-Ueberwachung"]
+  }
+}

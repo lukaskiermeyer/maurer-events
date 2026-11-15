@@ -1,0 +1,46 @@
+{
+  "schwellen": {
+    "p95_ms": 500,
+    "fehler_rate_max": 0.01,
+    "vus_stufen": [20, 50, 150]
+  },
+  "entscheidungsregeln": {
+    "4GB_2vCore_reicht_wenn": [
+      "p95 < 500ms bei 50 VUs",
+      "Fehlerrate < 1% bei 50 VUs",
+      "RAM-Peak < 3.2 GB (80% von 4GB)",
+      "CPU-Peak < 80% über 3 Min bei 50 VUs",
+      "Neon-Connections < 80% des Limits",
+      "Steal-Time < 5%",
+      "kein OOM-Kill, kein 503"
+    ],
+    "8GB_4vCore_noetig_wenn": [
+      "p95 >= 500ms bei 50 VUs aber < 500ms bei 150 VUs nach Scale-Up",
+      "RAM-Peak zwischen 3.2 und 6.4 GB",
+      "CPU-Peak 80-95% bei 50 VUs",
+      "Neon-Connection-Spikes > 80% des Limits",
+      "PDF-Generierung (pdf-lib) blockiert Event-Loop messbar (>100ms)"
+    ],
+    "dedizierte_kerne_noetig_wenn": [
+      "Steal-Time > 10% (Noisy-Neighbor auf Shared vCPU)",
+      "p95 > 500ms trotz 8GB/4vCore bei 150 VUs",
+      "CPU-Peak > 95% über 5 Min",
+      "Neon-Compute-Seconds erschöpfen Budget (Autosuspend zu langsam)",
+      "PDF-Generierung oder Bild-Transformation blockieren p95"
+    ],
+    "go_nogo": {
+      "go": "Alle Schwellen bei 50 VUs erfüllt + Korrektheitstest (1 Erfolg, N-1 409, DB-Count=1) + Idempotency (1 Datensatz)",
+      "nogo": "Fehlerrate >= 1% ODER p95 >= 500ms bei 20 VUs ODER OOM/503 ODER Korrektheitstest fehlgeschlagen"
+    }
+  },
+  "messreihenfolge": [
+    "1. Baseline: Server-Benchmark (sysbench/fio/mpstat) ohne Last",
+    "2. Monitoring-Stack starten (cadvisor + node-exporter + prometheus)",
+    "3. Lasttest Stufe 1 (20 VUs) 5 Min",
+    "4. Lasttest Stufe 2 (50 VUs) 5 Min",
+    "5. Lasttest Stufe 3 (150 VUs) 5 Min",
+    "6. Contention-Test (50 parallele Buchungen)",
+    "7. Idempotency-Test",
+    "8. Auswertung: JSON + Entscheidungsregeln anwenden"
+  ]
+}

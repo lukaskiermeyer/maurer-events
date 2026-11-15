@@ -6,8 +6,8 @@ config({ path: ".env.local" });
 import { createHash } from "node:crypto";
 
 const cloud = process.env.CLOUDINARY_CLOUD_NAME || "";
-const key = "873674939743311";
-const secret = "RZYpKZqDKHAZ12WfQK7Db-lznkg";
+const key = process.env.CLOUDINARY_API_KEY || "";
+const secret = process.env.CLOUDINARY_API_SECRET || "";
 if (!cloud || !key || !secret || key.includes("<")) throw new Error("CLOUDINARY_* fehlt oder ist Platzhalter in .env.local (Root-Key eintragen, ohne < >).");
 
 const basic = "Basic " + Buffer.from(`${key}:${secret}`).toString("base64");

@@ -162,6 +162,27 @@
       "when": 1794536918759,
       "tag": "0022_staff_self_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "9",
+      "when": 1794580982043,
+      "tag": "0023_edge_case_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "10",
+      "when": 1794585482427,
+      "tag": "0024_password_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794664565807,
+      "tag": "0025_wonderful_rogue",
+      "breakpoints": true
     }
   ]
 }

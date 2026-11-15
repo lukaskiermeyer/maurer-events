@@ -6,9 +6,11 @@ import { db } from "@/db";
 import { events, eventStaffRequirements, staff, staffAssignments, staffAvailability, staffRoles, staffingRules } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember } from "@/lib/staff-auth";
+import { audit } from "@/lib/audit";
 import { BookingError, calendarDate, cleanTime, uuid } from "@/lib/reservation-policy";
 import { demandFor, planStaffing, shiftHours, shiftOverlaps, type StaffingAssignmentInput } from "@/lib/staffing";
-import { audit } from "@/lib/audit";
+import { Resend } from "resend";
+import { emailFrom } from "@/lib/email";
 
 function int(value: unknown, min: number, max: number, label: string) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) throw new BookingError(`Ungültige ${label}.`);
@@ -122,6 +124,22 @@ export async function autoAssign(eventId: string, date?: string) {
       })));
     }
   });
+  if (process.env.RESEND_API_KEY && plan.assignments.length > 0) {
+    const uniqueStaff = Array.from(new Set(plan.assignments.map(a => a.staffId)));
+    const members = await db.select().from(staff).where(inArray(staff.id, uniqueStaff));
+    const event = data.event;
+    const roleMap = new Map(data.roles.map(r => [r.id, r.name]));
+    for (const member of members) {
+      const myAssignments = plan.assignments.filter(a => a.staffId === member.id);
+      const lines = myAssignments.map(a => new Date(a.date).toLocaleDateString("de-DE") + " " + a.startTime + "–" + a.endTime + " (" + (roleMap.get(a.roleId) || "Schicht") + ")").join("<br/>");
+      try {
+        await new Resend(process.env.RESEND_API_KEY).emails.send({
+          from: emailFrom(), to: [member.email], subject: "Neue Schichtzuweisung – " + event.title,
+          html: "<p>Hallo " + member.firstName + ",</p><p>du wurdest für folgende Schichten bei <b>" + event.title + "</b> (" + event.location + ") eingeteilt:</p><p>" + lines + "</p><p>Bitte bestätige oder lehne in deinem Mitarbeiterportal ab: " + (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten</p>",
+        });
+      } catch { /* best effort */ }
+    }
+  }
   await audit("admin", "staffing", "staffing.auto_assign", "event", eventId, { date: date || null, assignments: plan.assignments.length, gaps: plan.gaps.length });
   revalidatePath("/[locale]/admin", "layout");
   return { success: true, plan };
@@ -134,9 +152,32 @@ export async function deleteAssignment(id: string) {
   return { success: true };
 }
 
+export async function declineAssignment(id: string) {
+  await requireAdmin(); uuid(id);
+  const [updated] = await db.update(staffAssignments).set({ status: "declined", updatedAt: new Date() }).where(and(eq(staffAssignments.id, id), inArray(staffAssignments.status, ["proposed", "requested"]))).returning();
+  if (!updated) throw new BookingError("Schicht nicht gefunden oder bereits beantwortet.", 404);
+  revalidatePath("/[locale]/admin", "layout");
+  return { success: true };
+}
+
 export async function confirmAssignment(id: string) {
   await requireAdmin(); uuid(id);
-  await db.update(staffAssignments).set({ status: "confirmed", updatedAt: new Date() }).where(eq(staffAssignments.id, id));
+  const [updated] = await db.update(staffAssignments).set({ status: "confirmed", updatedAt: new Date() }).where(and(eq(staffAssignments.id, id), inArray(staffAssignments.status, ["proposed", "requested"]))).returning();
+  if (!updated) throw new BookingError("Schicht nicht gefunden oder bereits bestätigt.", 404);
+  // E-Mail an Mitarbeiter (best effort)
+  if (process.env.RESEND_API_KEY) {
+    const [member] = await db.select().from(staff).where(eq(staff.id, updated.staffId));
+    const [event] = await db.select().from(events).where(eq(events.id, updated.eventId));
+    const [role] = await db.select().from(staffRoles).where(eq(staffRoles.id, updated.roleId));
+    if (member && event) {
+      try {
+        await new Resend(process.env.RESEND_API_KEY).emails.send({
+          from: emailFrom(), to: [member.email], subject: "Schicht bestätigt – " + event.title,
+          html: "<p>Hallo " + member.firstName + ",</p><p>deine Schicht bei <b>" + event.title + "</b> (" + new Date(updated.date).toLocaleDateString("de-DE") + " " + updated.startTime + "–" + updated.endTime + ", " + (role?.name || "Schicht") + ") wurde bestätigt.</p><p>Mitarbeiterportal: " + (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten</p>",
+        });
+      } catch { /* best effort */ }
+    }
+  }
   revalidatePath("/[locale]/admin", "layout");
   return { success: true };
 }
@@ -148,6 +189,11 @@ export async function saveMyAvailability(eventId: string, data: { date: string; 
   const startTime = cleanTime(data.startTime);
   const endTime = cleanTime(data.endTime);
   if (!["available", "unavailable", "preferred"].includes(data.kind)) throw new BookingError("Ungültige Verfügbarkeit.");
+  if (shiftHours(startTime, endTime) <= 0) throw new BookingError("Ungültige Schichtdauer (Start muss vor Ende liegen).");
+  // Überlappung mit bestehenden Einträgen prüfen
+  const existing = await db.select().from(staffAvailability).where(and(eq(staffAvailability.staffId, member.id), eq(staffAvailability.eventId, eventId)));
+  const conflict = existing.find(item => new Date(item.date).toISOString().slice(0,10) === day.toISOString().slice(0,10) && shiftOverlaps(item.startTime, item.endTime, startTime, endTime));
+  if (conflict) throw new BookingError("Du hast in dieser Zeit bereits eine Verfügbarkeit eingetragen.");
   const [created] = await db.insert(staffAvailability).values({ staffId: member.id, eventId, date: day, startTime, endTime, kind: data.kind, note: data.note?.trim().slice(0, 500) || null }).returning();
   revalidatePath("/[locale]/team", "layout");
   return { success: true, availability: created };
@@ -196,7 +242,10 @@ export async function getMyOpenShifts() {
     // only show roles the member has
     if (member.roleId !== req.roleId) continue;
     const alreadySignedUp = reqAssignments.some(a => a.staffId === member.id);
-    const conflict = assignments.some(a => a.staffId === member.id && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
+    // Already-signed-up shifts are hidden from "open shifts" (shown under "Meine Einsätze").
+    // Also exclude the same shift from the conflict check to avoid a false "Überschneidung" warning.
+    if (alreadySignedUp) continue;
+    const conflict = assignments.some(a => a.staffId === member.id && !(a.eventId === req.eventId && a.roleId === req.roleId && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime) && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
     offers.push({ requirement: req, event, role, assigned, remaining, alreadySignedUp, conflict });
   }
   return { member, offers };
@@ -215,12 +264,21 @@ export async function signUpForShift(requirementId: string) {
   if (dup) throw new BookingError("Du bist für diese Schicht bereits eingetragen.", 409);
   // conflict check
   const conflict = existing.find(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
-  if (conflict) throw new BookingError("Du hast in dieser Zeit schon eine andere Schicht.", 409);
-  // capacity check
-  const count = await db.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, req.eventId), eq(staffAssignments.roleId, req.roleId)));
-  const sameSlot = count.filter(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime && a.status !== "declined");
-  if (sameSlot.length >= req.requiredCount) throw new BookingError("Diese Schicht ist bereits voll.", 409);
-  await db.insert(staffAssignments).values({ eventId: req.eventId, staffId: member.id, roleId: req.roleId, date: req.date, startTime: req.startTime, endTime: req.endTime, status: "requested", source: "self" });
+  if (conflict) throw new BookingError("Du bist zu dieser Zeit bereits verplant.", 409);
+  // Kapazitaetspruefung in Transaktion, um Race zu vermeiden
+  try {
+    await db.transaction(async (tx) => {
+      const [reqLocked] = await tx.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.id, requirementId)).for("update");
+      if (!reqLocked) throw new BookingError("Schicht nicht gefunden.", 404);
+      const count = await tx.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, reqLocked.eventId), eq(staffAssignments.roleId, reqLocked.roleId)));
+      const sameSlot = count.filter(a => new Date(a.date).toISOString().slice(0,10) === new Date(reqLocked.date).toISOString().slice(0,10) && a.startTime === reqLocked.startTime && a.endTime === reqLocked.endTime && a.status !== "declined");
+      if (sameSlot.length >= reqLocked.requiredCount) throw new BookingError("Diese Schicht ist bereits voll.", 409);
+      await tx.insert(staffAssignments).values({ eventId: reqLocked.eventId, staffId: member.id, roleId: reqLocked.roleId, date: reqLocked.date, startTime: reqLocked.startTime, endTime: reqLocked.endTime, status: "requested", source: "self" });
+    });
+  } catch (error) {
+    if (error instanceof BookingError) throw error;
+    throw new BookingError("Eintragen fehlgeschlagen (möglicherweise bereits eingetragen).");
+  }
   revalidatePath("/[locale]/team", "layout");
   return { success: true };
 }
@@ -261,6 +319,13 @@ export async function createManualAssignment(eventId: string, staffId: string, r
   if (!req || req.eventId !== eventId) throw new BookingError("Schicht nicht gefunden.", 404);
   const [member] = await db.select().from(staff).where(eq(staff.id, staffId));
   if (!member) throw new BookingError("Mitarbeiter nicht gefunden.", 404);
+  // Duplikat-/Kapazitätsprüfung
+  const existing = await db.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, eventId), eq(staffAssignments.staffId, staffId)));
+  const dup = existing.find(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime);
+  if (dup) throw new BookingError("Mitarbeiter ist für diese Schicht bereits eingeteilt.", 409);
+  const sameSlot = await db.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, eventId), eq(staffAssignments.roleId, req.roleId)));
+  const slotCount = sameSlot.filter(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime && a.status !== "declined").length;
+  if (slotCount >= req.requiredCount) throw new BookingError("Diese Schicht ist bereits voll.", 409);
   await db.insert(staffAssignments).values({ eventId, staffId, roleId: req.roleId, date: req.date, startTime: req.startTime, endTime: req.endTime, status: "confirmed", source: "manual" });
   revalidatePath("/[locale]/admin", "layout");
   return { success: true };

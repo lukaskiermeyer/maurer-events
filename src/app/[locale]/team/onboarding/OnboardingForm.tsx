@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Link } from "@/i18n/routing";
 import { saveMyOnboarding } from "@/app/actions/staff";
+import { deleteMyDocument } from "@/app/actions/staff";
 import { PRIVACY_VERSION } from "@/lib/privacy-version";
 import { DOCUMENT_KIND_LABELS, docInfoFor, resolveRequiredDocs } from "@/lib/required-documents";
 
@@ -382,7 +383,12 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
             <div key={document.id} className="flex items-center justify-between gap-3 bg-base-light border border-border-light rounded-xl p-3 text-sm">
               <span className="font-bold">{DOCUMENT_KIND_LABELS[document.kind] || document.kind}</span>
               <span className="text-base-dark/60">{DOCUMENT_STATUS_LABELS[document.status] || document.status}</span>
-              <a href={`/api/team/file?documentId=${document.id}`} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-green underline">Öffnen</a>
+              <div className="flex gap-3">
+                <a href={`/api/team/file?documentId=${document.id}`} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-green underline">Öffnen</a>
+                {document.kind !== "minijob_form" && (
+                  <button type="button" onClick={async () => { if (!confirm("Dokument wirklich löschen?")) return; try { await deleteMyDocument(document.id); setDocuments(current => current.filter(d => d.id !== document.id)); setMessage("Dokument gelöscht."); } catch (e) { setMessage(e instanceof Error ? e.message : "Löschen fehlgeschlagen."); } }} className="font-bold text-red-600">Löschen</button>
+                )}
+              </div>
             </div>
           ))}
           {documents.length === 0 && <p className="text-sm text-base-dark/50">Noch keine Dokumente hochgeladen.</p>}

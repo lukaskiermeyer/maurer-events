@@ -17,44 +17,58 @@ export async function uploadImage(formData: FormData) {
     if (!allowedTypes.includes(file.type)) {
       throw new Error('Nur JPG, PNG und WebP erlaubt');
     }
-    
+
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       throw new Error('Datei zu groß (max 10MB)');
     }
-    
+
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret) throw new Error("Cloudinary ist nicht konfiguriert.");
+
     // NEU: Bild optimieren VOR dem Upload
     const optimized = await optimizeImage(file, {
       maxWidth: 1920,
       quality: 80,
       format: 'webp',
     });
-    
-    // Optimiertes Bild zu Cloudinary hochladen
+
+    function signature(params: Record<string, string>, secret: string) {
+      const base = Object.keys(params).sort().map(key => `${key}=${params[key]}`).join("&");
+      return crypto.createHash("sha1").update(`${base}${secret}`).digest("hex");
+    }
+
+    const uniqueId = crypto.randomUUID();
+    const folder = "maurer-events";
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+
+    // Optimiertes Bild zu Cloudinary hochladen (signierter Upload, kein unsigned Preset)
     const cloudinaryFormData = new FormData();
     const optimizedFile = new File(
-      [new Uint8Array(optimized.buffer)], 
+      [new Uint8Array(optimized.buffer)],
       file.name.replace(/\.[^.]+$/, '') + '.webp', // .webp Endung
       { type: 'image/webp' }
     );
     cloudinaryFormData.append('file', optimizedFile);
-    cloudinaryFormData.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET!);
-    cloudinaryFormData.append('folder', 'maurer-events');
-    
-    const uniqueId = crypto.randomUUID();
-    cloudinaryFormData.append("public_id", uniqueId);
-    
+    cloudinaryFormData.append('api_key', apiKey);
+    cloudinaryFormData.append('timestamp', timestamp);
+    cloudinaryFormData.append('folder', folder);
+    cloudinaryFormData.append('public_id', uniqueId);
+    cloudinaryFormData.append('signature', signature({ folder, public_id: uniqueId, timestamp }, apiSecret));
+
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       { method: 'POST', body: cloudinaryFormData }
     );
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error?.message || 'Upload fehlgeschlagen');
     }
-    
+
     return {
       success: true,
       url: data.secure_url,

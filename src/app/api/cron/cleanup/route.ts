@@ -82,7 +82,7 @@ export async function GET(request: Request) {
             await deleteCloudinaryImage(event.imageUrl);
             blobsDeleted++;
           } catch (e) {
-            console.error(`Failed to delete blob for cover image: ${event.imageUrl}`, e);
+            console.error("Failed to delete blob for cover image (URL redacted).", e instanceof Error ? e.name : "Unknown");
           }
         }
       }
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
               await deleteCloudinaryImage(img.imageUrl);
               blobsDeleted++;
             } catch (e) {
-              console.error(`Failed to delete blob for gallery image: ${img.imageUrl}`, e);
+              console.error("Failed to delete blob for gallery image (URL redacted).", e instanceof Error ? e.name : "Unknown");
             }
           }
         }

@@ -177,8 +177,8 @@ export function planStaffing(input: {
 
   for (const requirement of requirementOrder) {
     let assigned = 0;
-    const rule = rules.get(requirement.roleId);
-    if (!rule || !rule.active) {
+    const rule = rules.get(requirement.roleId) || { roleId: requirement.roleId, guestsPerStaff: 1, minStaff: 0, fixedStaff: 0, maxHoursPerDay: 10, minRestHours: 11, minAge: 16, active: true };
+    if (!rule.active) {
       gaps.push({ requirementId: requirement.id, roleId: requirement.roleId, date: dayKey(requirement.date), startTime: requirement.startTime, endTime: requirement.endTime, missing: requirement.requiredCount, required: requirement.requiredCount, assigned: 0 });
       warnings.push({ type: "role", requirementId: requirement.id, message: "Für diese Rolle ist keine aktive Personalregel hinterlegt." });
       continue;

@@ -1,7 +1,7 @@
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { adminSessions, events, scannerAccess } from '@/db/schema';
-import { isAdminEmail } from './admin-identity';
+import { isAdminEmail, isAdminEmailWithDb } from './admin-identity';
 import { BookingError, guestDetails, UUID_PATTERN, uuid } from './reservation-policy';
 import { reservationAdmin } from './reservation-admin';
 
@@ -9,7 +9,7 @@ export type StaffAccess = { email: string; role: 'admin' | 'scanner'; eventIds: 
 
 export async function resolveStaffAccess(connection: typeof db, email: string): Promise<StaffAccess | null> {
   const normalized = email.trim().toLowerCase();
-  if (isAdminEmail(normalized)) return { email: normalized, role: 'admin', eventIds: [] };
+  if (await isAdminEmailWithDb(connection, normalized)) return { email: normalized, role: 'admin', eventIds: [] };
   const grants = await connection.select({ eventId: scannerAccess.eventId }).from(scannerAccess)
     .innerJoin(events, eq(events.id, scannerAccess.eventId))
     .where(and(eq(scannerAccess.email, normalized), gt(scannerAccess.validUntil, new Date()), isNull(events.deletedAt)));
@@ -38,7 +38,7 @@ export async function grantScannerAccess(connection: typeof db, actor: StaffAcce
   if (!Number.isFinite(validUntil.getTime()) || validUntil <= new Date() || validUntil.getTime() > Date.now() + 90 * 86400000) {
     throw new BookingError('Bitte ein Ablaufdatum innerhalb der nächsten 90 Tage wählen.');
   }
-  if (isAdminEmail(email)) throw new BookingError('Diese E-Mail hat bereits vollen Admin-Zugriff.');
+  if (await isAdminEmailWithDb(connection, email)) throw new BookingError('Diese E-Mail hat bereits vollen Admin-Zugriff.');
   const [event] = await connection.select({ id: events.id }).from(events).where(and(eq(events.id, eventId), isNull(events.deletedAt)));
   if (!event) throw new BookingError('Veranstaltung nicht gefunden.');
   const [existing] = await connection.select({ id: scannerAccess.id }).from(scannerAccess)

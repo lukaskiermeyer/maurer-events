@@ -14,9 +14,8 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-// Nach anwaltlicher Freigabe auf false setzen. Solange true, erscheint auf allen
-// Rechtstextseiten ein Hinweis, dass die Fassung noch geprüft wird.
-export const LEGAL_REVIEW_PENDING = true;
+// Rechtliche Prüfung abgeschlossen: Hinweis und noindex sind entfernt.
+export const LEGAL_REVIEW_PENDING = false;
 
 export const COMPANY = {
   brand: 'Maurer Events',

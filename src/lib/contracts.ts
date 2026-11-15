@@ -1,4 +1,4 @@
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { contractTemplates, contracts, staff as staffTable, staffRoles } from "@/db/schema";
 import { escapeHtml } from "./escape";
@@ -42,14 +42,30 @@ export async function ensureContractForStaff(staffId: string) {
     eq(contracts.templateVersion, template.version),
   ));
   if (existing) return existing;
-  const [created] = await db.insert(contracts).values({
-    staffId,
-    templateId: template.id,
-    templateVersion: template.version,
-    roleId: member.roleId,
-    bodyHtml: renderContract(template.bodyHtml, member, role || null),
-    signatureMode: template.signatureMode,
-    consentVersion: "2026-11",
-  }).returning();
-  return created;
+  try {
+    const [created] = await db.insert(contracts).values({
+      staffId,
+      templateId: template.id,
+      templateVersion: template.version,
+      roleId: member.roleId,
+      bodyHtml: renderContract(template.bodyHtml, member, role || null),
+      signatureMode: template.signatureMode,
+      consentVersion: "2026-11",
+    }).returning();
+    // Alte pending-Vertraege desselben Mitarbeiters als superseded markieren
+    await db.update(contracts).set({ status: "declined", updatedAt: new Date() }).where(and(
+      eq(contracts.staffId, staffId),
+      eq(contracts.status, "pending"),
+      ne(contracts.id, created.id),
+    ));
+    return created;
+  } catch {
+    // Race: another request created it concurrently – re-select
+    const [again] = await db.select().from(contracts).where(and(
+      eq(contracts.staffId, staffId),
+      eq(contracts.templateId, template.id),
+      eq(contracts.templateVersion, template.version),
+    ));
+    return again || null;
+  }
 }

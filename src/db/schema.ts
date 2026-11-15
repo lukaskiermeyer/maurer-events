@@ -347,15 +347,15 @@ export const staffAssignments = pgTable('staff_assignments', {
   startTime: text('start_time').notNull(),
   endTime: text('end_time').notNull(),
   status: text('status').default('proposed').notNull(), // proposed | requested | accepted | declined | confirmed
-  source: text('source').default('auto').notNull(), // auto | manual
+  source: text('source').default('auto').notNull(), // auto | manual | self
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   eventIdx: index('staff_assignment_event_idx').on(table.eventId),
   staffIdx: index('staff_assignment_staff_idx').on(table.staffId),
   uniqueShift: unique('staff_assignment_unique_shift').on(table.eventId, table.staffId, table.date, table.startTime),
-  statusCheck: check('staff_assignment_status_check', sql`${table.status} in ('proposed', 'accepted', 'declined', 'confirmed')`),
-  sourceCheck: check('staff_assignment_source_check', sql`${table.source} in ('auto', 'manual')`),
+  statusCheck: check('staff_assignment_status_check', sql`${table.status} in ('proposed', 'requested', 'accepted', 'declined', 'confirmed')`),
+  sourceCheck: check('staff_assignment_source_check', sql`${table.source} in ('auto', 'manual', 'self')`),
 }));
 
 export const reservations = pgTable('reservations', {
@@ -555,6 +555,15 @@ export const scannerAccess = pgTable('scanner_access', {
   emailIdx: index('scanner_email_idx').on(table.email),
 }));
 
+export const adminUsers = pgTable('admin_users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  emailUnique: uniqueIndex('admin_users_email_unique').on(sql`lower(trim(${table.email}))`),
+}));
+
 
 export const festOpportunities = pgTable('fest_opportunities', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -617,6 +626,17 @@ export const shiftOffers = pgTable('shift_offers', {
   countCheck: check('shift_offers_count_check', sql`${table.requiredCount} > 0`),
 }));
 
+export const staffPasswordResets = pgTable('staff_password_resets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  staffId: uuid('staff_id').references(() => staff.id, { onDelete: 'cascade' }).notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  tokenUnique: unique('staff_password_reset_token_unique').on(table.tokenHash),
+  staffIdx: index('staff_password_reset_staff_idx').on(table.staffId),
+}));
 export const eventSettings = pgTable('event_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).unique().notNull(),

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
-import type { EventRecord, EventStaffRequirementRecord, StaffAssignmentRecord, StaffAvailabilityRecord, StaffRecord, StaffRole, StaffingRuleRecord } from "@/types/domain";
-import { autoAssign, confirmAssignment, deleteRequirement, saveRequirement, saveStaffingRule } from "@/app/actions/staffing";
+import type { EventRecord, EventStaffRequirementRecord, StaffAssignmentRecord, StaffAvailabilityRecord, StaffRecord, StaffRole } from "@/types/domain";
+import { autoAssign, confirmAssignment, declineAssignment, deleteRequirement, saveRequirement } from "@/app/actions/staffing";
 import { formatEuroCents } from "@/lib/pricing";
 import type { StaffingPlan } from "@/lib/staffing";
 
@@ -11,7 +11,6 @@ type Data = {
   event: EventRecord;
   roles: StaffRole[];
   team: Array<{ member: StaffRecord; role: StaffRole | null }>;
-  rules: StaffingRuleRecord[];
   requirements: EventStaffRequirementRecord[];
   availability: StaffAvailabilityRecord[];
   assignments: StaffAssignmentRecord[];
@@ -22,34 +21,6 @@ function day(value: Date | string) {
 }
 function dateLabel(value: Date | string) {
   return new Date(value).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-}
-
-function RuleRow({ role, rule }: { role: StaffRole; rule?: StaffingRuleRecord }) {
-  const [form, setForm] = useState({
-    guestsPerStaff: rule?.guestsPerStaff ?? 40,
-    minStaff: rule?.minStaff ?? 1,
-    fixedStaff: rule?.fixedStaff ?? 0,
-    maxHoursPerDay: rule?.maxHoursPerDay ?? 10,
-    minRestHours: rule?.minRestHours ?? 11,
-    minAge: rule?.minAge ?? 18,
-    active: rule?.active ?? true,
-  });
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    try { await saveStaffingRule(role.id, form); } finally { setBusy(false); }
-  };
-  return (
-    <tr className="border-t border-border-light">
-      <td className="px-3 py-2 font-bold">{role.name}</td>
-      <td className="px-2 py-2"><input type="number" min={1} value={form.guestsPerStaff} onChange={event => setForm({ ...form, guestsPerStaff: Number(event.target.value) })} className="w-20 bg-white border border-border-light rounded p-1 text-sm" /></td>
-      <td className="px-2 py-2"><input type="number" min={0} value={form.minStaff} onChange={event => setForm({ ...form, minStaff: Number(event.target.value) })} className="w-16 bg-white border border-border-light rounded p-1 text-sm" /></td>
-      <td className="px-2 py-2"><input type="number" min={0} value={form.fixedStaff} onChange={event => setForm({ ...form, fixedStaff: Number(event.target.value) })} className="w-16 bg-white border border-border-light rounded p-1 text-sm" /></td>
-      <td className="px-2 py-2"><input type="number" min={1} max={24} value={form.maxHoursPerDay} onChange={event => setForm({ ...form, maxHoursPerDay: Number(event.target.value) })} className="w-16 bg-white border border-border-light rounded p-1 text-sm" /></td>
-      <td className="px-2 py-2"><input type="number" min={0} max={24} value={form.minRestHours} onChange={event => setForm({ ...form, minRestHours: Number(event.target.value) })} className="w-16 bg-white border border-border-light rounded p-1 text-sm" /></td>
-      <td className="px-2 py-2"><button type="button" onClick={save} disabled={busy} className="text-accent-green font-bold text-sm disabled:opacity-50">Speichern</button></td>
-    </tr>
-  );
 }
 
 export default function StaffingAdmin({ data }: { data: Data }) {
@@ -96,11 +67,45 @@ export default function StaffingAdmin({ data }: { data: Data }) {
     } finally { setBusy(false); }
   };
 
-  const confirm = async (id: string) => {
+  const confirmShift = async (id: string) => {
     setBusy(true);
     try { await confirmAssignment(id); router.refresh(); }
     finally { setBusy(false); }
   };
+  const decline = async (id: string) => {
+    if (!window.confirm("Schicht wirklich ablehnen?")) return;
+    setBusy(true);
+    try { await declineAssignment(id); router.refresh(); }
+    finally { setBusy(false); }
+  };
+
+  const [filterRole, setFilterRole] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+  const filteredAssignments = data.assignments.filter(assignment => {
+    if (filterRole && assignment.roleId !== filterRole) return false;
+    if (filterStatus && assignment.status !== filterStatus) return false;
+    if (filterSearch && !staffName(assignment.staffId).toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    return true;
+  });
+
+  const eventDays = (() => {
+    const days = new Set<string>();
+    if (Array.isArray(data.event.reservableDates) && data.event.reservableDates.length > 0) {
+      for (const d of data.event.reservableDates) days.add(String(d).slice(0, 10));
+    } else {
+      const start = new Date(data.event.date);
+      const end = data.event.endDate ? new Date(data.event.endDate) : start;
+      const cur = new Date(start);
+      while (cur <= end) {
+        days.add(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    // Tage mit Bedarf auch aufnehmen
+    for (const r of data.requirements) days.add(day(r.date));
+    return Array.from(days).sort();
+  })();
 
   const requirementsForDate = data.requirements.filter(requirement => day(requirement.date) === date);
 
@@ -113,7 +118,17 @@ export default function StaffingAdmin({ data }: { data: Data }) {
           <p className="text-base-dark/60">{data.event.title} · {data.team.length} aktive Mitarbeiter</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <input type="date" value={date} onChange={event => setDate(event.target.value)} className="min-h-12 bg-white border border-border-light rounded-xl px-3" />
+          {eventDays.length > 1 ? (
+            <div className="flex flex-wrap gap-1 bg-base-light/80 border border-border-light rounded-full p-1">
+              {eventDays.map(d => (
+                <button key={d} type="button" onClick={() => { setDate(d); setForm(prev => ({ ...prev, date: d })); }} className={`min-h-10 px-3 rounded-full text-sm font-bold transition-all ${date === d ? "bg-accent-green text-white shadow-md" : "text-base-dark/55 hover:bg-white"}`}>
+                  {new Date(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <input type="date" value={date} onChange={event => { setDate(event.target.value); setForm(prev => ({ ...prev, date: event.target.value })); }} className="min-h-12 bg-white border border-border-light rounded-xl px-3" />
+          )}
           <button type="button" onClick={runAutoAssign} disabled={busy} className="min-h-12 px-5 bg-accent-green text-white rounded-xl font-bold disabled:opacity-50">Automatisch zuweisen</button>
         </div>
       </div>
@@ -157,7 +172,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
         </section>
       </div>
 
-      {plan && (plan.gaps.length > 0 || plan.warnings.length > 0) && (
+{plan && (plan.gaps.length > 0 || plan.warnings.length > 0) && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <h2 className="font-display font-bold text-xl text-amber-900 mb-3">Lücken & Hinweise</h2>
           {plan.gaps.map(gap => <p key={`${gap.requirementId}-${gap.startTime}`} className="text-sm font-bold text-amber-900">{roleName(gap.roleId)} · {gap.startTime}–{gap.endTime}: {gap.missing} fehlen ({gap.assigned}/{gap.required}).</p>)}
@@ -165,25 +180,66 @@ export default function StaffingAdmin({ data }: { data: Data }) {
         </div>
       )}
 
+      {requirementsForDate.length > 0 && (
+        <section className="bg-white border border-border-light rounded-2xl p-5">
+          <h2 className="font-display font-bold text-xl mb-3">Abdeckung am {dateLabel(date)}</h2>
+          <div className="space-y-3">
+            {requirementsForDate.map(requirement => {
+              const assigned = data.assignments.filter(a => a.roleId === requirement.roleId && day(a.date) === day(requirement.date) && a.startTime === requirement.startTime).length;
+              const pct = requirement.requiredCount > 0 ? Math.min(100, Math.round((assigned / requirement.requiredCount) * 100)) : 100;
+              return (
+                <div key={requirement.id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-bold">{roleName(requirement.roleId)} · {requirement.startTime}–{requirement.endTime}</span>
+                    <span className={assigned < requirement.requiredCount ? "text-amber-700 font-bold" : "text-accent-green font-bold"}>{assigned}/{requirement.requiredCount}</span>
+                  </div>
+                  <div className="w-full bg-canvas-light rounded-full h-3 overflow-hidden">
+                    <div className={`h-3 rounded-full transition-all ${assigned < requirement.requiredCount ? "bg-amber-400" : "bg-accent-green"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="bg-white border border-border-light rounded-2xl overflow-hidden">
-        <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Einteilung ({data.assignments.length})</h2>
-        {data.assignments.length === 0 ? <p className="p-6 text-base-dark/60">Noch keine Einteilung.</p> : (
+        <div className="p-5 border-b border-border-light flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display font-bold text-xl">Einteilung ({filteredAssignments.length}{filteredAssignments.length !== data.assignments.length ? ` von ${data.assignments.length}` : ""})</h2>
+          <div className="flex flex-wrap gap-2">
+            <input placeholder="Name suchen…" value={filterSearch} onChange={event => setFilterSearch(event.target.value)} className="min-h-10 bg-base-light border border-border-light rounded-lg px-3 text-sm" />
+            <select value={filterRole} onChange={event => setFilterRole(event.target.value)} className="min-h-10 bg-base-light border border-border-light rounded-lg px-3 text-sm">
+              <option value="">Alle Rollen</option>
+              {data.roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </select>
+            <select value={filterStatus} onChange={event => setFilterStatus(event.target.value)} className="min-h-10 bg-base-light border border-border-light rounded-lg px-3 text-sm">
+              <option value="">Alle Status</option>
+              <option value="proposed">Vorgeschlagen</option>
+              <option value="requested">Selbst eingetragen</option>
+              <option value="accepted">Angenommen</option>
+              <option value="declined">Abgelehnt</option>
+              <option value="confirmed">Bestätigt</option>
+            </select>
+            {(filterRole || filterStatus || filterSearch) && <button type="button" onClick={() => { setFilterRole(""); setFilterStatus(""); setFilterSearch(""); }} className="min-h-10 px-3 text-sm font-bold text-accent-green">Zurücksetzen</button>}
+          </div>
+        </div>
+        {filteredAssignments.length === 0 ? <p className="p-6 text-base-dark/60">Keine passenden Einträge.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Datum</th><th className="px-4 py-3">Mitarbeiter</th><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Schicht</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th></tr></thead>
-            <tbody>{data.assignments.map(assignment => (
-              <tr key={assignment.id} className="border-t border-border-light"><td className="px-4 py-3">{dateLabel(assignment.date)}</td><td className="px-4 py-3 font-bold">{staffName(assignment.staffId)}</td><td className="px-4 py-3">{roleName(assignment.roleId)}</td><td className="px-4 py-3">{assignment.startTime}–{assignment.endTime}</td><td className="px-4 py-3">{assignment.status}{assignment.source === "self" ? " (selbst)" : ""}</td><td className="px-4 py-3 text-right">{assignment.status !== "confirmed" && <button type="button" onClick={() => confirm(assignment.id)} className="text-accent-green font-bold">Bestätigen</button>}</td></tr>
+            <tbody>{filteredAssignments.map(assignment => (
+              <tr key={assignment.id} className="border-t border-border-light"><td className="px-4 py-3">{dateLabel(assignment.date)}</td><td className="px-4 py-3 font-bold">{staffName(assignment.staffId)}</td><td className="px-4 py-3">{roleName(assignment.roleId)}</td><td className="px-4 py-3">{assignment.startTime}–{assignment.endTime}</td><td className="px-4 py-3">{assignment.status}{assignment.source === "self" ? " (selbst)" : ""}</td><td className="px-4 py-3 text-right">
+  {assignment.status !== "confirmed" && assignment.status !== "declined" && (
+    <div className="flex gap-2 justify-end">
+      <button type="button" onClick={() => confirmShift(assignment.id)} className="text-accent-green font-bold">Bestätigen</button>
+      <button type="button" onClick={() => decline(assignment.id)} className="text-red-600 font-bold">Ablehnen</button>
+    </div>
+  )}
+</td></tr>
             ))}</tbody>
           </table></div>
         )}
       </section>
 
-      <section className="bg-white border border-border-light rounded-2xl p-5 overflow-x-auto">
-        <h2 className="font-display font-bold text-xl mb-3">Personalschlüssel</h2>
-        <table className="w-full text-sm min-w-[760px]">
-          <thead className="bg-canvas-light text-left"><tr><th className="px-3 py-2">Rolle</th><th className="px-2 py-2">Gäste/Person</th><th className="px-2 py-2">Min.</th><th className="px-2 py-2">Fix</th><th className="px-2 py-2">Max. h/Tag</th><th className="px-2 py-2">Ruhe h</th><th></th></tr></thead>
-          <tbody>{data.roles.map(role => <RuleRow key={role.id} role={role} rule={data.rules.find(rule => rule.roleId === role.id)} />)}</tbody>
-        </table>
-      </section>
     </div>
   );
 }

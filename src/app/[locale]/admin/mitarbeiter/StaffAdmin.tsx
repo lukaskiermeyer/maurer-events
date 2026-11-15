@@ -250,7 +250,8 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
     if (!nextActive && !confirm(`Rolle „${role.name}" wirklich deaktivieren? Sie kann danach nicht für neue Mitarbeiter gewählt werden, bleibt aber in der Liste.`)) return;
     setBusy(true); setMessage("");
     try {
-      await updateRole(role.id, { active: nextActive });
+      const result = await updateRole(role.id, { active: nextActive });
+      if (result.warning) setMessage(result.warning);
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Ändern fehlgeschlagen.");

@@ -177,27 +177,30 @@ export async function ensureMinijobDocument(staffId: string) {
   const [role] = member.roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
   const rendered = renderFormTemplate(template.bodyHtml, member, role || null);
   const pdf = await generateFormPdf(rendered, template.name, `${member.firstName} ${member.lastName}`);
-  const uploaded = await uploadPdf(pdf, `minijob-${staffId}`);
-  const existing = await db.select().from(staffDocuments)
-    .where(and(eq(staffDocuments.staffId, staffId), eq(staffDocuments.kind, "minijob_form")));
-  if (existing.length > 0) {
+  // DB-Zeile zuerst anlegen (Platzhalter), dann Upload – bei Upload-Fehler Zeile loeschen (kein Orphan).
+  let docId: string | null = null;
+  try {
+    const [existing] = await db.select().from(staffDocuments).where(and(eq(staffDocuments.staffId, staffId), eq(staffDocuments.kind, "minijob_form")));
+    if (existing) {
+      docId = existing.id;
+    } else {
+      const [created] = await db.insert(staffDocuments).values({
+        staffId, kind: "minijob_form", fileUrl: "pending", publicId: null, mimeType: "application/pdf", status: "pending", note: "Wird erstellt…",
+      }).onConflictDoNothing().returning();
+      if (created) docId = created.id;
+      else {
+        const [again] = await db.select().from(staffDocuments).where(and(eq(staffDocuments.staffId, staffId), eq(staffDocuments.kind, "minijob_form")));
+        docId = again?.id || null;
+      }
+    }
+    if (!docId) return null;
+    const uploaded = await uploadPdf(pdf, `minijob-${staffId}`);
     const [updated] = await db.update(staffDocuments).set({
-      fileUrl: uploaded.secure_url!,
-      publicId: uploaded.public_id || null,
-      mimeType: "application/pdf",
-      status: "verified",
-      note: "Automatisch vorbefüllt aus Onboarding-Daten.",
-    }).where(eq(staffDocuments.id, existing[0].id)).returning();
-    return updated;
+      fileUrl: uploaded.secure_url!, publicId: uploaded.public_id || null, mimeType: "application/pdf", status: "verified", note: "Automatisch vorbefüllt aus Onboarding-Daten.",
+    }).where(eq(staffDocuments.id, docId)).returning();
+    return updated || null;
+  } catch (error) {
+    if (docId) await db.delete(staffDocuments).where(eq(staffDocuments.id, docId)).catch(() => {});
+    throw error;
   }
-  const [created] = await db.insert(staffDocuments).values({
-    staffId,
-    kind: "minijob_form",
-    fileUrl: uploaded.secure_url!,
-    publicId: uploaded.public_id || null,
-    mimeType: "application/pdf",
-    status: "verified",
-    note: "Automatisch vorbefüllt aus Onboarding-Daten.",
-  }).returning();
-  return created;
 }

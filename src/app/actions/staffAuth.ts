@@ -3,9 +3,11 @@
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { staff, staffInvites } from "@/db/schema";
-import { createStaffSession, hashPassword, hashToken, setStaffCookie, clearStaffCookie, verifyPassword } from "@/lib/staff-auth";
+import { staff, staffInvites, staffPasswordResets, staffSessions } from "@/db/schema";
+import { createStaffSession, hashPassword, hashToken, setStaffCookie, clearStaffCookie, verifyPassword, randomToken } from "@/lib/staff-auth";
 import { takeRateLimit } from "@/lib/rate-limit";
+import { Resend } from "resend";
+import { emailFrom } from "@/lib/email";
 
 async function inviteClientKey(): Promise<string> {
   try {
@@ -63,4 +65,51 @@ export async function staffLogin(data: { email: string; password: string }) {
 
 export async function staffLogout() {
   await clearStaffCookie();
+}
+export async function requestPasswordReset(email: string) {
+  try {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return { success: true };
+    const client = await inviteClientKey();
+    if (!await takeRateLimit("pwreset-ip:" + client, 5, 15 * 60000)) return { success: false, error: "Zu viele Versuche. Bitte später erneut versuchen." };
+    const [member] = await db.select().from(staff).where(sql`lower(trim(${staff.email})) = ${normalized}`);
+    if (!member || member.status === "inactive") return { success: true };
+    const token = randomToken();
+    const expiresAt = new Date(Date.now() + 30 * 60000);
+    await db.insert(staffPasswordResets).values({ staffId: member.id, tokenHash: hashToken(token), expiresAt });
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const resetUrl = baseUrl + "/team/passwort-neu?token=" + encodeURIComponent(token);
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await new Resend(process.env.RESEND_API_KEY).emails.send({
+          from: emailFrom(), to: [member.email], subject: "Passwort zurücksetzen – Maurer Events",
+          html: "<p>Hallo " + member.firstName + ",</p><p>du hast ein neues Passwort angefordert. Klicke innerhalb von 30 Minuten auf diesen Link:</p><p><a href=\"" + resetUrl + "\">" + resetUrl + "</a></p><p>Falls du das nicht warst, ignoriere diese E-Mail.</p>",
+        });
+      } catch { }
+    } else {
+      // Reset-Link niemals in Logs (enthält Token). Nur redacted Info.
+      console.log("Password reset requested (token redacted).");
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Anfrage fehlgeschlagen." };
+  }
+}
+
+export async function resetPasswordWithToken(token: string, password: string) {
+  try {
+    const t = (token || "").trim();
+    if (!t || t.length > 200) throw new Error("Ungültiger Link.");
+    if (typeof password !== "string" || password.length < 10) throw new Error("Passwort muss mindestens 10 Zeichen haben.");
+    const tokenHash = hashToken(t);
+    const [reset] = await db.select().from(staffPasswordResets).where(eq(staffPasswordResets.tokenHash, tokenHash));
+    if (!reset || reset.usedAt || reset.expiresAt <= new Date()) throw new Error("Der Link ist ungültig oder abgelaufen.");
+    const passwordHash = await hashPassword(password);
+    await db.update(staff).set({ passwordHash, updatedAt: new Date() }).where(eq(staff.id, reset.staffId));
+    await db.update(staffPasswordResets).set({ usedAt: new Date() }).where(eq(staffPasswordResets.id, reset.id));
+    await db.delete(staffSessions).where(eq(staffSessions.staffId, reset.staffId));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Zurücksetzen fehlgeschlagen." };
+  }
 }

@@ -128,10 +128,9 @@ export default function ServicesSection() {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
         >
-          {services.map((service, index) => {
+          {services.map((service) => {
             const Icon = Icons[service.iconType as keyof typeof Icons];
             const featured = service.featured === true;
-            const isBig = index === 0;
             const isOpen = isLg || expanded[service.id] === true;
             return (
               <motion.div
@@ -139,7 +138,7 @@ export default function ServicesSection() {
                 variants={itemVariants}
                 className={`group relative min-w-0 h-full rounded-3xl shadow-lg border-b-8 border-accent-wood bg-white text-base-dark transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden ${
                   featured
-                    ? `sm:col-span-2 lg:col-span-1 ${isBig ? "lg:row-span-2 " : ""}p-4 sm:p-6 md:p-8`
+                    ? `sm:col-span-2 lg:col-span-1 p-4 sm:p-6 md:p-8`
                     : "p-4 sm:p-5"
                 }`}
               >

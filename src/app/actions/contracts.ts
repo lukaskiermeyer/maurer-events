@@ -31,7 +31,8 @@ export async function signContractText(contractId: string, fullName: string) {
       signedIp: clientIp(new Request("http://localhost", { headers: requestHeaders })),
       signedUserAgent: (requestHeaders.get("user-agent") || "").slice(0, 500),
       updatedAt: signedAt,
-    }).where(eq(contracts.id, contractId)).returning();
+    }).where(and(eq(contracts.id, contractId), eq(contracts.status, "pending"))).returning();
+    if (!updated) throw new Error("Dieser Vertrag ist nicht mehr offen.");
     await audit("staff", member.id, "contract.sign_text", "contract", contractId);
     revalidatePath("/[locale]/team", "layout");
     return { success: true, contract: updated };
@@ -45,6 +46,11 @@ export async function attachSignedContract(contractId: string, fileUrl: string, 
     const member = await requireStaffMember();
     uuid(contractId);
     if (typeof fileUrl !== "string" || !fileUrl.startsWith("https://")) throw new Error("Ungültige Datei.");
+    // Host-Whitelist: nur unsere Cloudinary-URLs (SSRF-/Phishing-Schutz)
+    try {
+      const u = new URL(fileUrl);
+      if (u.hostname !== "res.cloudinary.com") throw new Error("Ungültige Datei.");
+    } catch { throw new Error("Ungültige Datei."); }
     if (typeof fileSha256 !== "string" || !/^[a-f0-9]{64}$/i.test(fileSha256)) throw new Error("Ungültige Dateiprüfsumme.");
     const [contract] = await db.select().from(contracts).where(and(eq(contracts.id, contractId), eq(contracts.staffId, member.id)));
     if (!contract) throw new Error("Vertrag nicht gefunden.");
@@ -57,7 +63,8 @@ export async function attachSignedContract(contractId: string, fileUrl: string, 
       signedFileSha256: fileSha256,
       consentVersion: "2026-11",
       updatedAt: new Date(),
-    }).where(eq(contracts.id, contractId)).returning();
+    }).where(and(eq(contracts.id, contractId), eq(contracts.status, "pending"))).returning();
+    if (!updated) throw new Error("Dieser Vertrag ist nicht mehr offen.");
     await audit("staff", member.id, "contract.upload_signed", "contract", contractId);
     revalidatePath("/[locale]/team", "layout");
     return { success: true, contract: updated };

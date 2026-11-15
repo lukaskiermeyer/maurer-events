@@ -670,6 +670,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" />
+              {file && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>
+                  <img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-40 rounded-lg border border-border-light" />
+                </div>
+              )}
+              {!file && formData.imageUrl && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold text-base-dark/60 mb-1">Aktuelles Bild:</p>
+                  <img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
+                </div>
+              )}
               </div>
 
               {event.type === 'event' && (

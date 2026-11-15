@@ -36,7 +36,7 @@ export default function TeamLoginPage() {
         {error && <p className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
         <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Anmeldung…" : "Anmelden"}</button>
       </form>
-      <p className="text-xs text-base-dark/50 mt-5">Passwort vergessen? Bitte beim Festwirt melden.</p>
+      <p className="text-xs text-base-dark/50 mt-5">Passwort vergessen? <a href="/team/passwort-vergessen" className="text-accent-green underline">Hier zurücksetzen</a>.</p>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { db } from "@/db";
-import { auditLog, contractTemplates, contracts, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffRoles, staffSessions } from "@/db/schema";
+import { auditLog, contractTemplates, contracts, eventStaffRequirements, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffRoles, staffSessions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember, hashToken, randomToken } from "@/lib/staff-auth";
 import { BookingError, uuid } from "@/lib/reservation-policy";
@@ -105,12 +105,20 @@ export async function updateRole(roleId: string, data: Partial<{ name: string; d
   if (data.hourlyRateCents !== undefined) patch.hourlyRateCents = integer(data.hourlyRateCents, 0, 99999999, "Stundensatz");
   if (data.requiredDocuments !== undefined) patch.requiredDocuments = data.requiredDocuments.slice(0, 20).map(value => String(value).slice(0, 50));
   if (data.requiresHandwrittenSignature !== undefined) patch.requiresHandwrittenSignature = data.requiresHandwrittenSignature === true;
+  let deactivationWarning: string | undefined;
+  if (data.active !== undefined && data.active === false) {
+    const [staffCount] = await db.select({ n: sql<number>`count(*)::int` }).from(staff).where(eq(staff.roleId, roleId));
+    const [reqCount] = await db.select({ n: sql<number>`count(*)::int` }).from(eventStaffRequirements).where(eq(eventStaffRequirements.roleId, roleId));
+    if ((staffCount?.n || 0) > 0 || (reqCount?.n || 0) > 0) {
+      deactivationWarning = `Rolle wird deaktiviert, aber ${staffCount?.n || 0} Mitarbeiter und ${reqCount?.n || 0} Schicht-Bedarfe hängen noch daran.`;
+    }
+  }
   if (data.active !== undefined) patch.active = data.active === true;
   const [updated] = await db.update(staffRoles).set(patch).where(eq(staffRoles.id, roleId)).returning();
   if (!updated) throw new BookingError("Rolle nicht gefunden.", 404);
   await audit("admin", actor.email, "staff_role.update", "staff_role", roleId);
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
-  return { success: true, role: updated };
+  return { success: true, role: updated, warning: deactivationWarning };
 }
 
 export async function createStaff(data: { email: string; firstName: string; lastName: string; roleId: string; phone?: string }) {
@@ -283,6 +291,10 @@ export async function eraseDeletableStaffData(staffId: string) {
   // Läuft auch während Aufbewahrung: nur die sofort löschbaren Daten (ohne Lohn/Steuer/Verträge).
   const actor = await requireAdmin();
   uuid(staffId);
+  const [member] = await db.select().from(staff).where(eq(staff.id, staffId));
+  if (!member) throw new BookingError("Mitarbeiter nicht gefunden.", 404);
+  // Idempotency: wenn bereits anonymisiert, nichts zu tun
+  if (member.email === `anonymized-${member.id}@deleted.invalid`) throw new BookingError("Bereits anonymisiert.", 409);
   const docs = await db.select({ fileUrl: staffDocuments.fileUrl }).from(staffDocuments).where(eq(staffDocuments.staffId, staffId));
   await db.delete(staffDocuments).where(eq(staffDocuments.staffId, staffId));
   await db.delete(staffAvailability).where(eq(staffAvailability.staffId, staffId));
@@ -377,6 +389,24 @@ export async function saveMyOnboarding(data: {
   return { success: true, staff: updated, contract, document, documentWarning };
 }
 
+export async function updateMyProfile(data: { firstName?: string; lastName?: string; phone?: string | null; street?: string | null; zip?: string | null; city?: string | null; iban?: string | null; bic?: string | null; taxClass?: string | null; healthInsurance?: string | null }) {
+  const member = await requireStaffMember();
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (data.firstName !== undefined) patch.firstName = text(data.firstName, "Vorname", 100, true);
+  if (data.lastName !== undefined) patch.lastName = text(data.lastName, "Nachname", 100, true);
+  if (data.phone !== undefined) patch.phone = text(data.phone, "Telefon", 50);
+  if (data.street !== undefined) patch.street = text(data.street, "Straße", 150);
+  if (data.zip !== undefined) patch.zip = text(data.zip, "PLZ", 20);
+  if (data.city !== undefined) patch.city = text(data.city, "Ort", 100);
+  if (data.taxClass !== undefined) patch.taxClass = text(data.taxClass, "Steuerklasse", 10);
+  if (data.healthInsurance !== undefined) patch.healthInsurance = text(data.healthInsurance, "Krankenkasse", 150);
+  if (data.iban !== undefined) patch.ibanEnc = encryptField(ibanField(data.iban));
+  if (data.bic !== undefined) patch.bic = bicField(data.bic);
+  const [updated] = await db.update(staff).set(patch).where(eq(staff.id, member.id)).returning();
+  await audit("staff", member.id, "staff.profile.update", "staff", member.id);
+  revalidatePath("/[locale]/team", "layout");
+  return { success: true, staff: updated };
+}
 export async function getMyProfile() {
   const member = await requireStaffMember(true);
   const [role] = member.roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
@@ -434,4 +464,15 @@ export async function saveContractTemplate(data: { roleId: string; name: string;
   await audit("admin", actor.email, "contract_template.create", "contract_template", created.id, { version: created.version });
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
   return { success: true, template: created };
+}
+export async function deleteMyDocument(documentId: string) {
+  const member = await requireStaffMember();
+  uuid(documentId);
+  const [doc] = await db.select().from(staffDocuments).where(and(eq(staffDocuments.id, documentId), eq(staffDocuments.staffId, member.id)));
+  if (!doc) throw new BookingError("Dokument nicht gefunden.", 404);
+  if (doc.kind === "minijob_form") throw new BookingError("Minijob-Formulare werden automatisch verwaltet.", 403);
+  await db.delete(staffDocuments).where(eq(staffDocuments.id, documentId));
+  try { await deleteCloudinaryImage(doc.fileUrl); } catch { /* best effort */ }
+  revalidatePath("/[locale]/team", "layout");
+  return { success: true };
 }
