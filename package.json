@@ -10,6 +10,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/prepare-scanner.mjs",
     "build": "next build",
+    "analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "generate:hero-background": "node scripts/svg-to-hero-background.mjs",
@@ -56,6 +57,7 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.4.6",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26.1.1",

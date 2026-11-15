@@ -1,5 +1,7 @@
 import createNextIntlPlugin from 'next-intl/plugin';
+import bundleAnalyzer from '@next/bundle-analyzer';
 
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 /** @type {import('next').NextConfig} */
@@ -10,6 +12,7 @@ const nextConfig = {
   experimental: {
     // Browser-side image preparation leaves room below Vercel's 4.5 MB limit.
     serverActions: { bodySizeLimit: '4mb' },
+    optimizeCss: true,
     optimizePackageImports: [
       'lucide-react',
       'framer-motion',
@@ -75,4 +78,4 @@ const nextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withBundleAnalyzer(withNextIntl(nextConfig));
