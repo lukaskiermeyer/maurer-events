@@ -6,12 +6,15 @@ export async function verifyTurnstile(token: unknown, action: string, idempotenc
   if (typeof token !== 'string' || !token || token.length > 2048) throw new BookingError('Bitte bestätige, dass du kein Roboter bist.');
   const body = new URLSearchParams({ secret, response: token });
   if (idempotencyKey && UUID_PATTERN.test(idempotencyKey)) body.set('idempotency_key', idempotencyKey);
-  let hostname: string;
-  try {
-    hostname = new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').hostname;
-  } catch {
-    throw new BookingError('Spam-Schutz ist nicht korrekt konfiguriert.', 503, 'captcha-url-invalid');
-  }
+  const allowedHostnames = new Set(
+    (process.env.TURNSTILE_ALLOWED_HOSTNAMES || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
+      .split(',')
+      .map((value) => {
+        try { return new URL(value.trim()).hostname; } catch { return value.trim(); }
+      })
+      .filter(Boolean)
+  );
+  if (allowedHostnames.size === 0) throw new BookingError('Spam-Schutz ist nicht korrekt konfiguriert.', 503, 'captcha-url-invalid');
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new BookingError('Verbindungsfehler beim Spam-Schutz.', 503, `captcha-service-http-${response.status}`);
@@ -21,7 +24,7 @@ export async function verifyTurnstile(token: unknown, action: string, idempotenc
       const invalidSecret = Array.isArray(result['error-codes']) && result['error-codes'].some((code: unknown) => code === 'missing-input-secret' || code === 'invalid-input-secret' || code === 'invalid-widget-id' || code === 'invalid-parsed-secret');
       throw new BookingError('Spam-Schutz fehlgeschlagen.', 400, invalidSecret ? 'captcha-secret-invalid' : 'captcha-rejected');
     }
-    if (result.hostname !== hostname) throw new BookingError('Spam-Schutz fehlgeschlagen.', 400, 'captcha-hostname-mismatch');
+    if (!allowedHostnames.has(result.hostname)) throw new BookingError('Spam-Schutz fehlgeschlagen.', 400, 'captcha-hostname-mismatch');
     if (result.action !== action) throw new BookingError('Spam-Schutz fehlgeschlagen.', 400, 'captcha-action-mismatch');
   } catch (error) {
     if (error instanceof BookingError) throw error;
