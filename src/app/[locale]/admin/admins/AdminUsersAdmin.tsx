@@ -22,7 +22,6 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
       setUsers(prev => [...prev, { id: created.id, email: created.email, createdBy: created.createdBy, createdAt: created.createdAt }]);
       setEmail('');
       setMessage('Admin hinzugefügt. Die Person kann sich jetzt über /admin/login anmelden.');
-      router.refresh();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Hinzufügen fehlgeschlagen.');
     } finally { setBusy(false); }
@@ -35,7 +34,6 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
       await removeAdminUser(id);
       setUsers(prev => prev.filter(u => u.id !== id));
       setMessage('Admin entfernt.');
-      router.refresh();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Entfernen fehlgeschlagen.');
     } finally { setBusy(false); }
