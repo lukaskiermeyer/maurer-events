@@ -99,3 +99,30 @@ mindestens 32 zufällige Zeichen. Nie loggen. Optionaler Fallback auf
 `GET /api/admin/fest-chancen` (gleiche Auth) mit Query-Params `status`, `region`,
 `minScore`, `q`, `sort`, `limit`, `offset`. Antwort `{ "ok": true, "total": N, "items": [...] }`.
 Mit `?format=csv` maschinenlesbarer Export (RFC4180, UTF-8 mit BOM).
+
+## Dedupe-Regel Legacy (`fest_opportunities`)
+
+Bei Kollision auf `url_hash` (sha256 der normalisierten URL) gewinnt die Zeile mit
+höchstem `score`, bei Gleichstand jüngstes `updated_at`, dann jüngstes
+`discovered_at`, dann kleinste `id`. Verlierer werden in
+`fest_opportunities_dedupe_log` protokolliert und aus der Haupttabelle entfernt.
+
+## Abschaltpfad Legacy (`fest_opportunities`)
+
+Zwei Wahrheiten sind ein Übergang, kein Dauerzustand. Schrittweise Abschaltung:
+
+1. Admin-UI liest ausschließlich aus `fest_chances` (ersetze Queries auf `fest_opportunities`).
+2. Ingest schreibt nur noch `fest_chances`; `syncFestOpportunity` entfernen.
+3. Backfill ausführen: `npm run backfill:fest-chances` (idempotent, `--dry-run` prüfen).
+4. Verifikation: Zähler und UI stimmen mit `fest_chances` überein; `fest_opportunities` wird nicht mehr geschrieben.
+5. Legacy-Tabelle archivieren (`ALTER TABLE fest_opportunities RENAME TO fest_opportunities_legacy`) bzw. Migration zum Drop nach Backup.
+6. `fest_opportunities` aus Schema und Doku entfernen.
+
+## Beispiel-curl (echter Datensatz)
+
+```bash
+curl -X POST "https://<PRODUKTIONSDOMAIN>/api/admin/fest-chancen/ingest" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $FEST_CHANCEN_INGEST_TOKEN" \
+  -d '[{"sourceUrl":"https://example.com/volksfest-2026","title":"Volksfest 2026","organizer":"Festverein","location":"Muenchen","region":"Bayern","eventDate":"2026-09-19","score":85,"festwirtStatus":"open","eventType":"volksfest","contactName":"Max Mustermann","contactEmail":"max@example.com","runId":"run-2026-09"}]'
+```

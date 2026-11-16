@@ -175,3 +175,103 @@ test('10. unbekannte /api-Pfad -> 404 JSON, nicht HTML', async () => {
   assert.equal(json.ok, false);
   assert.equal(json.error, 'not_found');
 });
+
+test('11. status/notes bleiben in beiden Tabellen unverändert', async () => {
+  const { POST } = await loadRoute();
+  const url = 'https://example.com/status-notes-both';
+  const normalized = url.toLowerCase();
+  const hash = (await import('node:crypto')).createHash('sha256').update(normalized).digest('hex');
+  await connection.insert(schema.festChances).values({
+    urlHash: hash,
+    sourceUrl: url,
+    sourceUrlNormalized: normalized,
+    title: 'X',
+    score: 50,
+    status: 'contacted',
+    notes: 'manuell',
+  });
+  await connection.insert(schema.festOpportunities).values({
+    sourceUrl: url,
+    sourceUrlNormalized: normalized,
+    urlHash: hash,
+    title: 'X',
+    score: 50,
+    status: 'contacted',
+    notes: 'manuell',
+  });
+  const res = await POST(req([{ sourceUrl: url, title: 'X', score: 90 }], 'test-ingest-token-12345'));
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.updated, 1);
+  const [c] = await connection.select().from(schema.festChances).where(eq(schema.festChances.urlHash, hash));
+  assert.equal(c.status, 'contacted');
+  assert.equal(c.notes, 'manuell');
+  assert.equal(c.score, 90);
+  const [o] = await connection.select().from(schema.festOpportunities).where(eq(schema.festOpportunities.urlHash, hash));
+  assert.equal(o.status, 'contacted');
+  assert.equal(o.notes, 'manuell');
+  assert.equal(o.score, 90);
+});
+
+test('12. gleiche sourceUrl mit ?utm=x und ?utm=y -> genau ein Datensatz in beiden Tabellen', async () => {
+  const { POST } = await loadRoute();
+  const base = 'https://example.com/utm-dedupe';
+  const r1 = await POST(req([{ sourceUrl: base + '?utm=x', title: 'UTM', score: 10 }], 'test-ingest-token-12345'));
+  assert.equal((await r1.json()).inserted, 1);
+  const r2 = await POST(req([{ sourceUrl: base + '?utm=y', title: 'UTM', score: 20 }], 'test-ingest-token-12345'));
+  const j2 = await r2.json();
+  assert.equal(j2.updated, 1);
+  assert.equal(j2.inserted, 0);
+  const normalized = base.toLowerCase();
+  const hash = (await import('node:crypto')).createHash('sha256').update(normalized).digest('hex');
+  const c = await connection.select().from(schema.festChances).where(eq(schema.festChances.urlHash, hash));
+  assert.equal(c.length, 1);
+  const o = await connection.select().from(schema.festOpportunities).where(eq(schema.festOpportunities.urlHash, hash));
+  assert.equal(o.length, 1);
+});
+
+test('13. Batch 1 valid + 1 invalid -> inserted 1, skipped 1, HTTP 200', async () => {
+  const { POST } = await loadRoute();
+  const res = await POST(req([
+    { sourceUrl: 'https://example.com/batch-valid', title: 'valid', score: 80 },
+    { title: 'invalid' },
+  ], 'test-ingest-token-12345'));
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.inserted, 1);
+  assert.equal(json.skipped, 1);
+});
+
+test('14. erster Lauf inserted=N updated=0, zweiter identischer Lauf inserted=0 updated=N', async () => {
+  const { POST } = await loadRoute();
+  const payload = [
+    { sourceUrl: 'https://example.com/batch-a', title: 'A', score: 10 },
+    { sourceUrl: 'https://example.com/batch-b', title: 'B', score: 20 },
+  ];
+  const r1 = await POST(req(payload, 'test-ingest-token-12345'));
+  const j1 = await r1.json();
+  assert.equal(j1.inserted, 2);
+  assert.equal(j1.updated, 0);
+  const r2 = await POST(req(payload, 'test-ingest-token-12345'));
+  const j2 = await r2.json();
+  assert.equal(j2.inserted, 0);
+  assert.equal(j2.updated, 2);
+});
+
+test('15. Migration 0026 auf leerer DB anwendbar und rückrollbar', async () => {
+  const dbName = `fest_chances_mig_${(await import('node:crypto')).randomUUID().replaceAll('-', '')}`;
+  await admin.unsafe(`CREATE DATABASE "${dbName}"`);
+  const client = postgres(`postgres://reservation_test@127.0.0.1:55439/${dbName}`, { max: 4, connect_timeout: 5 });
+  try {
+    const migration = await readFile('src/db/migrations/0026_fest_chances.sql', 'utf8');
+    for (const statement of migration.split('--> statement-breakpoint')) if (statement.trim()) await client.unsafe(statement);
+    const [exists] = await client`SELECT to_regclass('public.fest_chances') AS t`;
+    assert.ok(exists.t, 'fest_chances sollte existieren');
+    await client.unsafe('DROP TABLE IF EXISTS public.fest_chances');
+    const [gone] = await client`SELECT to_regclass('public.fest_chances') AS t`;
+    assert.equal(gone.t, null);
+  } finally {
+    await client.end();
+    await admin.unsafe(`DROP DATABASE "${dbName}" WITH (FORCE)`);
+  }
+});

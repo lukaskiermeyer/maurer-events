@@ -190,6 +190,20 @@
       "when": 1794664600000,
       "tag": "0026_fest_chances",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794664700000,
+      "tag": "0027_fest_opportunities_url_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794664800000,
+      "tag": "0028_email_log",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { db } from "@/db";
 import { festChances, festOpportunities, festRuns } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +88,7 @@ async function syncFestOpportunity(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   item: z.infer<typeof ItemSchema>,
   normalized: string,
+  hash: string,
   itemRunId: string | null,
   now: Date,
 ) {
@@ -95,7 +96,13 @@ async function syncFestOpportunity(
   const existing = await tx
     .select()
     .from(festOpportunities)
-    .where(eq(festOpportunities.sourceUrl, sourceUrl))
+    .where(
+      or(
+        eq(festOpportunities.urlHash, hash),
+        eq(festOpportunities.sourceUrlNormalized, normalized),
+        eq(festOpportunities.sourceUrl, sourceUrl),
+      ),
+    )
     .limit(1);
   const eventDateTs = item.eventDate
     ? item.eventDate.includes("T")
@@ -106,6 +113,9 @@ async function syncFestOpportunity(
     await tx
       .update(festOpportunities)
       .set({
+        urlHash: hash,
+        sourceUrl,
+        sourceUrlNormalized: normalized,
         score: item.score,
         scoreReason: item.scoreReason,
         festwirtStatus: item.festwirtStatus,
@@ -133,6 +143,8 @@ async function syncFestOpportunity(
       contactPhone: item.contactPhone,
       sourceUrl,
       sourceUrlNormalized: normalized,
+      urlHash: hash,
+      notes: item.notes,
       festwirtStatus: item.festwirtStatus,
       score: item.score,
       scoreReason: item.scoreReason,
@@ -179,7 +191,7 @@ export async function POST(request: Request) {
   }
 
   const errors: { index: number; path: string; message: string }[] = [];
-  const parsedItems: z.infer<typeof ItemSchema>[] = [];
+  const parsedItems: (z.infer<typeof ItemSchema> | null)[] = [];
   body.forEach((raw, index) => {
     const result = ItemSchema.safeParse(raw);
     if (!result.success) {
@@ -190,27 +202,28 @@ export async function POST(request: Request) {
           message: issue.message,
         });
       }
-      parsedItems.push(null as unknown as z.infer<typeof ItemSchema>);
+      parsedItems.push(null);
     } else {
       parsedItems.push(result.data);
     }
   });
 
-  // Remove placeholders for invalid items; if any errors, reject entire batch.
-  const hasInvalid = parsedItems.some((v) => v === null);
-  if (errors.length > 0 || hasInvalid) {
-    // filter parsedItems not needed; return errors
+  const validItems = parsedItems.filter(
+    (v): v is z.infer<typeof ItemSchema> => v !== null,
+  );
+  const invalidCount = parsedItems.length - validItems.length;
+
+  // If nothing is processable, report validation errors (backwards-compatible 400).
+  if (validItems.length === 0 && errors.length > 0) {
     return NextResponse.json({ ok: false, errors }, { status: 400 });
   }
-
-  const validItems = parsedItems as z.infer<typeof ItemSchema>[];
 
   const now = new Date();
   const runId = validItems.length > 0 ? (validItems[0].runId ?? null) : null;
 
   let inserted = 0;
   let updated = 0;
-  let skipped = 0;
+  let skipped = invalidCount;
 
   try {
     await db.transaction(async (tx) => {
@@ -220,36 +233,11 @@ export async function POST(request: Request) {
           : normalizeUrl(item.sourceUrl);
         const hash = sha256Hex(normalized);
         const itemRunId = item.runId ?? runId;
+        await tx.execute(sql`SAVEPOINT item_sp`);
         try {
-          const existing = await tx
-            .select()
-            .from(festChances)
-            .where(eq(festChances.urlHash, hash))
-            .limit(1);
-          if (existing.length > 0) {
-            await tx
-              .update(festChances)
-              .set({
-                score: item.score,
-                scoreReason: item.scoreReason,
-                festwirtStatus: item.festwirtStatus,
-                eventType: item.eventType,
-                eventDate: item.eventDate,
-                monthsAhead: item.monthsAhead,
-                jubileeYears: item.jubileeYears,
-                contactName: item.contactName,
-                contactEmail: item.contactEmail,
-                contactPhone: item.contactPhone,
-                emergency: item.emergency,
-                nimModel: item.nimModel,
-                runId: itemRunId,
-                lastSeenAt: now,
-                updatedAt: now,
-              })
-              .where(eq(festChances.id, existing[0].id));
-            updated++;
-          } else {
-            await tx.insert(festChances).values({
+            const [upsertResult] = await tx
+            .insert(festChances)
+            .values({
               urlHash: hash,
               sourceUrl: item.sourceUrl.trim(),
               sourceUrlNormalized: normalized,
@@ -276,18 +264,42 @@ export async function POST(request: Request) {
               lastSeenAt: now,
               createdAt: now,
               updatedAt: now,
-            });
-            inserted++;
-          }
+            })
+            .onConflictDoUpdate({
+              target: festChances.urlHash,
+              set: {
+                score: item.score,
+                scoreReason: item.scoreReason,
+                festwirtStatus: item.festwirtStatus,
+                eventType: item.eventType,
+                eventDate: item.eventDate,
+                monthsAhead: item.monthsAhead,
+                jubileeYears: item.jubileeYears,
+                contactName: item.contactName,
+                contactEmail: item.contactEmail,
+                contactPhone: item.contactPhone,
+                emergency: item.emergency,
+                nimModel: item.nimModel,
+                runId: itemRunId,
+                lastSeenAt: now,
+                updatedAt: now,
+                sourceUrl: item.sourceUrl.trim(),
+                sourceUrlNormalized: normalized,
+              },
+            })
+            .returning({ inserted: sql<boolean>`(xmax = 0)` });
+          const wasInserted = upsertResult?.inserted === true;
 
           // Keep legacy fest_opportunities in sync for admin UI.
-          try {
-            await syncFestOpportunity(tx, item, normalized, itemRunId, now);
-          } catch {
-            // ignore
-          }
+          await syncFestOpportunity(tx, item, normalized, hash, itemRunId, now);
+
+          if (wasInserted) inserted++;
+          else updated++;
         } catch {
+          await tx.execute(sql`ROLLBACK TO SAVEPOINT item_sp`);
           skipped++;
+        } finally {
+          await tx.execute(sql`RELEASE SAVEPOINT item_sp`);
         }
       }
     });

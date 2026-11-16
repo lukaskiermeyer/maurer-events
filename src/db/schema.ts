@@ -579,6 +579,8 @@ export const festOpportunities = pgTable('fest_opportunities', {
   contactPhone: text('contact_phone'),
   sourceUrl: text('source_url').notNull(),
   sourceUrlNormalized: text('source_url_normalized'),
+  urlHash: text('url_hash').notNull(),
+  notes: text('notes'),
   festwirtStatus: text('festwirt_status').default('unknown').notNull(), // open | unknown | taken | closed
   score: integer('score').default(0).notNull(),
   scoreReason: text('score_reason'),
@@ -591,6 +593,7 @@ export const festOpportunities = pgTable('fest_opportunities', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   sourceUrlUnique: unique('fest_opportunities_source_url_unique').on(table.sourceUrl),
+  urlHashUnique: unique('fest_opportunities_url_hash_unique').on(table.urlHash),
   statusIdx: index('fest_opp_status_idx').on(table.status),
   regionIdx: index('fest_opp_region_idx').on(table.region),
   scoreIdx: index('fest_opp_score_idx').on(table.score),
@@ -647,6 +650,19 @@ export const festChances = pgTable('fest_chances', {
 
 // Backwards-compatible alias (singular) for callers/tests that expect `festChance`.
 export const festChance = festChances;
+
+export const emailLog = pgTable('email_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  toEmail: text('to_email').notNull(),
+  subject: text('subject').notNull(),
+  category: text('category').default('general').notNull(),
+  status: text('status').default('sent').notNull(), // sent | failed
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  createdIdx: index('email_log_created_idx').on(table.createdAt),
+  statusIdx: index('email_log_status_idx').on(table.status),
+}));
 
 export const shiftOffers = pgTable('shift_offers', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -55,7 +55,7 @@ try {
   await run('migrations-fresh', ['scripts/db-migrate.mjs']);
   await run('migrations-repeat', ['scripts/db-migrate.mjs']);
   const [{ count }] = await client`SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations`;
-  if (count !== 9) throw new Error('Unexpected migration ledger.');
+  if (count !== 28) throw new Error('Unexpected migration ledger.');
   const eventId = randomUUID(), albumId = randomUUID(), adminToken = randomUUID();
   const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   await client`INSERT INTO public.events (id,title,date,location,description,reservable,allow_table_selection,max_capacity,reservable_dates)

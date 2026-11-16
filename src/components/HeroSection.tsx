@@ -11,7 +11,7 @@ export default function HeroSection() {
     return (
         <section
             id="start"
-            className="relative h-[100dvh] min-h-[640px] w-full overflow-hidden bg-[#03497e] border-b-4 border-black"
+            className="relative h-[100vh] min-h-[640px] w-full overflow-hidden bg-[#03497e] border-b-4 border-black"
         >
             <HeroScene />
 

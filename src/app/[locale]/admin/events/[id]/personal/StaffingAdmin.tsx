@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { EventRecord, EventStaffRequirementRecord, StaffAssignmentRecord, StaffAvailabilityRecord, StaffRecord, StaffRole } from "@/types/domain";
-import { autoAssign, confirmAssignment, declineAssignment, deleteRequirement, saveRequirement } from "@/app/actions/staffing";
+import { autoAssign, confirmAssignment, createManualAssignment, declineAssignment, deleteRequirement, getEmailQuota, saveRequirement } from "@/app/actions/staffing";
 import { formatEuroCents } from "@/lib/pricing";
 import type { StaffingPlan } from "@/lib/staffing";
 
@@ -30,6 +30,12 @@ export default function StaffingAdmin({ data }: { data: Data }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [plan, setPlan] = useState<StaffingPlan | null>(null);
+  const [manualStaffId, setManualStaffId] = useState("");
+  const [manualRequirementId, setManualRequirementId] = useState("");
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [alwaysSend, setAlwaysSend] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("staffing_always_send_email") === "1" : false));
+  const [quota, setQuota] = useState<{ sentThisMonth: number; sentToday: number; monthlyLimit: number; dailyLimit: number; remainingMonth: number; remainingToday: number } | null>(null);
+  useEffect(() => { getEmailQuota().then(setQuota).catch(() => {}); }, []);
   const roleName = (id: string) => data.roles.find(role => role.id === id)?.name || "—";
   const staffName = (id: string) => {
     const person = data.team.find(item => item.member.id === id)?.member;
@@ -77,6 +83,23 @@ export default function StaffingAdmin({ data }: { data: Data }) {
     setBusy(true);
     try { await declineAssignment(id); router.refresh(); }
     finally { setBusy(false); }
+  };
+
+  const runManualAssign = async (sendEmail: boolean) => {
+    if (!manualStaffId || !manualRequirementId) { setMessage("Bitte Mitarbeiter und Schicht wählen."); return; }
+    setBusy(true); setMessage("");
+    try {
+      const res = await createManualAssignment(data.event.id, manualStaffId, manualRequirementId, sendEmail);
+      setMessage(`Mitarbeiter zugeordnet.${res.emailSent ? " E-Mail gesendet." : ""}`);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Zuteilung fehlgeschlagen.");
+    } finally { setBusy(false); setSendDialogOpen(false); }
+  };
+  const handleManualAssign = async () => {
+    if (!manualStaffId || !manualRequirementId) { setMessage("Bitte Mitarbeiter und Schicht wählen."); return; }
+    if (alwaysSend) await runManualAssign(true);
+    else setSendDialogOpen(true);
   };
 
   const [filterRole, setFilterRole] = useState("");
@@ -143,6 +166,24 @@ export default function StaffingAdmin({ data }: { data: Data }) {
           <div className="bg-white border border-border-light rounded-xl p-4"><div className="text-2xl font-black text-accent-green">{formatEuroCents(plan.costCents)}</div><div className="text-xs uppercase font-bold opacity-50">Personalkosten</div></div>
         </div>
       )}
+
+      <section className="bg-white border border-border-light rounded-2xl p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display font-bold text-xl">Manuelle Zuteilung</h2>
+          {quota && <p className="text-xs text-base-dark/60">E-Mails: {quota.sentThisMonth}/{quota.monthlyLimit} diesen Monat{quota.dailyLimit > 0 ? ` · ${quota.sentToday}/${quota.dailyLimit} heute` : " · kein Tageslimit"} · verbleibend Monat: {quota.remainingMonth}</p>}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <select value={manualStaffId} onChange={e => setManualStaffId(e.target.value)} className="bg-base-light border border-border-light rounded-lg p-3">
+            <option value="">Mitarbeiter wählen</option>
+            {data.team.map(t => <option key={t.member.id} value={t.member.id}>{t.member.firstName} {t.member.lastName}</option>)}
+          </select>
+          <select value={manualRequirementId} onChange={e => setManualRequirementId(e.target.value)} className="bg-base-light border border-border-light rounded-lg p-3">
+            <option value="">Schicht wählen</option>
+            {data.requirements.map(r => <option key={r.id} value={r.id}>{roleName(r.roleId)} · {dateLabel(r.date)} {r.startTime}–{r.endTime}</option>)}
+          </select>
+          <button type="button" onClick={handleManualAssign} disabled={busy} className="bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">Zuteilen</button>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <form onSubmit={addRequirement} className="bg-white border border-border-light rounded-2xl p-5 space-y-3 h-fit">
@@ -240,6 +281,19 @@ export default function StaffingAdmin({ data }: { data: Data }) {
         )}
       </section>
 
+      {sendDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4">
+            <h3 className="font-display font-bold text-xl">E-Mail an Mitarbeiter senden?</h3>
+            <p className="text-sm text-base-dark/70">Soll der Mitarbeiter über die neue Schichtzuweisung per E-Mail informiert werden?</p>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={alwaysSend} onChange={e => { setAlwaysSend(e.target.checked); try { localStorage.setItem("staffing_always_send_email", e.target.checked ? "1" : "0"); } catch {} }} /> Immer senden (nicht mehr fragen)</label>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => runManualAssign(false)} className="px-4 py-2 rounded-xl border border-border-light font-bold">Ohne Mail</button>
+              <button type="button" onClick={() => runManualAssign(true)} className="px-4 py-2 rounded-xl bg-accent-green text-white font-bold">Mail senden</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

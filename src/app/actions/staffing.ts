@@ -3,7 +3,9 @@
 import { and, asc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { events, eventStaffRequirements, staff, staffAssignments, staffAvailability, staffRoles, staffingRules } from "@/db/schema";
+import { emailLog, events, eventStaffRequirements, staff, staffAssignments, staffAvailability, staffRoles, staffingRules } from "@/db/schema";
+import { sql } from "drizzle-orm";
+import { sendStaffAssignmentEmail } from "@/lib/staff-email";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember } from "@/lib/staff-auth";
 import { audit } from "@/lib/audit";
@@ -313,7 +315,7 @@ export async function getStaffingOverview() {
   return { events: result };
 }
 
-export async function createManualAssignment(eventId: string, staffId: string, requirementId: string) {
+export async function createManualAssignment(eventId: string, staffId: string, requirementId: string, sendEmail: boolean = false) {
   await requireAdmin(); uuid(eventId); uuid(staffId); uuid(requirementId);
   const [req] = await db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.id, requirementId));
   if (!req || req.eventId !== eventId) throw new BookingError("Schicht nicht gefunden.", 404);
@@ -326,10 +328,36 @@ export async function createManualAssignment(eventId: string, staffId: string, r
   const sameSlot = await db.select().from(staffAssignments).where(and(eq(staffAssignments.eventId, eventId), eq(staffAssignments.roleId, req.roleId)));
   const slotCount = sameSlot.filter(a => new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime && a.status !== "declined").length;
   if (slotCount >= req.requiredCount) throw new BookingError("Diese Schicht ist bereits voll.", 409);
+  const [role] = await db.select().from(staffRoles).where(eq(staffRoles.id, req.roleId));
+  const [event] = await db.select().from(events).where(eq(events.id, eventId));
   await db.insert(staffAssignments).values({ eventId, staffId, roleId: req.roleId, date: req.date, startTime: req.startTime, endTime: req.endTime, status: "confirmed", source: "manual" });
+  let emailSent = false;
+  if (sendEmail) {
+    const result = await sendStaffAssignmentEmail({ staffId, eventTitle: event?.title || "Veranstaltung", date: req.date, startTime: req.startTime, endTime: req.endTime, roleName: role?.name || "Schicht" });
+    emailSent = result.sent;
+  }
   revalidatePath("/[locale]/admin", "layout");
-  return { success: true };
+  return { success: true, emailSent };
 }
+export async function getEmailQuota() {
+  await requireAdmin();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [monthRow] = await db.select({ n: sql<number>`count(*)::int` }).from(emailLog).where(sql`${emailLog.createdAt} >= ${monthStart}`);
+  const [dayRow] = await db.select({ n: sql<number>`count(*)::int` }).from(emailLog).where(sql`${emailLog.createdAt} >= ${dayStart}`);
+  const monthlyLimit = parseInt(process.env.RESEND_MONTHLY_LIMIT || "50000", 10);
+  const dailyLimit = parseInt(process.env.RESEND_DAILY_LIMIT || "0", 10); // 0 = kein Tageslimit (Resend Pro)
+  return {
+    sentThisMonth: monthRow?.n ?? 0,
+    sentToday: dayRow?.n ?? 0,
+    monthlyLimit,
+    dailyLimit,
+    remainingMonth: Math.max(0, monthlyLimit - (monthRow?.n ?? 0)),
+    remainingToday: dailyLimit > 0 ? Math.max(0, dailyLimit - (dayRow?.n ?? 0)) : (monthlyLimit - (monthRow?.n ?? 0)),
+  };
+}
+
 export async function respondToAssignment(id: string, status: "accepted" | "declined") {
   const member = await requireStaffMember();
   uuid(id);
