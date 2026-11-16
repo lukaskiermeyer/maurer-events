@@ -1,4 +1,4 @@
-CREATE TABLE "public"."document_form_templates" (
+CREATE TABLE IF NOT EXISTS "public"."document_form_templates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text DEFAULT 'Minijob-Formular' NOT NULL,
 	"kind" text DEFAULT 'minijob' NOT NULL,

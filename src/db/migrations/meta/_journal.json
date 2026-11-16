@@ -183,6 +183,13 @@
       "when": 1794664565807,
       "tag": "0025_wonderful_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794664600000,
+      "tag": "0026_fest_chances",
+      "breakpoints": true
     }
   ]
 }

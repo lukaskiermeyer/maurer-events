@@ -610,6 +610,44 @@ export const festRuns = pgTable('fest_runs', {
   createdIdx: index('fest_runs_created_idx').on(table.createdAt),
 }));
 
+export const festChances = pgTable('fest_chances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  urlHash: text('url_hash').notNull(),
+  sourceUrl: text('source_url').notNull(),
+  sourceUrlNormalized: text('source_url_normalized').notNull(),
+  title: text('title'),
+  organizer: text('organizer'),
+  location: text('location'),
+  region: text('region'),
+  eventDate: text('event_date'),
+  monthsAhead: integer('months_ahead'),
+  jubileeYears: integer('jubilee_years'),
+  festwirtStatus: text('festwirt_status').default('unknown').notNull(),
+  eventType: text('event_type').default('other').notNull(),
+  contactName: text('contact_name'),
+  contactEmail: text('contact_email'),
+  contactPhone: text('contact_phone'),
+  emergency: boolean('emergency').default(false).notNull(),
+  score: integer('score').default(0).notNull(),
+  scoreReason: text('score_reason'),
+  nimModel: text('nim_model'),
+  runId: text('run_id'),
+  status: text('status').default('new').notNull(),
+  notes: text('notes'),
+  discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  urlHashUnique: unique('fest_chances_url_hash_unique').on(table.urlHash),
+  statusScoreIdx: index('fest_chances_status_score_idx').on(table.status, table.score),
+  regionIdx: index('fest_chances_region_idx').on(table.region),
+  runIdIdx: index('fest_chances_run_id_idx').on(table.runId),
+}));
+
+// Backwards-compatible alias (singular) for callers/tests that expect `festChance`.
+export const festChance = festChances;
+
 export const shiftOffers = pgTable('shift_offers', {
   id: uuid('id').defaultRandom().primaryKey(),
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
