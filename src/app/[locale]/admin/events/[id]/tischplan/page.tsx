@@ -65,7 +65,7 @@ export default async function TablePlanPage({
     year: "numeric",
   });
   const [customers, bookedTableIds] = await Promise.all([
-    getCustomers(),
+    getCustomers().then(r => r.rows),
     getBookedTableIds(id, selectedDate).catch(() => [] as string[]),
   ]);
 

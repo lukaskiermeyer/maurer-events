@@ -84,6 +84,7 @@ export const customers = pgTable('customers', {
   zip: text('zip'),
   city: text('city'),
   notes: text('notes'),
+  tags: text('tags').array().default([]).notNull(),
   source: text('source').default('manual').notNull(), // 'manual' | 'request' | 'snapticket'
   externalRef: text('external_ref'),
   externalSource: text('external_source'),

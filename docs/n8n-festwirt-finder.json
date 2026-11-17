@@ -211,7 +211,7 @@
             },
             {
               "name": "X-N8N-API-KEY",
-              "value": "={{ $env.MAURER_N8N_KEY || 'DEIN_N8N_KEY' }}"
+              "value": "={{ $env.MAURER_API_KEY || 'DEIN_API_KEY' }}"
             }
           ]
         },
@@ -227,7 +227,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [2400, 560],
-      "notes": "Ziel-Endpoint muss noch in Maurer Events existieren: POST /api/admin/fest-chancen/ingest mit X-N8N-API-KEY Schutz. Env: MAURER_API_URL, MAURER_N8N_KEY."
+      "notes": "Ziel-Endpoint muss noch in Maurer Events existieren: POST /api/admin/fest-chancen/ingest mit X-N8N-API-KEY Schutz. Env: MAURER_API_URL, MAURER_API_KEY."
     },
     {
       "parameters": {

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customerImports, customers, events, reservations, tables } from "@/db/schema";
@@ -18,6 +18,7 @@ export interface CustomerInput {
   city?: string | null;
   notes?: string | null;
   marketingConsent?: boolean;
+  tags?: string[] | null;
 }
 
 function text(value: unknown, label: string, max: number): string | null {
@@ -47,17 +48,71 @@ function input(data: CustomerInput, requireName: boolean) {
   if (data.city !== undefined) result.city = text(data.city, "Ort", 100);
   if (data.notes !== undefined) result.notes = text(data.notes, "Notizen", 2000);
   if (data.marketingConsent !== undefined) result.marketingConsent = data.marketingConsent === true;
+  if (data.tags !== undefined) {
+    const tags = Array.isArray(data.tags) ? data.tags.map(t => String(t).trim()).filter(Boolean).slice(0, 20) : [];
+    result.tags = tags;
+  }
   return result;
 }
 
-export async function getCustomers(query = "") {
+export interface CustomerListFilters {
+  query?: string;
+  source?: string;
+  consent?: "all" | "yes" | "no";
+  hasEmail?: boolean | null;
+  hasPhone?: boolean | null;
+  tag?: string;
+  sort?: "name" | "created" | "updated";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CustomerListResult {
+  rows: typeof customers.$inferSelect[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function getCustomers(filters: CustomerListFilters = {}): Promise<CustomerListResult> {
   await requireAdmin();
-  const search = query.trim().slice(0, 100);
-  const rows = await db.select().from(customers).where(and(
-    isNull(customers.deletedAt),
-    search ? or(ilike(customers.displayName, `%${search}%`), ilike(customers.company, `%${search}%`), ilike(customers.email, `%${search}%`), ilike(customers.phone, `%${search}%`)) : undefined,
-  )).orderBy(customers.displayName).limit(500);
-  return rows;
+  const search = (filters.query || "").trim().slice(0, 100);
+  const page = Math.max(1, Number(filters.page) || 1);
+  const pageSize = Math.min(200, Math.max(10, Number(filters.pageSize) || 50));
+  const offset = (page - 1) * pageSize;
+
+  const conditions: any[] = [isNull(customers.deletedAt)];
+  if (search) {
+    conditions.push(or(
+      ilike(customers.displayName, `%${search}%`),
+      ilike(customers.company, `%${search}%`),
+      ilike(customers.email, `%${search}%`),
+      ilike(customers.phone, `%${search}%`),
+      ilike(customers.city, `%${search}%`),
+      ilike(customers.notes, `%${search}%`),
+    ));
+  }
+  if (filters.source && filters.source !== "all") conditions.push(eq(customers.source, filters.source));
+  if (filters.consent === "yes") conditions.push(eq(customers.marketingConsent, true));
+  if (filters.consent === "no") conditions.push(eq(customers.marketingConsent, false));
+  if (filters.hasEmail === true) conditions.push(isNotNull(customers.email), sql`trim(${customers.email}) <> ''`);
+  if (filters.hasEmail === false) conditions.push(or(isNull(customers.email), sql`trim(coalesce(${customers.email}, '')) = ''`));
+  if (filters.hasPhone === true) conditions.push(isNotNull(customers.phone), sql`trim(${customers.phone}) <> ''`);
+  if (filters.hasPhone === false) conditions.push(or(isNull(customers.phone), sql`trim(coalesce(${customers.phone}, '')) = ''`));
+  if (filters.tag && filters.tag !== "all") conditions.push(sql`${filters.tag} = ANY(${customers.tags})`);
+
+  const where = and(...conditions);
+  const orderBy = filters.sort === "created"
+    ? desc(customers.createdAt)
+    : filters.sort === "updated"
+      ? desc(customers.updatedAt)
+      : asc(customers.displayName);
+
+  const [rows, countRows] = await Promise.all([
+    db.select().from(customers).where(where).orderBy(orderBy).limit(pageSize).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(customers).where(where),
+  ]);
+  return { rows, total: Number(countRows[0]?.count || 0), page, pageSize };
 }
 
 export async function getCustomer(id: string) {
@@ -101,6 +156,82 @@ export async function deleteCustomer(id: string) {
   await requireAdmin();
   uuid(id);
   await db.update(customers).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(customers.id, id));
+  revalidatePath("/[locale]/admin/kunden", "page");
+  return { success: true };
+}
+
+export async function findDuplicateCustomers(data: { displayName?: string; email?: string | null; phone?: string | null }) {
+  await requireAdmin();
+  const name = (data.displayName || "").trim();
+  const email = normalizeEmail(data.email || "");
+  const phone = (data.phone || "").trim();
+  if (!name && !email && !phone) return [];
+  const conditions: any[] = [isNull(customers.deletedAt)];
+  const ors: any[] = [];
+  if (email) ors.push(eq(customers.email, email));
+  if (phone) ors.push(eq(customers.phone, phone));
+  if (name) ors.push(ilike(customers.displayName, name));
+  if (ors.length) conditions.push(or(...ors));
+  const rows = await db.select().from(customers).where(and(...conditions)).limit(10);
+  return rows;
+}
+
+export async function exportCustomersCsv(filters: CustomerListFilters = {}) {
+  await requireAdmin();
+  // reuse filter logic by fetching all matching (up to 5000)
+  const result = await getCustomers({ ...filters, page: 1, pageSize: 5000 });
+  const header = ["Name", "Verein/Firma", "E-Mail", "Telefon", "Straße", "PLZ", "Ort", "Quelle", "Marketing-Einwilligung", "Tags", "Notizen", "Erstellt"];
+  const lines = [header.join(";")];
+  for (const c of result.rows) {
+    const cells = [
+      c.displayName, c.company, c.email, c.phone, c.street, c.zip, c.city, c.source,
+      c.marketingConsent ? "ja" : "nein", (c.tags || []).join("|"), c.notes, c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : "",
+    ].map(value => `"${String(value ?? "").replace(/"/g, '""')}"`);
+    lines.push(cells.join(";"));
+  }
+  return lines.join("\n");
+}
+
+export async function exportCustomerData(id: string) {
+  await requireAdmin();
+  uuid(id);
+  const detail = await getCustomer(id);
+  if (!detail) throw new BookingError("Kunde nicht gefunden.", 404);
+  return {
+    customer: detail.customer,
+    reservations: detail.history.map(row => ({
+      id: row.reservation.id,
+      event: row.eventTitle,
+      eventDate: row.eventDate,
+      reservationDate: row.reservation.reservationDate,
+      guestCount: row.reservation.guestCount,
+      status: row.reservation.status,
+      selectedTime: row.reservation.selectedTime,
+      table: row.tableName,
+    })),
+    exportedAt: new Date().toISOString(),
+  };
+}
+
+export async function anonymizeCustomer(id: string) {
+  await requireAdmin();
+  uuid(id);
+  const [updated] = await db.update(customers).set({
+    displayName: "Gelöschter Kunde",
+    company: null,
+    email: null,
+    phone: null,
+    street: null,
+    zip: null,
+    city: null,
+    notes: null,
+    marketingConsent: false,
+    externalRef: null,
+    externalSource: null,
+    deletedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(customers.id, id)).returning();
+  if (!updated) throw new BookingError("Kunde nicht gefunden.", 404);
   revalidatePath("/[locale]/admin/kunden", "page");
   return { success: true };
 }
@@ -191,4 +322,37 @@ export async function importCustomers(payload: { fileName?: string; rows: Mapped
 
   revalidatePath("/[locale]/admin/kunden", "page");
   return { success: true, created: createdCount, updated: updatedCount, skipped: skippedCount, errors, importId: result.id };
+}
+
+export async function getDistinctCustomerTags() {
+  await requireAdmin();
+  const rows = await db.select({ tags: customers.tags }).from(customers).where(isNull(customers.deletedAt));
+  const set = new Set<string>();
+  for (const row of rows) for (const tag of row.tags || []) if (tag) set.add(tag);
+  return Array.from(set).sort();
+}
+
+export async function getCustomerStats() {
+  await requireAdmin();
+  const rows = await db.select({
+    customerId: reservations.customerId,
+    guestCount: reservations.guestCount,
+    amount: reservations.amountTotal,
+  }).from(reservations).where(isNotNull(reservations.customerId));
+  const agg = new Map<string, { guests: number; revenue: number; bookings: number }>();
+  for (const row of rows) {
+    if (!row.customerId) continue;
+    const current = agg.get(row.customerId) || { guests: 0, revenue: 0, bookings: 0 };
+    current.guests += row.guestCount || 0;
+    current.revenue += row.amount || 0;
+    current.bookings += 1;
+    agg.set(row.customerId, current);
+  }
+  const top = Array.from(agg.entries())
+    .sort((a, b) => b[1].guests - a[1].guests)
+    .slice(0, 5);
+  const ids = top.map(([id]) => id);
+  const customerRows = ids.length ? await db.select().from(customers).where(sql`${customers.id} = ANY(${ids})`) : [];
+  const byId = new Map(customerRows.map(c => [c.id, c]));
+  return top.map(([id, stats]) => ({ customer: byId.get(id) || null, ...stats }));
 }

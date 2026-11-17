@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { CustomerRecord, EventRecord, TableRecord } from "@/types/domain";
-import { updateCustomer, deleteCustomer } from "@/app/actions/customers";
+import { updateCustomer, deleteCustomer, anonymizeCustomer, exportCustomerData } from "@/app/actions/customers";
 import { assignTableToCustomer } from "@/app/actions/table-assignments";
 import { getBookedTableIds } from "@/app/actions/tables";
 
@@ -30,6 +30,8 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
     zip: customer.zip || "",
     city: customer.city || "",
     notes: customer.notes || "",
+    marketingConsent: customer.marketingConsent || false,
+    tags: (customer.tags || []).join(", "),
   });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -77,7 +79,35 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
     return () => { active = false; };
   }, [assignEventId, effectiveAssignDate]);
 
+  const totals = useMemo(() => {
+    const guestCount = history.reduce((sum, row) => sum + (row.reservation.guestCount || 0), 0);
+    const reservations = history.length;
+    return { guestCount, reservations };
+  }, [history]);
+
   const hasEmail = Boolean(customer.email?.trim());
+
+  const exportData = async () => {
+    const data = await exportCustomerData(customer.id);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kunde-${customer.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const anonymize = async () => {
+    if (!confirm("Kundendaten wirklich anonymisieren und löschen? Reservierungen bleiben erhalten.")) return;
+    setBusy(true);
+    try {
+      await anonymizeCustomer(customer.id);
+      router.push("/admin/kunden");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const assign = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -111,7 +141,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
     setBusy(true);
     setMessage("");
     try {
-      await updateCustomer(customer.id, form);
+      await updateCustomer(customer.id, { ...form, tags: form.tags.split(",").map(t => t.trim()).filter(Boolean) });
       setMessage("Kunde gespeichert.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
@@ -152,7 +182,16 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
         <div><label className="block text-xs font-bold uppercase mb-1">Straße</label><input value={form.street} onChange={event => setForm({ ...form, street: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" /></div>
         <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold uppercase mb-1">PLZ</label><input value={form.zip} onChange={event => setForm({ ...form, zip: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" /></div><div><label className="block text-xs font-bold uppercase mb-1">Ort</label><input value={form.city} onChange={event => setForm({ ...form, city: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" /></div></div>
         <div className="sm:col-span-2"><label className="block text-xs font-bold uppercase mb-1">Notizen</label><textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3 min-h-[80px]" /></div>
-        <div className="sm:col-span-2"><button type="submit" disabled={busy} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird gespeichert…" : "Änderungen speichern"}</button></div>
+        <div className="sm:col-span-2"><label className="block text-xs font-bold uppercase mb-1">Tags (kommagetrennt)</label><input value={form.tags} onChange={event => setForm({ ...form, tags: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" placeholder="z. B. Stammkunde, Verein, VIP" /></div>
+        <label className="sm:col-span-2 flex items-center gap-2 text-sm font-bold cursor-pointer">
+          <input type="checkbox" checked={form.marketingConsent} onChange={event => setForm({ ...form, marketingConsent: event.target.checked })} className="w-5 h-5 accent-accent-green" />
+          Marketing-Einwilligung erteilt
+        </label>
+        <div className="sm:col-span-2 flex flex-wrap gap-3">
+          <button type="submit" disabled={busy} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird gespeichert…" : "Änderungen speichern"}</button>
+          <button type="button" onClick={exportData} className="px-6 py-3 rounded-xl border border-border-light font-bold hover:border-accent-green transition-colors">Daten exportieren (JSON)</button>
+          <button type="button" onClick={anonymize} disabled={busy} className="px-6 py-3 rounded-xl border border-red-200 text-red-700 font-bold hover:bg-red-50 disabled:opacity-50">Anonymisieren & löschen</button>
+        </div>
       </form>
 
       <details className="bg-white border border-border-light rounded-2xl shadow-sm group">
@@ -205,6 +244,15 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
           </form>
         </div>
       </details>
+
+      <div className="bg-white border border-border-light rounded-2xl p-5">
+        <h2 className="font-display font-bold text-xl mb-3">Übersicht</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          <div className="bg-base-light rounded-xl p-3"><div className="text-base-dark/60">Reservierungen</div><div className="font-bold text-lg">{totals.reservations}</div></div>
+          <div className="bg-base-light rounded-xl p-3"><div className="text-base-dark/60">Gäste gesamt</div><div className="font-bold text-lg">{totals.guestCount}</div></div>
+          <div className="bg-base-light rounded-xl p-3"><div className="text-base-dark/60">Marketing</div><div className="font-bold text-lg">{customer.marketingConsent ? "Ja" : "Nein"}</div></div>
+        </div>
+      </div>
 
       <div className="bg-white border border-border-light rounded-2xl overflow-hidden">
         <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Reservierungen ({history.length})</h2>

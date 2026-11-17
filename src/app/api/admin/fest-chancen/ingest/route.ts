@@ -49,12 +49,7 @@ function getToken(request: Request): string {
 }
 
 function expectedToken(): string {
-  return (
-    process.env.FEST_CHANCEN_INGEST_TOKEN ||
-    process.env.MAURER_N8N_KEY ||
-    process.env.MAURER_API_KEY ||
-    ""
-  );
+  return (process.env.MAURER_API_KEY || "").trim();
 }
 
 function safeEqual(a: string, b: string): boolean {

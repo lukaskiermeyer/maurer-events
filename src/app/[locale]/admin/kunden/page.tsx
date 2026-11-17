@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
   await requireAdmin(true);
-  const customers = await getCustomers();
+  const result = await getCustomers();
   return (
     <div className="min-h-screen bg-base-light pb-12">
       <StaffHeader />
       <div className="max-w-[1200px] mx-auto px-4 pt-6">
-        <CustomerAdmin initialCustomers={customers} />
+        <CustomerAdmin initialCustomers={result.rows} initialTotal={result.total} />
       </div>
     </div>
   );
