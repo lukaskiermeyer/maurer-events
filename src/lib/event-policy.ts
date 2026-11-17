@@ -5,15 +5,16 @@ import { assertEventDay, BookingError, calendarDate } from './reservation-policy
 
 export function validateEventUpdate(data: Partial<typeof events.$inferInsert>) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new BookingError('Ungültige Eventdaten.');
-  const allowed = new Set(['title', 'date', 'endDate', 'location', 'description', 'imageUrl', 'link', 'reservable', 'allowTableSelection', 'reservationMode', 'reservationEmail', 'reservationNote', 'reservationDeadline', 'expectedGuests', 'maxCapacity', 'reservableDates', 'minimumConsumption', 'walkInReserve', 'publishTablesAt', 'type', 'isFeaturedGallery']);
+  const allowed = new Set(['title', 'date', 'endDate', 'location', 'description', 'imageUrl', 'link', 'mapUrl', 'reservable', 'allowTableSelection', 'reservationMode', 'reservationEmail', 'reservationNote', 'reservationDeadline', 'expectedGuests', 'maxCapacity', 'reservableDates', 'minimumConsumption', 'walkInReserve', 'publishTablesAt', 'type', 'isFeaturedGallery', 'isPublished']);
   for (const [key, value] of Object.entries(data)) {
     if (!allowed.has(key)) throw new BookingError(`Eventfeld darf nicht geändert werden: ${key}.`);
     if (value === undefined) continue;
     if (['maxCapacity', 'walkInReserve', 'minimumConsumption', 'expectedGuests'].includes(key) && (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 99999999)) throw new BookingError('Ungültige Kapazität oder Preis.');
-    if (['reservable', 'allowTableSelection', 'isFeaturedGallery'].includes(key) && typeof value !== 'boolean') throw new BookingError('Ungültige Eventeinstellung.');
+    if (['reservable', 'allowTableSelection', 'isFeaturedGallery', 'isPublished'].includes(key) && typeof value !== 'boolean') throw new BookingError('Ungültige Eventeinstellung.');
     if (['date', 'endDate', 'publishTablesAt', 'reservationDeadline'].includes(key) && value !== null && (!(value instanceof Date) || !Number.isFinite(value.getTime()))) throw new BookingError('Ungültiges Eventdatum.');
     if (key === 'date' && value === null) throw new BookingError('Startdatum erforderlich.');
     if (['title', 'location', 'description'].includes(key) && (typeof value !== 'string' || !value.trim() || value.length > (key === 'description' ? 100000 : 300))) throw new BookingError('Ungültiger Eventtext.');
+if (key === 'mapUrl' && value !== null && (typeof value !== 'string' || value.length > 2048)) throw new BookingError('Ungültige Karten-URL.');
     if (key === 'reservationMode' && value !== 'none' && value !== 'email' && value !== 'online') throw new BookingError('Ungültiger Reservierungsmodus.');
     if (key === 'reservationEmail' && (typeof value !== 'string' || value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))) throw new BookingError('Ungültige Reservierungs-E-Mail.');
     if (key === 'reservationNote' && value !== null && (typeof value !== 'string' || value.length > 2000)) throw new BookingError('Reservierungshinweis ist zu lang.');
