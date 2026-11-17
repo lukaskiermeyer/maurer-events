@@ -290,8 +290,7 @@ export async function POST(request: Request) {
 
           if (wasInserted) inserted++;
           else updated++;
-        } catch (itemErr) {
-          console.error("fest-chancen ingest item error:", itemErr);
+        } catch {
           await tx.execute(sql`ROLLBACK TO SAVEPOINT item_sp`);
           skipped++;
         } finally {
@@ -299,12 +298,8 @@ export async function POST(request: Request) {
         }
       }
     });
-  } catch (txErr) {
-    console.error("fest-chancen ingest transaction error:", txErr);
-    return NextResponse.json(
-      { ok: false, error: "internal_error", message: txErr instanceof Error ? txErr.message : String(txErr) },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
   }
 
   // Record run (best effort).
