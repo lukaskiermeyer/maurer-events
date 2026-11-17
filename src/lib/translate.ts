@@ -16,6 +16,7 @@ export async function translateContent(text: string | null | undefined, targetLa
   const prompt = `You are a professional translator for a Bavarian event and festival website.
 Translate the following German text to ${targetLang === 'en' ? 'English' : targetLang}. Keep the tone festive, inviting, and professional.
 Only return the translated text. Do not wrap it in quotes, markdown, or add any commentary.
+Preserve all line breaks and empty lines exactly as in the original.
 
 Original text:
 ${text}`;
@@ -23,7 +24,7 @@ ${text}`;
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let translated = response.text().trim();
+    let translated = response.text();
     
     // Remove potential markdown code blocks if the model ignored instructions
     if (translated.startsWith("\`\`\`") && translated.endsWith("\`\`\`")) {

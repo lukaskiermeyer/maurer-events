@@ -129,7 +129,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </h2>
             <div className="event-prose font-sans text-base-dark/80 max-w-none">
               {/* Parse the HTML output from the rich text editor safely */}
-              {parse(sanitizeHtml(description || '', {
+              {parse(sanitizeHtml((description || '').replace(/\r\n|\r|\n/g, '<br>'), {
                 allowedTags: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h2', 'h3'],
                 allowedAttributes: {
                   'a': ['href', 'target', 'rel']

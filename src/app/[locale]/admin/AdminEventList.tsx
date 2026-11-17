@@ -3,7 +3,7 @@
 import type { EventRecord, AdminStats } from '@/types/domain';
 
 import { useState, useMemo } from "react";
-import { createEvent, deleteEvent } from "@/app/actions/events";
+import { createEvent, deleteEvent, updateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { Link } from "@/i18n/routing";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
@@ -12,6 +12,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -28,7 +29,8 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     maxCapacity: 0,
     walkInReserve: 0, // default
     reservableDates: [] as string[],
-    publishTablesAt: "" // ISO String
+    publishTablesAt: "", // ISO String
+    isPublished: true
   });
 
   const availableDays = useMemo(() => {
@@ -53,6 +55,39 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     });
   };
 
+  const resetForm = () => {
+    setFormData({
+      title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: "", isPublished: true
+    });
+    setFile(null);
+    setEditingEvent(null);
+  };
+
+  const startEdit = (event: EventRecord) => {
+    setEditingEvent(event);
+    setFormData({
+      title: event.title || "",
+      date: event.date ? new Date(event.date).toISOString().split('T')[0] : "",
+      endDate: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : "",
+      location: event.location || "",
+      description: event.description || "",
+      imageUrl: event.imageUrl || "",
+      link: event.link || "/termine/ohne-reservierung",
+      reservable: event.reservable ?? false,
+      allowTableSelection: event.allowTableSelection ?? true,
+      reservationMode: (event.reservationMode as 'none' | 'email' | 'online') || 'none',
+      reservationEmail: event.reservationEmail || "servus@maurer-events.com",
+      reservationNote: event.reservationNote || "",
+      maxCapacity: event.maxCapacity || 0,
+      walkInReserve: event.walkInReserve || 0,
+      reservableDates: event.reservableDates || [],
+      publishTablesAt: event.publishTablesAt ? new Date(event.publishTablesAt).toISOString().slice(0, 16) : "",
+      isPublished: event.isPublished ?? true
+    });
+    setFile(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -72,11 +107,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         }
       }
 
-      await createEvent({
+      const payload = {
         ...formData,
-        reservationMode: formData.reservationMode as 'none' | 'email',
+        reservationMode: formData.reservationMode as 'none' | 'email' | 'online',
         reservable: formData.reservationMode === 'online',
         imageUrl: finalImageUrl,
+        isPublished: formData.isPublished,
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         reservableDates: formData.reservableDates,
@@ -84,11 +120,16 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         maxCapacity: formData.maxCapacity,
         walkInReserve: formData.walkInReserve,
         publishTablesAt: formData.publishTablesAt ? new Date(formData.publishTablesAt) : undefined
-      });
-      setFormData({
-        title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: ""
-      });
-      setFile(null);
+      };
+
+      if (editingEvent) {
+        await updateEvent(editingEvent.id, payload);
+        alert("Event erfolgreich aktualisiert!");
+      } else {
+        await createEvent(payload);
+        alert("Event erfolgreich angelegt!");
+      }
+      resetForm();
       window.location.reload();
     } catch {
       alert("Fehler beim Speichern. Ist die Datenbank verbunden?");
@@ -146,7 +187,21 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
               </div>
             </Link>
             
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+              <button
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startEdit(event);
+                }}
+                className="text-accent-green hover:text-accent-green/80 bg-white/80 min-h-11 min-w-11 flex items-center justify-center rounded-full"
+                title="Event bearbeiten"
+                aria-label={`${event.title} bearbeiten`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
               <button 
                 onClick={async (e) => {
                   e.preventDefault();
@@ -172,8 +227,13 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
       {/* Form */}
       <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm h-fit">
         <h2 className="text-xl font-bold mb-6 font-display">
-          Neues Event anlegen
+          {editingEvent ? "Event bearbeiten" : "Neues Event anlegen"}
         </h2>
+        {editingEvent && (
+          <button type="button" onClick={resetForm} className="mb-4 text-sm font-bold text-accent-green hover:underline">
+            ← Abbrechen / Neues Event
+          </button>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4 font-sans">
           <div>
             <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
@@ -241,6 +301,17 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                 {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-32 rounded-lg border border-border-light" />
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">
+            <input
+              type="checkbox"
+              id="isPublished"
+              checked={formData.isPublished}
+              onChange={e => setFormData({ ...formData, isPublished: e.target.checked })}
+              className="w-5 h-5 accent-accent-green"
+            />
+            <label htmlFor="isPublished" className="text-sm font-bold cursor-pointer">Event ist live (auf der Website sichtbar)</label>
           </div>
           
           <div className="space-y-2 bg-base-light p-3 rounded-lg border border-border-light">
@@ -352,7 +423,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
           )}
           
           <button disabled={loading} type="submit" className="w-full bg-accent-green text-white font-bold uppercase tracking-widest py-3 rounded-lg mt-4 disabled:opacity-50 hover:bg-base-dark transition-colors">
-            {loading ? "Speichert..." : "Event Speichern"}
+            {loading ? "Speichert..." : (editingEvent ? "Event aktualisieren" : "Event Speichern")}
           </button>
         </form>
       </div>

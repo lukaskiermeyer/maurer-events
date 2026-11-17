@@ -86,7 +86,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     reservationEmail: event.reservationEmail,
     reservationNote: event.reservationNote || "",
     maxCapacity: event.maxCapacity || 0,
-    walkInReserve: event.walkInReserve || 0
+    walkInReserve: event.walkInReserve || 0,
+    isPublished: event.isPublished ?? true
   });
 
   const [file, setFile] = useState<File | null>(null);
@@ -699,6 +700,17 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   {/* eslint-disable-line @next/next/no-img-element */}<img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
                 </div>
               )}
+              </div>
+
+              <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">
+                <input
+                  type="checkbox"
+                  id="isPublishedEdit"
+                  checked={formData.isPublished}
+                  onChange={e => setFormData({ ...formData, isPublished: e.target.checked })}
+                  className="w-5 h-5 accent-accent-green"
+                />
+                <label htmlFor="isPublishedEdit" className="text-sm font-bold cursor-pointer">Event ist live (auf der Website sichtbar)</label>
               </div>
 
               {event.type === 'event' && (

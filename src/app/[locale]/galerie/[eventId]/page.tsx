@@ -78,7 +78,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ eventId:
             <span>•</span>
             <span>{location}</span>
           </div>
-          <p className="font-sans text-lg md:text-xl text-base-dark/80 leading-relaxed">
+          <p className="font-sans text-lg md:text-xl text-base-dark/80 leading-relaxed whitespace-pre-line">
             {description}
           </p>
         </div>

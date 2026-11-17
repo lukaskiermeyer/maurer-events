@@ -31,6 +31,7 @@ export async function createEvent(data: {
   walkInReserve?: number;
   publishTablesAt?: Date;
   type?: string;
+  isPublished?: boolean;
 }) {
   await requireAdmin();
   const reservationMode = data.reservationMode || 'none';
@@ -75,6 +76,7 @@ export async function createEvent(data: {
     walkInReserve: data.walkInReserve || 0,
     publishTablesAt: data.publishTablesAt,
     type: data.type || 'event',
+    isPublished: data.isPublished ?? true,
     titleEn,
     locationEn,
     descriptionEn
@@ -165,7 +167,7 @@ export async function deleteEvent(id: string) {
 
 export const getEvents = unstable_cache(
   async () => {
-    return await db.select().from(events).where(and(eq(events.type, 'event'), isNull(events.deletedAt))).orderBy(asc(events.date));
+    return await db.select().from(events).where(and(eq(events.type, 'event'), isNull(events.deletedAt), eq(events.isPublished, true))).orderBy(asc(events.date));
   },
   ['public-events-list'],
   { tags: ['events'] }
@@ -173,7 +175,7 @@ export const getEvents = unstable_cache(
 
 export const getEventById = unstable_cache(
   async (id: string) => {
-    const result = await db.select().from(events).where(and(eq(events.id, id), isNull(events.deletedAt)));
+    const result = await db.select().from(events).where(and(eq(events.id, id), isNull(events.deletedAt), eq(events.isPublished, true)));
     return result[0] || null;
   },
   ['public-event-by-id'],

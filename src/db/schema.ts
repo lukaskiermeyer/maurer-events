@@ -33,6 +33,7 @@ export const events = pgTable('events', {
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
   type: text('type').default('event').notNull(), // 'event' or 'gallery'
   isFeaturedGallery: boolean('is_featured_gallery').default(false).notNull(), // To feature on homepage
+  isPublished: boolean('is_published').default(true).notNull(), // Whether the event is visible on the public site
   deletedAt: timestamp('deleted_at'), // Soft delete timestamp
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
