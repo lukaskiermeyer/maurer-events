@@ -12,6 +12,11 @@ const NAV_ITEMS = [
       pathname === '/admin' || pathname.startsWith('/admin/events'),
   },
   {
+    href: '/admin/festchancen',
+    label: 'Fest Chancen',
+    isActive: (pathname: string) => pathname.startsWith('/admin/festchancen'),
+  },
+  {
     href: '/admin/kunden',
     label: 'Kunden',
     isActive: (pathname: string) => pathname.startsWith('/admin/kunden'),
@@ -38,10 +43,10 @@ function NavPill({ href, label, active }: { href: string; label: string; active:
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 sm:px-5 text-sm font-bold transition-all duration-200 ${
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-4 sm:px-5 text-sm font-bold transition-all duration-200 ${
         active
-          ? 'bg-accent-green text-white shadow-md shadow-accent-green/25 ring-2 ring-accent-green/20'
-          : 'text-base-dark/55 hover:bg-white hover:text-base-dark active:bg-base-light'
+          ? 'bg-accent-green text-white shadow-lg shadow-accent-green/30 ring-2 ring-accent-green/25 scale-[1.02]'
+          : 'text-base-dark/60 hover:bg-white hover:text-base-dark hover:shadow-sm active:bg-base-light'
       }`}
     >
       {label}
@@ -69,7 +74,7 @@ export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boo
           {!scannerOnly && (
             <nav
               aria-label="Hauptnavigation"
-              className="hidden sm:flex items-center gap-1 bg-base-light/80 border border-border-light rounded-full p-1"
+              className="hidden sm:flex items-center gap-1 bg-gradient-to-b from-base-light/90 to-base-light/60 border border-border-light rounded-full p-1 shadow-sm"
             >
               {NAV_ITEMS.map((item) => (
                 <NavPill
@@ -99,7 +104,7 @@ export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boo
         {!scannerOnly && (
           <nav
             aria-label="Hauptnavigation mobil"
-            className="sm:hidden flex items-center gap-1 bg-base-light/80 border border-border-light rounded-2xl p-1 mb-3"
+            className="sm:hidden flex items-center gap-1 bg-base-light/80 border border-border-light rounded-2xl p-1 mb-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {NAV_ITEMS.map((item) => (
               <NavPill
