@@ -30,8 +30,9 @@ export async function updateFestOpportunityStatus(id: string, status: string) {
 export async function triggerN8nWebhook() {
   await requireAdmin();
   const url = process.env.N8N_WEBHOOK_URL || "https://n8n.travellui.com/webhook/festfinder-start";
+  const token = process.env.MAURER_API_KEY || "";
   try {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ triggeredBy: "admin", at: new Date().toISOString() }) });
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": token }, body: JSON.stringify({ triggeredBy: "admin", at: new Date().toISOString() }) });
     const data = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
