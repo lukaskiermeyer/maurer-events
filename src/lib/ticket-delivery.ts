@@ -5,6 +5,7 @@ import { generateTicketPdf } from './ticket';
 import { escapeHtml } from './escape';
 import { Resend } from 'resend';
 import { emailFrom } from './email';
+import { renderEmail } from './email-template';
 
 import type { CreateEmailOptions } from 'resend';
 
@@ -23,7 +24,16 @@ export async function deliverTicket(reservationId: string, connection = db, send
       const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), time: reservation.selectedTime, location: event?.location, guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: table?.name || 'Freie Platzwahl', qrCodeText: reservation.qrCodeText });
       if (!pdf) throw new Error('PDF unavailable');
       const payload = { from: emailFrom(), to: [reservation.email], subject: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
-        html: `<p>Hallo ${escapeHtml(reservation.guestName)},</p><p>Im Anhang findest du dein Ticket mit QR-Code.</p>`, attachments: [{ filename: 'ticket.pdf', content: pdf.toString('base64') }] };
+        html: renderEmail({
+        title: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
+        preheader: `Hallo ${reservation.guestName}, dein Ticket ist im Anhang.`,
+        blocks: [
+          { type: "paragraph", text: `Hallo ${escapeHtml(reservation.guestName)},` },
+          { type: "paragraph", text: "im Anhang findest du dein Ticket mit QR-Code. Bitte bringe es (ausgedruckt oder auf dem Handy) zur Veranstaltung mit." },
+          { type: "note", text: "Bei Fragen antworte einfach auf diese E-Mail." },
+        ],
+        footerNote: "Maurer Events · Festwirt & Eventservice",
+      }), attachments: [{ filename: 'ticket.pdf', content: pdf.toString('base64') }] };
       // Freeze the full email, including PDF bytes, before calling the provider.
       await connection.update(reservations).set({ ticketEmailPayload: payload }).where(and(eq(reservations.id, reservation.id), eq(reservations.qrCodeText, reservation.qrCodeText), eq(reservations.status, 'confirmed'), isNull(reservations.ticketEmailPayload)));
       const [current] = await connection.select().from(reservations).where(eq(reservations.id, reservation.id));

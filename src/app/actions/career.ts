@@ -9,6 +9,8 @@ import { Resend } from 'resend';
 import { requireAdmin } from '@/lib/auth';
 import { parseCareerContent, validateCareerContent } from '@/lib/career';
 import { emailFrom } from '@/lib/email';
+import { renderEmail } from '@/lib/email-template';
+import { escapeHtml } from '@/lib/escape';
 import { lockLayout } from '@/lib/reservation-db';
 import { BookingError, guestDetails } from '@/lib/reservation-policy';
 import { takeRateLimit } from '@/lib/rate-limit';
@@ -112,6 +114,20 @@ export async function submitApplication(form: {
       replyTo: email,
       subject: `Bewerbung: ${position || 'Initiativbewerbung'} – ${name}`,
       text: lines.join('\n'),
+      html: renderEmail({
+        title: 'Neue Bewerbung',
+        preheader: `${name} – ${position || 'Initiativbewerbung'}`,
+        blocks: [
+          { type: 'paragraph', text: `Name: ${escapeHtml(name)}` },
+          { type: 'paragraph', text: `E-Mail: ${escapeHtml(email)}` },
+          ...(phone ? [{ type: 'paragraph' as const, text: `Telefon: ${escapeHtml(phone)}` }] : []),
+          { type: 'paragraph', text: `Stelle: ${escapeHtml(position || 'Initiativbewerbung')}` },
+          { type: 'paragraph', text: attachments?.[0] ? `Anhang: ${escapeHtml(attachments[0].filename)}` : 'Anhang: keiner' },
+          { type: 'divider' },
+          { type: 'paragraph', text: escapeHtml(message).replace(/\n/g, '<br/>') },
+        ],
+        footerNote: 'Maurer Events · Karriere',
+      }),
       attachments,
     });
 

@@ -13,6 +13,8 @@ import { BookingError, calendarDate, cleanTime, uuid } from "@/lib/reservation-p
 import { demandFor, planStaffing, shiftHours, shiftOverlaps, type StaffingAssignmentInput } from "@/lib/staffing";
 import { Resend } from "resend";
 import { emailFrom } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
+import { escapeHtml } from "@/lib/escape";
 
 function int(value: unknown, min: number, max: number, label: string) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) throw new BookingError(`Ungültige ${label}.`);
@@ -137,7 +139,17 @@ export async function autoAssign(eventId: string, date?: string) {
       try {
         await new Resend(process.env.RESEND_API_KEY).emails.send({
           from: emailFrom(), to: [member.email], subject: "Neue Schichtzuweisung – " + event.title,
-          html: "<p>Hallo " + member.firstName + ",</p><p>du wurdest für folgende Schichten bei <b>" + event.title + "</b> (" + event.location + ") eingeteilt:</p><p>" + lines + "</p><p>Bitte bestätige oder lehne in deinem Mitarbeiterportal ab: " + (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten</p>",
+          html: renderEmail({
+            title: "Neue Schichtzuweisung",
+            preheader: `Schichten für ${event.title}`,
+            blocks: [
+              { type: "paragraph", text: `Hallo ${escapeHtml(member.firstName)},` },
+              { type: "paragraph", text: `du wurdest für folgende Schichten bei <b>${escapeHtml(event.title)}</b> (${escapeHtml(event.location || "")}) eingeteilt:` },
+              { type: "list", items: myAssignments.map((a) => `${new Date(a.date).toLocaleDateString("de-DE")} ${a.startTime}–${a.endTime} (${escapeHtml(roleMap.get(a.roleId) || "Schicht")})`) },
+              { type: "button", label: "Schichten ansehen", href: (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten" },
+            ],
+            footerNote: "Maurer Events · Schichtplanung",
+          }),
         });
       } catch { /* best effort */ }
     }
@@ -175,7 +187,16 @@ export async function confirmAssignment(id: string) {
       try {
         await new Resend(process.env.RESEND_API_KEY).emails.send({
           from: emailFrom(), to: [member.email], subject: "Schicht bestätigt – " + event.title,
-          html: "<p>Hallo " + member.firstName + ",</p><p>deine Schicht bei <b>" + event.title + "</b> (" + new Date(updated.date).toLocaleDateString("de-DE") + " " + updated.startTime + "–" + updated.endTime + ", " + (role?.name || "Schicht") + ") wurde bestätigt.</p><p>Mitarbeiterportal: " + (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten</p>",
+          html: renderEmail({
+            title: "Schicht bestätigt",
+            preheader: `Deine Schicht bei ${event.title} wurde bestätigt.`,
+            blocks: [
+              { type: "paragraph", text: `Hallo ${escapeHtml(member.firstName)},` },
+              { type: "paragraph", text: `deine Schicht bei <b>${escapeHtml(event.title)}</b> (${new Date(updated.date).toLocaleDateString("de-DE")} ${updated.startTime}–${updated.endTime}, ${escapeHtml(role?.name || "Schicht")}) wurde bestätigt.` },
+              { type: "button", label: "Mitarbeiterportal", href: (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten" },
+            ],
+            footerNote: "Maurer Events · Schichtplanung",
+          }),
         });
       } catch { /* best effort */ }
     }

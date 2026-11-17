@@ -11,6 +11,7 @@ import { isAdminEmail, otpHash } from '@/lib/admin-identity';
 import { BookingError, guestDetails, UUID_PATTERN } from '@/lib/reservation-policy';
 import { consumeAdminOtp } from '@/lib/admin-otp';
 import { emailFrom } from '@/lib/email';
+import { renderEmail } from '@/lib/email-template';
 import { resolveStaffAccess } from '@/lib/staff-access';
 
 export async function requestOtp(email: string, turnstileToken: string) {
@@ -30,7 +31,7 @@ export async function requestOtp(email: string, turnstileToken: string) {
     await db.insert(adminAuth).values({ email: normalizedEmail, otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) })
       .onConflictDoUpdate({ target: adminAuth.email, set: { otpCode: hashed, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60000) } });
     stage = 'email-send';
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Team Login-Code', html: `<p>Dein einmaliger Login-Code: <strong>${code}</strong></p><p>Gültig für 10 Minuten.</p>` });
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: emailFrom(), to: [normalizedEmail], subject: 'Dein Team Login-Code', html: renderEmail({ title: 'Dein Team Login-Code', preheader: `Dein Code: ${code}`, blocks: [{ type: 'paragraph', text: 'Dein einmaliger Login-Code:' }, { type: 'heading', text: code }, { type: 'paragraph', text: 'Gültig für 10 Minuten. Gib den Code nicht weiter.', muted: true }] }) });
     if (result.error) throw new Error('Email unavailable');
     return { success: true };
   } catch (error) {

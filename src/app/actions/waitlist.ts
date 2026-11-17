@@ -12,6 +12,7 @@ import { verifyTurnstile } from '@/lib/turnstile';
 import { takeRateLimit } from '@/lib/rate-limit';
 import { enterWaitlist } from '@/lib/waitlist';
 import { emailFrom } from '@/lib/email';
+import { renderEmail } from '@/lib/email-template';
 const resend = new Resend(process.env.RESEND_API_KEY || "dummy_key");
 
 export async function joinWaitlist(data: { eventId: string; name: string; email: string; guestCount: number; turnstileToken: string }) {
@@ -52,7 +53,17 @@ export async function notifyWaitlistEntry(entryId: string) {
         from: emailFrom(),
         to: [waitlist.email],
         subject: `Gute Neuigkeiten! Ein Tisch für ${escapeHtml(eventTitle)} ist frei!`,
-        html: `<p>Hallo ${escapeHtml(waitlist.name)},</p><p>Es ist wieder ein Tisch für <b>${escapeHtml(eventTitle)}</b> verfügbar geworden!</p><p>Bitte besuche umgehend unsere Website, um dir den Platz zu sichern, bevor er wieder vergeben ist.</p><p><a href="${escapeHtml(new URL(`/termine/${waitlist.eventId}`, process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').href)}">Jetzt Tisch reservieren</a></p>`,
+        html: renderEmail({
+          title: 'Ein Tisch ist wieder frei!',
+          preheader: `Ein Tisch für ${eventTitle} ist wieder verfügbar.`,
+          blocks: [
+            { type: 'paragraph', text: `Hallo ${escapeHtml(waitlist.name)},` },
+            { type: 'paragraph', text: `Es ist wieder ein Tisch für <b>${escapeHtml(eventTitle)}</b> verfügbar geworden!` },
+            { type: 'paragraph', text: 'Bitte besuche umgehend unsere Website, um dir den Platz zu sichern, bevor er wieder vergeben ist.' },
+            { type: 'button', label: 'Jetzt Tisch reservieren', href: escapeHtml(new URL(`/termine/${waitlist.eventId}`, process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').href) },
+          ],
+          footerNote: 'Maurer Events · Warteliste',
+        }),
       }, { idempotencyKey: `waitlist:${waitlist.id}` });
       if (result.error) throw new Error('Email unavailable');
     } else throw new Error('Email not configured');

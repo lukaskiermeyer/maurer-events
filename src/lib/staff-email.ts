@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { emailLog, staff } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { renderEmail } from "@/lib/email-template";
+import { escapeHtml } from "@/lib/escape";
 
 export async function sendStaffAssignmentEmail(params: {
   staffId: string;
@@ -19,16 +21,22 @@ export async function sendStaffAssignmentEmail(params: {
   const from = process.env.EMAIL_FROM || "Maurer Events <servus@maurer-events.com>";
   const subject = `Neue Schichtzuweisung: ${params.eventTitle}`;
   const dateLabel = new Date(params.date).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
-  const html = `<p>Hallo ${member.firstName},</p>
-<p>du wurdest für folgende Schicht eingeteilt:</p>
-<ul>
-  <li><strong>Veranstaltung:</strong> ${params.eventTitle}</li>
-  <li><strong>Rolle:</strong> ${params.roleName}</li>
-  <li><strong>Datum:</strong> ${dateLabel}</li>
-  <li><strong>Zeit:</strong> ${params.startTime}–${params.endTime}</li>
-</ul>
-<p>Bitte bestätige oder lehne die Schicht in deinem Mitarbeiterportal ab.</p>
-<p>Servus,<br/>Maurer Events</p>`;
+  const html = renderEmail({
+    title: "Neue Schichtzuweisung",
+    preheader: `Schicht für ${params.eventTitle}`,
+    blocks: [
+      { type: "paragraph", text: `Hallo ${escapeHtml(member.firstName)},` },
+      { type: "paragraph", text: "du wurdest für folgende Schicht eingeteilt:" },
+      { type: "list", items: [
+        `<strong>Veranstaltung:</strong> ${escapeHtml(params.eventTitle)}`,
+        `<strong>Rolle:</strong> ${escapeHtml(params.roleName)}`,
+        `<strong>Datum:</strong> ${escapeHtml(dateLabel)}`,
+        `<strong>Zeit:</strong> ${escapeHtml(params.startTime)}–${escapeHtml(params.endTime)}`,
+      ] },
+      { type: "button", label: "Schicht ansehen", href: (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000") + "/team/schichten" },
+    ],
+    footerNote: "Maurer Events · Schichtplanung",
+  });
 
   try {
     const res = await fetch("https://api.resend.com/emails", {

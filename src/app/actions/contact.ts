@@ -2,6 +2,8 @@
 
 import { Resend } from 'resend';
 import { emailFrom } from '@/lib/email';
+import { renderEmail } from '@/lib/email-template';
+import { escapeHtml } from '@/lib/escape';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { guestDetails } from '@/lib/reservation-policy';
 import { takeRateLimit } from '@/lib/rate-limit';
@@ -29,6 +31,18 @@ export async function submitContactForm(formData: {
       from: emailFrom(), to: [recipient], replyTo: email,
       subject: `Neue Anfrage von ${name.replace(/[\r\n]/g, ' ')} - ${eventType}`,
       text: `Neue Kontaktanfrage\n\nName: ${name}\nE-Mail: ${email}\nVeranstaltungsart: ${eventType}\n\n${message.trim()}`,
+      html: renderEmail({
+        title: 'Neue Kontaktanfrage',
+        preheader: `${name} – ${eventType}`,
+        blocks: [
+          { type: 'paragraph', text: `Name: ${escapeHtml(name)}` },
+          { type: 'paragraph', text: `E-Mail: ${escapeHtml(email)}` },
+          { type: 'paragraph', text: `Veranstaltungsart: ${escapeHtml(eventType)}` },
+          { type: 'divider' },
+          { type: 'paragraph', text: escapeHtml(message.trim()).replace(/\n/g, '<br/>') },
+        ],
+        footerNote: 'Maurer Events · Kontaktformular',
+      }),
     });
     if (result.error) return { success: false, error: 'E-Mail konnte nicht gesendet werden.' };
     return { success: true };

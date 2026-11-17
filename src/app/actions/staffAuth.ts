@@ -8,6 +8,8 @@ import { createStaffSession, hashPassword, hashToken, setStaffCookie, clearStaff
 import { takeRateLimit } from "@/lib/rate-limit";
 import { Resend } from "resend";
 import { emailFrom } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
+import { escapeHtml } from "@/lib/escape";
 
 async function inviteClientKey(): Promise<string> {
   try {
@@ -83,7 +85,17 @@ export async function requestPasswordReset(email: string) {
       try {
         await new Resend(process.env.RESEND_API_KEY).emails.send({
           from: emailFrom(), to: [member.email], subject: "Passwort zurücksetzen – Maurer Events",
-          html: "<p>Hallo " + member.firstName + ",</p><p>du hast ein neues Passwort angefordert. Klicke innerhalb von 30 Minuten auf diesen Link:</p><p><a href=\"" + resetUrl + "\">" + resetUrl + "</a></p><p>Falls du das nicht warst, ignoriere diese E-Mail.</p>",
+          html: renderEmail({
+            title: "Passwort zurücksetzen",
+            preheader: "Passwort zurücksetzen – Link gültig 30 Minuten.",
+            blocks: [
+              { type: "paragraph", text: `Hallo ${escapeHtml(member.firstName)},` },
+              { type: "paragraph", text: "du hast ein neues Passwort angefordert. Klicke innerhalb von 30 Minuten auf den Button:" },
+              { type: "button", label: "Passwort zurücksetzen", href: resetUrl },
+              { type: "note", text: "Falls du das nicht warst, ignoriere diese E-Mail." },
+            ],
+            footerNote: "Maurer Events · Mitarbeiterportal",
+          }),
         });
       } catch { }
     } else {
