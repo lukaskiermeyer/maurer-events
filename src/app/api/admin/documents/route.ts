@@ -67,19 +67,20 @@ export async function POST(request: Request) {
     let warning: string | undefined;
 
     if (isPdf) {
+      // PDFs als "raw" hochladen, damit die Datei öffentlich abrufbar ist
+      // (image/upload liefert für PDFs häufig 401 "deny or ACL failure").
+      const uploaded = await upload(file, "raw", publicId);
+      fileUrl = uploaded.secure_url;
+      mimeType = "application/pdf";
+      sizeBytes = file.size;
+      previewUrl = null;
+      // Vorschau best-effort über den Image-Pipeline versuchen.
       try {
-        const uploaded = await upload(file, "image", publicId);
-        fileUrl = uploaded.secure_url;
-        previewUrl = uploaded.secure_url.replace("/upload/", "/upload/pg_1,f_webp,w_1600,q_auto/");
-        mimeType = "application/pdf";
-        sizeBytes = file.size;
+        const previewUpload = await upload(file, "image", `${publicId}_preview`);
+        previewUrl = previewUpload.secure_url.replace("/upload/", "/upload/pg_1,f_webp,w_1600,q_auto/");
       } catch {
-        const uploaded = await upload(file, "raw", publicId);
-        fileUrl = uploaded.secure_url;
         previewUrl = null;
-        mimeType = "application/pdf";
-        sizeBytes = file.size;
-        warning = "PDF wurde gespeichert, aber keine Vorschau erzeugt. Bitte PDF-Delivery in Cloudinary aktivieren.";
+        warning = "PDF wurde gespeichert. Vorschau nicht verfügbar.";
       }
     } else {
       const optimized = await optimizeImage(file, { maxWidth: 1920, quality: 82, format: "webp" });

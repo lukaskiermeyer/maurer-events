@@ -56,6 +56,20 @@
     "empty_title_2": "feiern!",
     "empty_text": "Der Wirt feilt gerade noch am Programm. Sobald die nächsten Termine feststehen, findest du sie genau hier. Schau bald wieder vorbei!"
   },
+  "EventDetail": {
+    "back": "Zurück zur Übersicht",
+    "date": "Datum",
+    "location": "Ort",
+    "status": "Status",
+    "about_1": "Über dieses",
+    "about_2": "Event",
+    "overview": "Auf einen Blick",
+    "reserve_cta": "Tisch reservieren",
+    "email_cta": "Tisch anfragen",
+    "gallery_1": "Rückblick",
+    "gallery_2": "Galerie",
+    "gallery_all": "Alle Fotos ansehen"
+  },
   "Contact": {
     "title": "Lass uns reden!",
     "subtitle": "Erzähl uns von deinen Plänen und wir machen ein Fest daraus.",

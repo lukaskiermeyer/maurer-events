@@ -218,6 +218,13 @@
       "when": 1794750000000,
       "tag": "0030_fest_chances_extend_vereins_radar",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794930296238,
+      "tag": "0031_gallery_event_optional",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,7 @@ import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode
 export default function AdminEventList({ initialEvents, stats }: { initialEvents: EventRecord[], stats?: AdminStats }) {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -199,27 +200,47 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
           <div className="space-y-2">
             <label className="block text-sm font-bold mb-1 opacity-70">Bild / Flyer</label>
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 min-w-0">
-                <input 
-                  type="file" 
+              <div
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(true); }}
+                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(false); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingImage(false);
+                  const dropped = e.dataTransfer.files?.[0];
+                  if (dropped && dropped.type.startsWith("image/")) setFile(dropped);
+                }}
+                className={`relative flex-1 min-w-0 border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDraggingImage ? "border-accent-green bg-accent-green/10" : "border-border-light bg-base-light"}`}
+              >
+                <input
+                  type="file"
                   accept="image/*"
                   onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                  className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <p className="text-xs opacity-50 mt-1">Lokal hochladen</p>
+                <p className="text-xs opacity-60 pointer-events-none">
+                  {isDraggingImage ? "Bild hier ablegen…" : (file ? file.name : "Bild hierher ziehen oder klicken")}
+                </p>
+                <p className="text-xs opacity-50 mt-1 pointer-events-none">Lokal hochladen</p>
               </div>
               <div className="flex items-center text-sm font-bold opacity-50">ODER</div>
               <div className="flex-1 min-w-0">
-                <input 
-                  type="url" 
-                  value={formData.imageUrl} 
-                  onChange={e => setFormData({...formData, imageUrl: e.target.value})} 
-                  className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green" 
-                  placeholder="Bild-URL (z.B. unsplash.com/...)" 
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={e => setFormData({...formData, imageUrl: e.target.value})}
+                  className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green"
+                  placeholder="Bild-URL (z.B. unsplash.com/...)"
                   disabled={file !== null}
                 />
               </div>
             </div>
+            {file && (
+              <div className="mt-2">
+                <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>
+                {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-32 rounded-lg border border-border-light" />
+              </div>
+            )}
           </div>
           
           <div className="space-y-2 bg-base-light p-3 rounded-lg border border-border-light">

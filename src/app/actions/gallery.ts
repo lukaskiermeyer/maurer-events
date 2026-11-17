@@ -6,14 +6,18 @@ import { eq, sql, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 
-export async function addGalleryImage(eventId: string, imageUrl: string) {
+export async function addGalleryImage(eventId: string | null, imageUrl: string) {
   await requireAdmin();
   await db.insert(galleries).values({
-    eventId,
+    eventId: eventId || null,
     imageUrl,
   });
-  revalidatePath("/admin/events/[id]", "page");
-  revalidatePath(`/termine/${eventId}`);
+  if (eventId) {
+    revalidatePath("/admin/events/[id]", "page");
+    revalidatePath(`/termine/${eventId}`);
+  }
+  revalidatePath("/admin", "page");
+  revalidatePath("/galerie", "page");
 }
 
 export async function removeGalleryImage(imageId: string) {

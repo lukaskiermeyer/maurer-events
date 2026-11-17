@@ -21,6 +21,7 @@ const ItemSchema = z.object({
   location: z.string().nullable().optional().default(null),
   region: z.string().nullable().optional().default(null),
   eventDate: z.string().nullable().optional().default(null),
+  sourceDate: z.string().nullable().optional().default(null),
   monthsAhead: z.number().int().nullable().optional().default(null),
   jubileeYears: z.number().int().nullable().optional().default(null),
   festwirtStatus: z.enum(["open", "taken", "unknown", "closed"]).default("unknown"),
@@ -88,6 +89,29 @@ function sha256Hex(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Kulanz für mehrtägige Feste / ungenaue Datumsangaben (dateAssumed)
+const STALE_EVENT_GRACE_MS = 31 * DAY_MS;
+const MAX_SOURCE_AGE_MS = Math.round(24 * 30.44 * DAY_MS);
+
+function parseDateOnly(raw: string | null): Date | null {
+  if (!raw) return null;
+  const d = raw.includes("T") ? new Date(raw) : new Date(raw + "T00:00:00Z");
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Alte Quellen (z.B. Presseberichte von 2021) und vergangene Feste sind keine
+// Bewerbungskandidaten; der Filter greift unabhängig von der n8n-Version.
+function staleReason(item: z.infer<typeof ItemSchema>, now: Date): string | null {
+  const eventDate = parseDateOnly(item.eventDate);
+  if (eventDate && eventDate.getTime() < now.getTime() - STALE_EVENT_GRACE_MS) return "event_date_past";
+  if (item.eventYear != null && item.eventYear < now.getUTCFullYear()) return "event_year_past";
+  if (item.monthsAhead != null && item.monthsAhead < 0) return "months_ahead_negative";
+  const sourceDate = parseDateOnly(item.sourceDate);
+  if (sourceDate && sourceDate.getTime() < now.getTime() - MAX_SOURCE_AGE_MS) return "source_too_old";
+  return null;
+}
+
 function methodNotAllowed() {
   return NextResponse.json({ ok: false, error: "method_not_allowed" }, { status: 405 });
 }
@@ -122,6 +146,8 @@ async function syncFestOpportunity(
       : new Date(item.eventDate + "T00:00:00Z")
     : null;
   if (existing.length > 0) {
+    // Archivierte Zeilen bleiben archiviert und werden nicht aktualisiert.
+    if (existing[0].status === "ignore" || existing[0].status === "deleted") return;
     await tx
       .update(festOpportunities)
       .set({
@@ -282,6 +308,7 @@ export async function POST(request: Request) {
 
   let inserted = 0;
   let updated = 0;
+  let stale = 0;
   let skipped = invalidCount;
 
   const notifyCandidates: NotifyCandidate[] = [];
@@ -294,6 +321,12 @@ export async function POST(request: Request) {
           : normalizeUrl(item.sourceUrl);
         const hash = sha256Hex(normalized);
         const itemRunId = item.runId ?? runId;
+
+        if (staleReason(item, now)) {
+          stale++;
+          skipped++;
+          continue;
+        }
 
         await tx.execute(sql`SAVEPOINT item_sp`);
         try {
@@ -312,6 +345,12 @@ export async function POST(request: Request) {
               .from(festChances)
               .where(eq(festChances.sourceUrlNormalized, normalized))
               .limit(1);
+          }
+
+          // Gelöschte Chancen bleiben gelöscht: kein Update, kein Sync, keine Notify.
+          if (existing.length > 0 && existing[0].status === "deleted") {
+            skipped++;
+            continue;
           }
 
           const recheckDate = item.recheckAt ? new Date(item.recheckAt + "T00:00:00Z") : null;
@@ -487,6 +526,7 @@ export async function POST(request: Request) {
     inserted,
     updated,
     skipped,
+    stale,
   });
 }
 

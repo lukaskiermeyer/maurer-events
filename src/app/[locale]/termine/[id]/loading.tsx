@@ -4,31 +4,36 @@
 export default function Loading() {
   return (
     <div className="min-h-screen bg-base-light animate-pulse">
-      {/* Event Header Banner Skeleton */}
-      <div className="bg-canvas-light border-b border-border-light pt-32 pb-20 relative overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10 flex flex-col lg:flex-row gap-16 lg:gap-24 items-center">
-          
-          <div className="flex-1 w-full text-center lg:text-left">
-            <div className="w-32 h-10 bg-white/50 backdrop-blur-md rounded-full mb-8 inline-block" />
-            
-            <div className="h-20 md:h-24 lg:h-32 bg-base-dark/10 rounded-2xl mb-10 w-3/4 mx-auto lg:mx-0" />
-            
-            <div className="flex flex-wrap gap-6 justify-center lg:justify-start">
-              <div className="w-48 h-24 bg-white/60 backdrop-blur-md rounded-2xl" />
-              <div className="w-48 h-24 bg-white/60 backdrop-blur-md rounded-2xl" />
+      {/* Event Header Skeleton (Zelt-Decke + Poster-Bühne) */}
+      <div className="relative overflow-hidden">
+        <div className="h-[150px] md:h-[250px] bg-accent-green/15" />
+
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 pt-[280px] md:pt-[400px] lg:pt-[480px] pb-16 md:pb-24">
+          <div className="w-48 h-10 bg-base-dark/10 rounded-full" />
+
+          <div className="mt-10 md:mt-12 flex flex-col lg:flex-row gap-12 lg:gap-20 items-center lg:items-start">
+            <div className="flex-1 w-full">
+              <div className="h-6 w-40 bg-base-dark/10 rounded mb-6 mx-auto lg:mx-0" />
+              <div className="h-16 md:h-24 lg:h-28 bg-base-dark/10 rounded-2xl mb-10 w-3/4 mx-auto lg:mx-0" />
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                <div className="w-60 h-20 bg-base-dark/5 border border-border-light rounded-2xl" />
+                <div className="w-60 h-20 bg-base-dark/5 border border-border-light rounded-2xl" />
+              </div>
+            </div>
+
+            <div className="w-full sm:w-[420px] lg:w-[480px] shrink-0">
+              <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-border-light shadow-xl">
+                <div className="h-14 md:h-auto md:w-24 bg-base-dark/15 shrink-0" />
+                <div className="flex-1 aspect-[3/4] bg-white" />
+              </div>
             </div>
           </div>
-
-          <div className="w-full sm:w-[500px] lg:w-[600px] flex-shrink-0 mt-8 lg:mt-0">
-            <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden bg-white/80 border-8 border-white/90" />
-          </div>
-          
         </div>
       </div>
 
       {/* Content Skeleton */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16 md:mt-24">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
           <div className="lg:col-span-2">
             <div className="h-10 w-64 bg-base-dark/10 rounded-xl mb-6" />
             <div className="space-y-4">
@@ -39,10 +44,10 @@ export default function Loading() {
               <div className="h-4 bg-base-dark/5 rounded-full w-3/4" />
             </div>
           </div>
-          
+
           {/* Sidebar Skeleton */}
           <div className="lg:col-span-1">
-            <div className="bg-canvas-light p-8 rounded-3xl border border-border-light h-96" />
+            <div className="bg-canvas-light border border-border-light border-t-4 border-t-accent-green/40 rounded-3xl h-96" />
           </div>
         </div>
       </div>

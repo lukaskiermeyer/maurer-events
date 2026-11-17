@@ -1,19 +1,22 @@
 "use client";
 import Image from 'next/image';
 
-import type { EventRecord } from '@/types/domain';
+import type { EventRecord, GalleryWithEvent } from '@/types/domain';
 
 import { useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { deleteEvent, createEvent, convertEventToGallery, toggleFeaturedGallery } from "@/app/actions/events";
+import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
 import { uploadImage } from "@/lib/client-image-upload";
 
 export default function AdminGalleryTab({ 
   galleries,
-  convertibleEvents 
+  convertibleEvents,
+  initialGallery = []
 }: { 
   galleries: EventRecord[],
-  convertibleEvents: EventRecord[]
+  convertibleEvents: EventRecord[],
+  initialGallery?: GalleryWithEvent[]
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -26,6 +29,7 @@ export default function AdminGalleryTab({
   const [featuredState, setFeaturedState] = useState<Record<string, boolean>>({});
 
   const [file, setFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -33,6 +37,46 @@ export default function AdminGalleryTab({
     description: "",
     imageUrl: "",
   });
+
+  // State for adding images to an existing album
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadUrl, setUploadUrl] = useState("");
+  const [selectedAlbumId, setSelectedAlbumId] = useState(galleries.length > 0 ? galleries[0].id : "");
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  const handleImageUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (uploadFiles.length === 0 && !uploadUrl) {
+      alert("Bitte wähle ein Bild aus oder gib eine URL ein.");
+      return;
+    }
+    setIsUploadingImages(true);
+    try {
+      const targetId = selectedAlbumId || null;
+      if (uploadFiles.length > 0) {
+        for (const f of uploadFiles) {
+          const uploadData = new FormData();
+          uploadData.append("file", f);
+          const uploadRes = await uploadImage(uploadData);
+          if (uploadRes.success) {
+            await addGalleryImage(targetId, uploadRes.url);
+          } else {
+            alert("Fehler beim Bildupload: " + uploadRes.error);
+            setIsUploadingImages(false);
+            return;
+          }
+        }
+      } else if (uploadUrl) {
+        await addGalleryImage(targetId, uploadUrl);
+      }
+      setUploadFiles([]);
+      setUploadUrl("");
+      window.location.reload();
+    } catch {
+      alert("Fehler beim Hochladen.");
+    }
+    setIsUploadingImages(false);
+  };
 
   const pastEvents = convertibleEvents.filter(e => {
     const end = e.endDate ? new Date(e.endDate) : new Date(e.date);
@@ -85,7 +129,7 @@ export default function AdminGalleryTab({
         }
       }
 
-      await createEvent({
+      const newId = await createEvent({
         ...formData,
         imageUrl: finalImageUrl,
         date: new Date(formData.date),
@@ -93,10 +137,26 @@ export default function AdminGalleryTab({
         reservable: false,
         type: 'gallery'
       });
+
+      // Alle weiteren Bilder zum neuen Album hochladen
+      if (newId && galleryFiles.length > 0) {
+        for (const gf of galleryFiles) {
+          const uploadData = new FormData();
+          uploadData.append("file", gf);
+          const uploadRes = await uploadImage(uploadData);
+          if (uploadRes.success) {
+            await addGalleryImage(newId, uploadRes.url);
+          } else {
+            alert("Fehler beim Bildupload: " + uploadRes.error);
+          }
+        }
+      }
+
       setFormData({
         title: "", date: "", location: "", description: "", imageUrl: "",
       });
       setFile(null);
+      setGalleryFiles([]);
       window.location.reload();
     } catch {
       alert("Fehler beim Speichern.");
@@ -125,6 +185,75 @@ export default function AdminGalleryTab({
 
   return (
     <div className="relative min-h-[500px] pb-24">
+      {/* Prominenter Hinzufügen-Button oben */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h3 className="font-display font-bold text-2xl text-base-dark">Galerie verwalten</h3>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-accent-green text-white font-bold px-6 py-3 rounded-xl shadow-md hover:bg-base-dark transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Album / Bilder hinzufügen
+        </button>
+      </div>
+
+      {/* Bilder zu bestehendem Album hinzufügen */}
+      <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm mb-6">
+        <h4 className="font-bold mb-4 font-display text-xl">Bilder zu Album hinzufügen</h4>
+        {galleries.length === 0 ? (
+          <p className="text-sm opacity-50">Noch keine Alben vorhanden. Erstelle zuerst ein Album.</p>
+        ) : (
+          <form onSubmit={handleImageUpload} className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="w-full md:w-1/4">
+              <label className="block text-xs font-bold uppercase opacity-70 mb-1">Zugehöriges Fest (optional)</label>
+              <select
+                value={selectedAlbumId}
+                onChange={e => setSelectedAlbumId(e.target.value)}
+                className="w-full bg-base-light p-3 rounded-lg border border-border-light text-sm focus:border-accent-green outline-none"
+              >
+                <option value="">Kein Fest (allgemein)</option>
+                {galleries.map(g => (
+                  <option key={g.id} value={g.id}>{g.title} ({new Date(g.date).toLocaleDateString('de-DE')})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 w-full">
+              <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei(en)</label>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={e => setUploadFiles(e.target.files ? Array.from(e.target.files) : [])}
+                className="w-full bg-base-light p-2 rounded-lg border border-border-light text-sm"
+                disabled={uploadUrl.length > 0}
+              />
+            </div>
+            <div className="font-bold opacity-50 py-3 text-sm">ODER</div>
+            <div className="flex-1 w-full">
+              <label className="block text-xs font-bold uppercase opacity-70 mb-1">Bild-URL (extern)</label>
+              <input
+                type="url"
+                value={uploadUrl}
+                onChange={e => setUploadUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full bg-base-light p-3 rounded-lg border border-border-light text-sm focus:border-accent-green outline-none"
+                disabled={uploadFiles.length > 0}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isUploadingImages || (uploadFiles.length === 0 && !uploadUrl)}
+              className="bg-accent-green text-white font-bold px-6 py-3 rounded-lg text-sm disabled:opacity-50 hover:bg-base-dark transition-colors"
+            >
+              {isUploadingImages ? "Lädt..." : "Hinzufügen"}
+            </button>
+          </form>
+        )}
+      </div>
+
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
@@ -193,6 +322,38 @@ export default function AdminGalleryTab({
           </div>
         )}
       </div>
+
+      {/* Bilder ohne Fest (nicht verknüpft) */}
+      {(() => {
+        const unlinked = initialGallery.filter(img => !img.event);
+        if (unlinked.length === 0) return null;
+        return (
+          <div className="mt-8 bg-white p-6 rounded-2xl border border-border-light shadow-sm">
+            <h4 className="font-bold mb-4 font-display text-xl">Bilder ohne Fest ({unlinked.length})</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {unlinked.map((img) => (
+                <div key={img.gallery.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group shadow-sm bg-base-light">
+                  <Image src={img.gallery.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-105 transition-transform" />
+                  <button
+                    onClick={async () => {
+                      if (confirm("Bild wirklich löschen?")) {
+                        setIsUploadingImages(true);
+                        await removeGalleryImage(img.gallery.id);
+                        window.location.reload();
+                      }
+                    }}
+                    className="admin-image-action absolute top-2 right-2 bg-red-500 text-white w-11 h-11 rounded-full transition-opacity flex items-center justify-center font-bold shadow-md hover:bg-red-600 z-10"
+                    title="Bild löschen"
+                    aria-label="Bild löschen"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Floating Action Button */}
       <button 
@@ -306,6 +467,20 @@ export default function AdminGalleryTab({
                     </div>
                   </div>
                   
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold mb-1 opacity-70">Weitere Bilder (alle auf einmal)</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={e => setGalleryFiles(e.target.files ? Array.from(e.target.files) : [])}
+                      className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm"
+                    />
+                    {galleryFiles.length > 0 && (
+                      <p className="text-xs opacity-60">{galleryFiles.length} Bild(er) ausgewählt</p>
+                    )}
+                  </div>
+
                   <div className="pt-4 flex gap-3">
                     <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 bg-base-light font-bold py-3 rounded-lg hover:bg-border-light transition-colors">
                       Zurück

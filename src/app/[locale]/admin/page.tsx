@@ -1,5 +1,6 @@
 import { getAllEvents, getAdminStats } from "@/app/actions/events";
 import { getCareerContent } from "@/app/actions/career";
+import { getAllGalleryImages } from "@/app/actions/gallery";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
@@ -14,10 +15,12 @@ export default async function AdminPage() {
   
   let events = [];
   let stats = null;
+  let galleryImages = [];
   let loadFailed = false;
   try {
     events = await getAllEvents();
     stats = await getAdminStats();
+    galleryImages = await getAllGalleryImages();
   } catch {
     loadFailed = true;
     console.error("Admin overview unavailable");
@@ -33,7 +36,6 @@ export default async function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div><h1 className="text-3xl sm:text-4xl font-display font-black text-base-dark">Deine Veranstaltungen</h1><p className="mt-2 text-base-dark/60">Buchungen verwalten, Helfer freigeben und den Einlass starten.</p></div>
           <Link href="/admin/scan" className="min-h-12 inline-flex items-center px-5 rounded-xl bg-accent-green text-white font-bold">Tickets scannen</Link>
-            <Link href="/admin/festchancen" className="min-h-12 inline-flex items-center px-5 rounded-xl bg-white border border-border-light text-base-dark font-bold hover:border-accent-green transition-colors">Fest-Chancen</Link>
         </div>
         
         {loadFailed && (
@@ -42,7 +44,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} />
+        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} initialGallery={galleryImages} />
       </div>
     </div>
   );

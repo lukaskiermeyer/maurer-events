@@ -12,16 +12,6 @@ const NAV_ITEMS = [
       pathname === '/admin' || pathname.startsWith('/admin/events'),
   },
   {
-    href: '/admin/festchancen',
-    label: 'Fest Chancen',
-    isActive: (pathname: string) => pathname.startsWith('/admin/festchancen'),
-  },
-  {
-    href: '/admin/vereins-radar',
-    label: 'Vereins-Radar',
-    isActive: (pathname: string) => pathname.startsWith('/admin/vereins-radar'),
-  },
-  {
     href: '/admin/kunden',
     label: 'Kunden',
     isActive: (pathname: string) => pathname.startsWith('/admin/kunden'),
@@ -35,6 +25,12 @@ const NAV_ITEMS = [
     href: '/admin/personal',
     label: 'Personal',
     isActive: (pathname: string) => pathname.startsWith('/admin/personal'),
+  },
+  {
+    href: '/admin/festchancen',
+    label: 'Fest-Chancen & Radar',
+    isActive: (pathname: string) =>
+      pathname.startsWith('/admin/festchancen') || pathname.startsWith('/admin/vereins-radar'),
   },
   {
     href: '/admin/admins',

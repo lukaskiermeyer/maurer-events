@@ -56,6 +56,20 @@
     "empty_title_2": "cooking!",
     "empty_text": "The host is still fine-tuning the program. As soon as the next dates are set, you'll find them right here. Check back soon!"
   },
+  "EventDetail": {
+    "back": "Back to overview",
+    "date": "Date",
+    "location": "Location",
+    "status": "Status",
+    "about_1": "About this",
+    "about_2": "Event",
+    "overview": "At a glance",
+    "reserve_cta": "Reserve a table",
+    "email_cta": "Request a table",
+    "gallery_1": "Memories",
+    "gallery_2": "Gallery",
+    "gallery_all": "View all photos"
+  },
   "Contact": {
     "title": "Let's Talk!",
     "subtitle": "Tell us about your plans and we'll turn them into a celebration.",

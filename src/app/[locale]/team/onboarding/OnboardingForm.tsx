@@ -165,7 +165,7 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
       const data = new FormData();
       data.append("file", pickedFile);
       data.append("kind", docKind);
-      const response = await fetch("/api/team/upload", { method: "POST", body: data });
+      const response = await fetch("/api/team/upload", { method: "POST", body: data, credentials: "include" });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) {
         setMessage(result?.error || "Upload fehlgeschlagen.");

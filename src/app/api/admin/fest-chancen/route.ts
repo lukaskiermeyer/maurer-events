@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/db";
 import { festChances } from "@/db/schema";
-import { and, eq, gte, ilike, or, sql, desc, asc } from "drizzle-orm";
+import { and, eq, gte, ilike, ne, or, sql, desc, asc } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,6 +110,7 @@ export async function GET(request: Request) {
 
   const conditions = [];
   if (status) conditions.push(eq(festChances.status, status));
+  else conditions.push(ne(festChances.status, "deleted"));
   if (region) conditions.push(eq(festChances.region, region));
   if (leadType) conditions.push(eq(festChances.leadType, leadType));
   if (wirtStatus) conditions.push(eq(festChances.wirtStatus, wirtStatus));

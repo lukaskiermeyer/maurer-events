@@ -10,8 +10,6 @@ import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [showNavbarOnHome, setShowNavbar] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [isInHero, setIsInHero] = useState(true);
   const pathname = usePathname();
   const t = useTranslations("Navbar");
@@ -19,17 +17,10 @@ export default function Navbar() {
   const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
   // Mobile: Header schon im Hero sichtbar (transparent), Desktop wie bisher
   // erst nach 80 % Scroll.
-  const showNavbar = !isHome || isMobile || showNavbarOnHome;
-  // Transparent nur mobil im Hero (und nicht bei offenem Menue).
-  const transparent = isHome && isMobile && isInHero && !isOpen;
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
-    const updateMobile = () => setIsMobile(mq.matches);
-    updateMobile();
-    mq.addEventListener("change", updateMobile);
-    return () => mq.removeEventListener("change", updateMobile);
-  }, []);
+  // Header immer sichtbar (auch auf großen Bildschirmen / Startseite)
+  const showNavbar = true;
+  // Transparent im Hero (auch auf großen Bildschirmen), nicht bei offenem Menue.
+  const transparent = isHome && isInHero && !isOpen;
 
   useEffect(() => {
     // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
@@ -44,11 +35,8 @@ export default function Navbar() {
       // und weisses Logo lag auf hellem Grund).
       const hero = document.getElementById("start");
       setIsInHero(hero ? hero.getBoundingClientRect().bottom > 96 : window.scrollY < window.innerHeight);
-      // Show navbar after scrolling past 80% of the viewport height (nur auf Startseite, Desktop)
-      if (window.scrollY > window.innerHeight * 0.8) {
-        setShowNavbar(true);
-      } else {
-        setShowNavbar(false);
+      // Header bleibt immer sichtbar – Menue bei Scroll nach oben schliessen
+      if (window.scrollY <= window.innerHeight * 0.8) {
         setIsOpen(false);
       }
     };
@@ -80,7 +68,7 @@ export default function Navbar() {
       <nav 
         className={`fixed w-full z-50 transition-all duration-500 ease-in-out ${
           transparent
-            ? "bg-transparent border-b border-transparent"
+            ? "bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-[0_1px_12px_rgba(0,0,0,0.08)]"
             : "bg-base-light/95 backdrop-blur-md border-b border-base-dark"
         } ${
           showNavbar ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
@@ -100,7 +88,7 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="text-base-dark hover:text-accent-green font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors"
+                  className={`font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors ${transparent ? "text-white hover:text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]" : "text-base-dark hover:text-accent-green"}`}
                 >
                   {link.name}
                 </Link>

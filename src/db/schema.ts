@@ -453,7 +453,7 @@ export const vouchers = pgTable('vouchers', {
 
 export const galleries = pgTable('galleries', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventId: uuid('event_id').references(() => events.id, { onDelete: 'restrict' }).notNull(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'restrict' }), // optional: null = not linked to a fest
   imageUrl: text('image_url').notNull(),
   publicId: text('public_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

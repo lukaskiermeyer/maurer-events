@@ -1,6 +1,6 @@
 "use client";
 
-import type { EventRecord, AdminStats, CareerContent } from '@/types/domain';
+import type { EventRecord, AdminStats, CareerContent, GalleryWithEvent } from '@/types/domain';
 
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
@@ -10,11 +10,13 @@ import AdminCareerTab from "./AdminCareerTab";
 export default function AdminTabs({
   initialEvents,
   stats,
-  careerContent
+  careerContent,
+  initialGallery = []
 }: {
   initialEvents: EventRecord[],
   stats?: AdminStats,
-  careerContent: CareerContent
+  careerContent: CareerContent,
+  initialGallery?: GalleryWithEvent[]
 }) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career">("dashboard");
 
@@ -166,7 +168,7 @@ export default function AdminTabs({
       )}
       
       {activeTab === "gallery" && (
-        <AdminGalleryTab galleries={pastGalleries} convertibleEvents={futureEvents} />
+        <AdminGalleryTab galleries={pastGalleries} convertibleEvents={futureEvents} initialGallery={initialGallery} />
       )}
 
       {activeTab === "career" && (

@@ -53,10 +53,10 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
   };
 
   const groupedAlbums = initialGallery.reduce((acc, img) => {
-    const eventId = img.event.id;
+    const eventId = img.event?.id ?? "__unlinked__";
     if (!acc[eventId]) {
       acc[eventId] = {
-        event: img.event,
+        event: img.event ?? ({ id: eventId, title: "Ohne Fest", date: new Date() } as unknown as EventRecord),
         images: []
       };
     }

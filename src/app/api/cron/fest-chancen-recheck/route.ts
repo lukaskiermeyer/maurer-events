@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { festChances } from "@/db/schema";
-import { and, eq, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, lte, ne } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const due = await db
     .select()
     .from(festChances)
-    .where(and(eq(festChances.leadType, "watch"), isNotNull(festChances.recheckAt), lte(festChances.recheckAt, now)));
+    .where(and(eq(festChances.leadType, "watch"), ne(festChances.status, "deleted"), isNotNull(festChances.recheckAt), lte(festChances.recheckAt, now)));
 
   // Reminder email (best effort)
   const recipient = process.env.FEST_CHANCEN_NOTIFY_EMAIL || process.env.CONTACT_EMAIL;

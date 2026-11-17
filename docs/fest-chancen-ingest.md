@@ -36,6 +36,7 @@ curl -X POST "https://<PRODUKTIONSDOMAIN>/api/admin/fest-chancen/ingest" \
 | `location` | string \| null | nein | null |
 | `region` | string \| null | nein | null |
 | `eventDate` | string \| null (`YYYY-MM-DD`) | nein | null |
+| `sourceDate` | string \| null (`YYYY-MM-DD`, Veröffentlichungsdatum der Quelle) | nein | null |
 | `monthsAhead` | int \| null | nein | null |
 | `jubileeYears` | int \| null | nein | null |
 | `festwirtStatus` | `open` \| `taken` \| `unknown` \| `closed` | nein | `unknown` |
@@ -56,14 +57,44 @@ Unbekannte Felder werden ignoriert.
 ## Antwortformat
 
 ```json
-{ "ok": true, "received": 2, "inserted": 1, "updated": 1, "skipped": 0, "runId": "run-123" }
+{ "ok": true, "received": 2, "inserted": 1, "updated": 1, "skipped": 0, "stale": 0 }
 ```
 
 Leeres Array:
 
 ```json
-{ "ok": true, "received": 0, "inserted": 0, "updated": 0, "skipped": 0, "runId": null }
+{ "ok": true, "received": 0, "inserted": 0, "updated": 0, "skipped": 0, "stale": 0 }
 ```
+
+`skipped` zählt ungültige Elemente, fehlgeschlagene Items, gelöschte Treffer und
+veraltete Elemente; `stale` ist die Teilmenge der veralteten Elemente.
+
+## Aktualitäts-Filter
+
+Elemente mit veralteter Datierung werden abgewiesen (`stale`), bevor sie
+angelegt oder aktualisiert werden:
+
+- `eventDate` liegt mehr als 31 Tage in der Vergangenheit (Kulanz für
+  mehrtägige Feste und `dateAssumed`),
+- `eventYear` liegt vor dem aktuellen Jahr,
+- `monthsAhead` ist negativ,
+- `sourceDate` ist älter als 24 Monate.
+
+Der Filter greift serverseitig und unabhängig von der n8n-Workflow-Version.
+Der Workflow `docs/n8n-festwirt-finder.json` filtert zusätzlich vor dem Senden
+(Quellen älter als 24 Monate über `sourceDate` bzw. Tavily `published_date`).
+
+## Löschen / Skip-Regel
+
+Im Admin gelöschte Chancen werden als Soft-Delete markiert
+(`fest_chances.status = 'deleted'`, Legacy-Zwilling `fest_opportunities.status =
+'ignore'`). Die Zeilen bleiben für das Dedupe-Matching erhalten: Trifft ein
+späterer Lauf per `eventKey` oder normalisierter URL auf eine gelöschte Chance,
+wird das Element übersprungen (kein Update, kein Legacy-Sync, keine
+Benachrichtigung). Gelöschte Chancen erscheinen nicht in Admin-Listen, im
+Lese-Endpoint (außer mit explizitem `?status=deleted`) und nicht in
+Recheck-Erinnerungen. Archivierte Legacy-Zeilen (`ignore`) werden ebenfalls
+nicht mehr aktualisiert.
 
 ## Fehlercodes
 

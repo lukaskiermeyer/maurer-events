@@ -52,6 +52,7 @@ export async function createEvent(data: {
     translateContent(data.description)
   ]);
 
+  let createdId: string | undefined;
   await db.transaction(async tx => {
   const [newEvent] = await tx.insert(events).values({
     title: data.title,
@@ -80,9 +81,12 @@ export async function createEvent(data: {
   }).returning({ id: events.id });
 
   await tx.insert(eventSettings).values({ eventId: newEvent.id });
+  createdId = newEvent.id;
   });
 
   revalidatePath("/");
+
+  return createdId;
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
   revalidateTag("events", "max");

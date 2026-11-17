@@ -2,13 +2,15 @@ import React from "react";
 import { getEvents, getEventById } from "@/app/actions/events";
 import { getGalleryImages } from "@/app/actions/gallery";
 import { Link } from "@/i18n/routing";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
 import parse from 'html-react-parser';
 import sanitizeHtml from 'sanitize-html';
+import { getTranslations } from "next-intl/server";
 import EmailReservationCard from "@/components/EmailReservationCard";
 import EventDocuments from "@/components/EventDocuments";
+import EventDetailStage from "@/components/event-detail/EventDetailStage";
+import GalleryGrid from "@/components/GalleryGrid";
 import { getPublicEventDocuments } from "@/app/actions/eventDocuments";
 import { reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
 
@@ -18,17 +20,34 @@ const ReservationSection = dynamicComponent(() => import("@/components/Reservati
   loading: () => <div className="animate-pulse h-96 bg-white/5 rounded-3xl mt-32"></div>
 });
 
+const GALLERY_TEASER_COUNT = 8;
 
+function formatDateRange(start: Date, end: Date | null, locale: string): string {
+  const tag = locale === "en" ? "en-US" : "de-DE";
+  const full = (date: Date) => date.toLocaleDateString(tag, { day: "2-digit", month: "long", year: "numeric" });
+  if (!end || end.getTime() === start.getTime()) return full(start);
+  if (end.getFullYear() === start.getFullYear() && end.getMonth() === start.getMonth()) {
+    return locale === "en"
+      ? `${start.toLocaleDateString(tag, { month: "long" })} ${start.getDate()}–${end.getDate()}, ${end.getFullYear()}`
+      : `${start.getDate()}.–${full(end)}`;
+  }
+  if (end.getFullYear() === start.getFullYear()) {
+    return locale === "en"
+      ? `${start.toLocaleDateString(tag, { month: "long", day: "numeric" })} – ${full(end)}`
+      : `${start.toLocaleDateString(tag, { day: "2-digit", month: "long" })} – ${full(end)}`;
+  }
+  return `${full(start)} – ${full(end)}`;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
   const event = await getEventById(id);
   if (!event) return { title: "Event nicht gefunden" };
-  
+
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-  
-  return { 
+
+  return {
     title: `${title} | MAURER EVENTS`,
     description: description,
     openGraph: {
@@ -47,12 +66,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
-  
-  const [event, galleryImages, upcomingEvents, documents] = await Promise.all([
+
+  const [event, galleryImages, upcomingEvents, documents, t] = await Promise.all([
     getEventById(id),
     getGalleryImages(id),
     getEvents(),
-    getPublicEventDocuments(id)
+    getPublicEventDocuments(id),
+    getTranslations({ locale, namespace: "EventDetail" })
   ]);
 
   if (!event) {
@@ -64,13 +84,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
   const reservationMode = resolveReservationMode(event);
   const statusLabel = reservationStatusLabel(reservationMode, locale);
-
-  const dateObj = new Date(event.date);
-  const dateStr = dateObj.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
+  const dateLabel = formatDateRange(new Date(event.date), event.endDate ? new Date(event.endDate) : null, locale);
+  const reservationCta = reservationMode === "online" ? t("reserve_cta") : reservationMode === "email" ? t("email_cta") : null;
+  const galleryTeaser = galleryImages.slice(0, GALLERY_TEASER_COUNT);
 
   const eventSchema = {
     "@context": "https://schema.org",
@@ -101,80 +117,17 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema).replace(/</g, '\\u003c') }}
       />
-      {/* Event Header Banner */}
-      <div className="bg-canvas-light border-b border-border-light pt-32 pb-20 relative overflow-hidden">
-        {event.imageUrl && (
-           <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-xl scale-110" style={{ backgroundImage: `url(${event.imageUrl})` }}></div>
-        )}
-        <div className="absolute inset-0 opacity-20 bg-accent-green mix-blend-overlay"></div>
-        <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-accent-green/20 rounded-full blur-3xl"></div>
-        
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10 flex flex-col lg:flex-row gap-16 lg:gap-24 items-center">
-          
-          <div className="flex-1 w-full text-center lg:text-left">
-            <Link href="/termine" className="inline-flex items-center text-sm font-bold uppercase tracking-widest text-accent-green hover:text-base-dark transition-colors mb-8 bg-white/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/50">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              {locale === "en" ? "Back to Overview" : "Zurück zur Übersicht"}
-            </Link>
-            
-            <h1 className="font-display font-black text-5xl md:text-7xl lg:text-8xl text-base-dark leading-[0.9] mb-10 drop-shadow-sm">
-              {title}
-            </h1>
-            
-            <div className="flex flex-wrap gap-6 text-base-dark/80 font-sans text-lg justify-center lg:justify-start">
-              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-6 py-4 rounded-2xl shadow-sm border border-white/50">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-green shadow-sm">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-bold uppercase tracking-widest text-base-dark/50 mb-0.5">{locale === "en" ? "Date" : "Datum"}</span>
-                  <span className="font-bold text-base-dark leading-tight block">{dateStr}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-6 py-4 rounded-2xl shadow-sm border border-white/50">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-accent-green shadow-sm">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-bold uppercase tracking-widest text-base-dark/50 mb-0.5">{locale === "en" ? "Location" : "Location"}</span>
-                  <span className="font-bold text-base-dark leading-tight block">{location}</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {event.imageUrl && (
-            <div className="w-full sm:w-[500px] lg:w-[600px] flex-shrink-0 mt-8 lg:mt-0 perspective-1000">
-              <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-8 border-white/90 bg-white transform md:rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
-                <Image 
-                  src={event.imageUrl} 
-                  alt={title} 
-                  fill
-                  className="object-contain" 
-                />
-              </div>
-            </div>
-          )}
-          
-        </div>
-      </div>
+      <EventDetailStage event={event} dateLabel={dateLabel} />
 
       {/* Event Details Content */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16 md:mt-24">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
           <div className="lg:col-span-2">
-            <h2 className="font-display font-bold text-3xl mb-6 text-base-dark">
-              {locale === "en" ? "About this Event" : "Über dieses Event"}
+            <h2 className="font-display font-bold text-3xl md:text-4xl mb-6 text-base-dark">
+              {t("about_1")} <span className="text-accent-green">{t("about_2")}</span>
             </h2>
-            <div className="prose prose-lg font-sans text-base-dark/80 max-w-none">
+            <div className="event-prose font-sans text-base-dark/80 max-w-none">
               {/* Parse the HTML output from the rich text editor safely */}
               {parse(sanitizeHtml(description || '', {
                 allowedTags: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h2', 'h3'],
@@ -182,31 +135,40 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   'a': ['href', 'target', 'rel']
                 }
               }))}
-              
-
             </div>
           </div>
-          
+
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-canvas-light p-8 rounded-3xl border border-border-light sticky top-32">
-              <h3 className="font-display font-bold text-xl mb-6 text-base-dark">Event-Übersicht</h3>
+            <div className="bg-canvas-light p-8 rounded-3xl border border-border-light border-t-4 border-t-accent-green sticky top-32 shadow-sm">
+              <h3 className="font-display font-bold text-xl mb-6 text-base-dark">{t("overview")}</h3>
               <ul className="space-y-6">
                 <li>
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">Datum</span>
-                  <span className="font-sans font-bold text-base-dark">{dateStr}</span>
+                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("date")}</span>
+                  <span className="font-sans font-bold text-base-dark">{dateLabel}</span>
                 </li>
                 <li className="pt-6 border-t border-border-light">
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">Ort</span>
-                  <span className="font-sans font-bold text-base-dark">{event.location}</span>
+                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("location")}</span>
+                  <span className="font-sans font-bold text-base-dark">{location}</span>
                 </li>
                 <li className="pt-6 border-t border-border-light">
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">Status</span>
+                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("status")}</span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-accent-green/10 text-accent-green font-bold text-sm">
                     {statusLabel}
                   </span>
                 </li>
               </ul>
+              {reservationCta && (
+                <a
+                  href="#reservierung"
+                  className="mt-8 flex items-center justify-center gap-2 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors shadow-sm"
+                >
+                  {reservationCta}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -215,7 +177,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       {/* Reservation Section */}
       <EventDocuments documents={documents} title={title} locale={locale} />
       {reservationMode === "online" && (
-        <div className="mt-32">
+        <div id="reservierung" className="mt-24 md:mt-32 scroll-mt-32">
           {/* ReservationSection loaded dynamically */}
           <ReservationSection
             initialEvents={[event, ...upcomingEvents.filter(upcoming => upcoming.id !== event.id)]}
@@ -223,19 +185,29 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           />
         </div>
       )}
-      {reservationMode === "email" && <EmailReservationCard event={event} locale={locale} />}
+      {reservationMode === "email" && (
+        <div id="reservierung" className="scroll-mt-32">
+          <EmailReservationCard event={event} locale={locale} />
+        </div>
+      )}
 
       {/* Gallery Section */}
       {galleryImages.length > 0 && (
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-32 mb-20">
-          <h2 className="font-display font-black text-4xl mb-8 text-center text-base-dark">Rückblick: <span className="text-accent-green">Galerie</span></h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {galleryImages.map(img => (
-              <div key={img.id} className="relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group">
-                <Image src={img.imageUrl} alt="Event Foto" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover group-hover:scale-110 transition-transform duration-700" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
-              </div>
-            ))}
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 mt-24 md:mt-32 mb-20">
+          <h2 className="font-display font-black text-4xl md:text-5xl mb-10 text-center text-base-dark">
+            {t("gallery_1")} <span className="text-accent-green">{t("gallery_2")}</span>
+          </h2>
+          <GalleryGrid images={galleryTeaser} />
+          <div className="mt-10 text-center">
+            <Link
+              href={`/galerie/${event.id}`}
+              className="inline-flex items-center gap-3 bg-border-light text-base-dark px-6 py-3 rounded-full hover:bg-accent-green hover:text-white font-display font-bold uppercase tracking-wide text-sm transition-colors shadow-sm"
+            >
+              {t("gallery_all")}
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </Link>
           </div>
         </div>
       )}

@@ -45,7 +45,7 @@ export default function ContractSign({
       const data = new FormData();
       data.append("file", file);
       data.append("contractId", contractId);
-      const response = await fetch("/api/team/upload", { method: "POST", body: data });
+      const response = await fetch("/api/team/upload", { method: "POST", body: data, credentials: "include" });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) { setMessage(result?.error || "Upload fehlgeschlagen."); return; }
       const attach = await attachSignedContract(contractId, result.fileUrl, result.sha256);

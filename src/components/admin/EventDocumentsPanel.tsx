@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { EventDocument } from "@/types/domain";
 import { deleteEventDocument } from "@/app/actions/eventDocuments";
 
@@ -10,7 +11,11 @@ function kindLabel(kind: string) {
 }
 
 export default function EventDocumentsPanel({ eventId, initialDocuments }: { eventId: string; initialDocuments: EventDocument[] }) {
+  const router = useRouter();
   const [documents, setDocuments] = useState(initialDocuments);
+  useEffect(() => {
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
   const [kind, setKind] = useState<"menu" | "program">("menu");
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -32,7 +37,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
       form.append("title", title || file.name.replace(/\.[^.]+$/, ""));
       form.append("isPublic", String(isPublic));
       form.append("file", file);
-      const response = await fetch("/api/admin/documents", { method: "POST", body: form });
+      const response = await fetch("/api/admin/documents", { method: "POST", body: form, credentials: "include" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) {
         setMessage({ kind: "error", text: data?.error || "Upload fehlgeschlagen." });
@@ -45,6 +50,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
       setMessage(data.warning
         ? { kind: "warning", text: data.warning }
         : { kind: "ok", text: "Dokument hochgeladen." });
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -56,6 +62,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
     try {
       await deleteEventDocument(document.id);
       setDocuments(current => current.filter(item => item.id !== document.id));
+      router.refresh();
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Löschen fehlgeschlagen." });
     } finally {
@@ -125,7 +132,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
                     </div>
                     <button type="button" onClick={() => remove(document)} disabled={busy} className="text-red-600 text-sm font-bold hover:underline disabled:opacity-50">Löschen</button>
                   </div>
-                  <a href={document.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-bold text-accent-green underline underline-offset-4">Datei öffnen</a>
+                  <a href={`/api/documents/${document.id}`} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-bold text-accent-green underline underline-offset-4">Datei öffnen</a>
                 </div>
               </article>
             ))}

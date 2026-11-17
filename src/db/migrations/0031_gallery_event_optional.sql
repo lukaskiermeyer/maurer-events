@@ -1,0 +1,1 @@
+ALTER TABLE "public"."galleries" ALTER COLUMN "event_id" DROP NOT NULL;

@@ -60,7 +60,7 @@ export default function DocumentViewer({
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">{title}</p>
             <h2 className="font-display font-bold text-lg md:text-2xl truncate">{activeDocument.title}</h2>
           </div>
-          <a href={activeDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 bg-white text-base-dark px-4 py-2 rounded-full text-sm font-bold hover:bg-canvas-light transition-colors">
+          <a href={`/api/documents/${activeDocument.id}`} target="_blank" rel="noopener noreferrer" className="shrink-0 bg-white text-base-dark px-4 py-2 rounded-full text-sm font-bold hover:bg-canvas-light transition-colors">
             {locale === "en" ? "Open file" : "Datei öffnen"}
           </a>
         </div>
@@ -74,7 +74,7 @@ export default function DocumentViewer({
             <div className="h-[55vh] flex flex-col items-center justify-center text-center p-8">
               <span className="font-display font-black text-5xl text-accent-green">PDF</span>
               <p className="mt-3 text-base-dark/60">{locale === "en" ? "PDF preview is not available. Please open the file." : "Für dieses PDF ist keine Vorschau verfügbar. Bitte die Datei öffnen."}</p>
-              <a href={activeDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-5 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm">
+              <a href={`/api/documents/${activeDocument.id}`} target="_blank" rel="noopener noreferrer" className="mt-5 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm">
                 {locale === "en" ? "Open PDF" : "PDF öffnen"}
               </a>
             </div>

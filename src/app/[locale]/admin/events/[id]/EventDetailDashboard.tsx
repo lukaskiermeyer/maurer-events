@@ -90,6 +90,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   });
 
   const [file, setFile] = useState<File | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   const [settingsData, setSettingsData] = useState({
@@ -669,7 +670,23 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
-                <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" />
+                <div
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(true); }}
+                  onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(false); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingImage(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped && dropped.type.startsWith("image/")) setFile(dropped);
+                  }}
+                  className={`relative w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDraggingImage ? "border-accent-green bg-accent-green/10" : "border-border-light bg-base-light"}`}
+                >
+                  <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <p className="text-sm font-bold text-base-dark/60 pointer-events-none">
+                    {isDraggingImage ? "Bild hier ablegen…" : "Bild hierher ziehen oder klicken zum Auswählen"}
+                  </p>
+                </div>
               {file && (
                 <div className="mt-2">
                   <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>

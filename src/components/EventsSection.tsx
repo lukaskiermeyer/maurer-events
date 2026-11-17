@@ -1,6 +1,4 @@
 "use client";
-import Image from 'next/image';
-
 import type { EventDocument, EventRecord } from '@/types/domain';
 
 import { useState } from "react";
@@ -212,38 +210,40 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                           viewport={{ once: true }}
                           transition={{ duration: 0.6, delay: index * 0.1 }}
                       >
-                        <div className="group relative bg-white border border-border-light rounded-2xl hover:border-accent-green hover:shadow-lg transition-all duration-300 overflow-hidden">
+                        <div className="group relative bg-white border border-border-light rounded-2xl hover:border-accent-green hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
                         <Link href={`/termine/${event.id}`} className="absolute inset-0 z-0" aria-label={title} />
                         <div className="relative z-10 pointer-events-none flex flex-col md:flex-row">
                           
-                          {/* Poster Area (hochkant, 3:4) */}
-                          <div className="w-full md:w-2/5 aspect-[3/4] relative bg-border-light/30 overflow-hidden shrink-0">
+                          {/* Black Date Stripe */}
+                          <div className="w-full md:w-24 bg-base-dark text-white flex md:flex-col items-center justify-center gap-2 md:gap-1 px-4 py-3 md:py-6 shrink-0 border-t-4 border-accent-green md:border-t-0 md:border-l-4">
+                            <span className="font-display font-black text-3xl md:text-4xl leading-none text-accent-green">{day}.</span>
+                            <span className="font-display font-bold text-xs md:text-sm uppercase tracking-widest text-white">{month}</span>
+                            <span className="font-display text-xs md:text-sm text-white/60">{year}</span>
+                          </div>
+
+                          {/* Poster Area */}
+                          <div className="shrink-0 overflow-hidden">
                             {event.imageUrl ? (
-                              <Image src={event.imageUrl} alt={title} fill sizes="(max-width: 767px) 100vw, 40vw" className="object-contain group-hover:scale-105 transition-transform duration-700" />
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={event.imageUrl} alt={title} className="h-auto w-auto max-h-[480px] max-w-full object-contain group-hover:scale-105 transition-transform duration-700" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
+                              <div className="w-48 aspect-video flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
                                 Kein Plakat
                               </div>
                             )}
-                            
-                            {/* Date Badge */}
-                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md rounded-xl px-4 py-2 flex flex-col items-center justify-center shadow-lg border border-white/50 group-hover:bg-accent-green group-hover:border-accent-green transition-colors">
-                              <span className="font-display font-black text-3xl leading-none text-base-dark group-hover:text-white transition-colors">{day}.</span>
-                              <span className="font-display font-bold text-xs uppercase text-accent-green group-hover:text-white/90 transition-colors mt-1">{month} {year}</span>
-                            </div>
                           </div>
 
                           {/* Content Area */}
-                          <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col justify-between">
+                          <div className="w-full md:flex-1 p-5 md:p-8 flex flex-col justify-between">
                             <div>
-                              <h3 className="font-display font-bold text-2xl md:text-3xl mb-2 text-base-dark group-hover:text-accent-green transition-colors">{title}</h3>
+                              <h3 className="font-display font-bold text-2xl md:text-4xl mb-3 text-base-dark group-hover:text-accent-green transition-colors leading-tight tracking-tight">{title}</h3>
                               {badge && (
                                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
                                     {badge}
                                   </span>
                               )}
-                              <p className="font-sans text-sm md:text-base text-base-dark/70 mb-4 line-clamp-2">{description}</p>
-                              <div className="flex items-center gap-2 text-sm font-bold text-accent-green">
+                              <p className="font-sans text-sm md:text-base text-base-dark/70 mb-5 line-clamp-3 leading-relaxed">{description}</p>
+                              <div className="flex items-center gap-2 text-sm md:text-base font-bold text-accent-green">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -252,7 +252,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                               </div>
                             </div>
 
-                            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                            <div className="mt-auto pt-5 border-t border-border-light/60 flex flex-wrap items-center justify-between gap-3">
                               {docs.length > 0 ? (
                                 <div className="relative z-20 pointer-events-auto flex flex-wrap gap-2">
                                   {menus.length > 0 && (
@@ -267,7 +267,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                                   )}
                                 </div>
                               ) : <span />}
-                              <span className="inline-flex items-center gap-2 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest group-hover:bg-base-dark transition-colors shadow-sm">
+                              <span className="inline-flex items-center gap-2 bg-accent-green text-white px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest group-hover:bg-base-dark transition-colors shadow-sm">
                                 {t("details_btn")}
                                 <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
