@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { getFestOpportunities, getFestRuns, triggerN8nWebhook, updateFestOpportunityStatus } from "@/app/actions/festchancen";
+import { getFestOpportunities, getFestRuns, getFestChances, triggerN8nWebhook, updateFestOpportunityStatus, updateFestChanceWirt } from "@/app/actions/festchancen";
 import StaffHeader from "@/components/admin/StaffHeader";
 import { Link } from "@/i18n/routing";
 import { revalidatePath } from "next/cache";
@@ -8,7 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function FestChancenPage() {
   await requireAdmin(true);
-  const [opportunities, runs] = await Promise.all([getFestOpportunities(), getFestRuns()]);
+  const [opportunities, runs, openLeads, watchLeads] = await Promise.all([
+    getFestOpportunities(),
+    getFestRuns(),
+    getFestChances("open"),
+    getFestChances("watch"),
+  ]);
 
   return (
     <div className="min-h-screen bg-base-light pb-12">
@@ -48,7 +53,68 @@ export default async function FestChancenPage() {
           </div>
         )}
 
-        {/* Opportunities */}
+        {/* Heiß (open) */}
+        <div className="mb-8">
+          <h2 className="text-xl font-display font-bold text-base-dark mb-3">🔥 Heiß (open)</h2>
+          {openLeads.length === 0 ? (
+            <div className="bg-white p-6 rounded-2xl border border-dashed border-border-light text-center text-base-dark/50 text-sm">Keine offenen Hot-Leads.</div>
+          ) : (
+            <div className="space-y-3">
+              {openLeads.map((o) => (
+                <div key={o.id} className="bg-white rounded-2xl border border-border-light shadow-sm p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${o.score >= 85 ? "bg-red-100 text-red-800" : o.score >= 60 ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-700"}`}>Score {o.score}</span>
+                        {o.region && <span className="text-xs font-bold uppercase text-base-dark/40">{o.region}</span>}
+                        <span className="text-xs text-base-dark/40">Wirt: {o.wirtStatus}</span>
+                      </div>
+                      <h3 className="font-bold text-base-dark">{o.title || o.sourceUrl}</h3>
+                      <p className="text-sm text-base-dark/60">{o.organizer || "—"} · {o.location || "—"} · {o.eventDate ? new Date(o.eventDate).toLocaleDateString("de-DE") : "Datum offen"}</p>
+                      {o.scoreReason && <p className="text-xs text-base-dark/50 mt-1">{o.scoreReason}</p>}
+                      {o.sourceUrl && <a href={o.sourceUrl} target="_blank" rel="noreferrer" className="text-xs text-accent-green hover:underline break-all mt-1 inline-block">Quelle öffnen ↗</a>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["neu", "kontaktiert", "im_gespraech", "angebot", "gewonnen", "verloren", "vertagt"].map((s) => (
+                        <form key={s} action={async () => { "use server"; await updateFestChanceWirt(o.id, s); }}>
+                          <button type="submit" className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${o.wirtStatus === s ? "bg-base-dark text-white border-base-dark" : "bg-white text-base-dark/60 border-border-light hover:border-accent-green"}`}>{s}</button>
+                        </form>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Watchlist */}
+        <div className="mb-8">
+          <h2 className="text-xl font-display font-bold text-base-dark mb-3">👁 Watchlist (watch, recheckAt)</h2>
+          {watchLeads.length === 0 ? (
+            <div className="bg-white p-6 rounded-2xl border border-dashed border-border-light text-center text-base-dark/50 text-sm">Keine Watch-Leads.</div>
+          ) : (
+            <div className="space-y-3">
+              {watchLeads.map((o) => (
+                <div key={o.id} className="bg-white rounded-2xl border border-border-light shadow-sm p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">Score {o.score}</span>
+                        {o.region && <span className="text-xs font-bold uppercase text-base-dark/40">{o.region}</span>}
+                        {o.recheckAt && <span className="text-xs text-amber-700 font-bold">Fällig: {new Date(o.recheckAt).toLocaleDateString("de-DE")}</span>}
+                      </div>
+                      <h3 className="font-bold text-base-dark">{o.title || o.sourceUrl}</h3>
+                      <p className="text-sm text-base-dark/60">{o.organizer || "—"} · {o.location || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Opportunities (legacy) */}
         {opportunities.length === 0 ? (
           <div className="bg-white p-10 rounded-2xl border border-dashed border-border-light text-center">
             <div className="text-4xl mb-3">🎯</div>

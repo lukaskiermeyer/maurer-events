@@ -8,7 +8,10 @@ import { eq, or, sql } from "drizzle-orm";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_ITEMS = 200;
+const MAX_ITEMS = 100;
+
+const LEAD_TYPES = ["open", "watch", "signal"] as const;
+const PLANNING_SIGNALS = ["none", "festausschuss", "termin", "presse"] as const;
 
 const ItemSchema = z.object({
   sourceUrl: z.string().url(),
@@ -33,7 +36,21 @@ const ItemSchema = z.object({
   status: z.string().nullable().optional().default(null),
   notes: z.string().nullable().optional().default(null),
   discoveredAt: z.string().datetime().optional(),
+  // Neue optionale Felder (Task 1)
+  leadType: z.enum(LEAD_TYPES).optional().default("open"),
+  eventKey: z.string().nullable().optional().default(null),
+  eventYear: z.number().int().nullable().optional().default(null),
+  dateAssumed: z.boolean().optional().default(false),
+  foundingYear: z.number().int().nullable().optional().default(null),
+  incumbentFestwirt: z.string().nullable().optional().default(null),
+  brauereiPartner: z.string().nullable().optional().default(null),
+  contactRole: z.string().nullable().optional().default(null),
+  planningSignal: z.enum(PLANNING_SIGNALS).optional().default("none"),
+  recurring: z.boolean().optional().default(false),
+  recheckAt: z.string().nullable().optional().default(null),
 });
+
+const LEAD_PRIORITY: Record<string, number> = { watch: 1, signal: 2, open: 3 };
 
 function getToken(request: Request): string {
   const auth = request.headers.get("authorization");
@@ -152,6 +169,54 @@ async function syncFestOpportunity(
   }
 }
 
+interface NotifyCandidate {
+  item: z.infer<typeof ItemSchema>;
+  isNew: boolean;
+  oldScore: number;
+  oldEmergency: boolean;
+}
+
+async function notifyLead(candidate: NotifyCandidate) {
+  const { item, isNew, oldScore, oldEmergency } = candidate;
+  if (item.leadType !== "open") return;
+  if (!(item.score >= 85 || item.emergency)) return;
+  // Spam-Schutz: nur bei Insert, neuem emergency-Flag oder Score-Sprung >= 10
+  if (!isNew) {
+    const newEmergency = item.emergency && !oldEmergency;
+    const scoreJump = item.score - oldScore >= 10;
+    if (!newEmergency && !scoreJump) return;
+  }
+
+  const subject = `Neuer Fest-Lead: ${item.title || item.sourceUrl}`;
+  const text = `Neuer Fest-Lead (Score ${item.score})\n\nTitel: ${item.title || "-"}\nRegion: ${item.region || "-"}\nURL: ${item.sourceUrl}\nEmergency: ${item.emergency}\n${item.scoreReason || ""}`;
+  // E-Mail
+  const recipient = process.env.FEST_CHANCEN_NOTIFY_EMAIL || process.env.CONTACT_EMAIL;
+  if (recipient && process.env.RESEND_API_KEY) {
+    try {
+      const { Resend } = await import("resend");
+      const { emailFrom } = await import("@/lib/email");
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
+        from: emailFrom(),
+        to: [recipient],
+        subject,
+        text,
+      });
+    } catch { /* best effort */ }
+  }
+  // Telegram
+  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+  const tgChat = process.env.TELEGRAM_CHAT_ID;
+  if (tgToken && tgChat) {
+    try {
+      await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: tgChat, text: `${subject}\n${text}` }),
+      });
+    } catch { /* best effort */ }
+  }
+}
+
 export async function POST(request: Request) {
   const expected = expectedToken();
   if (!expected) {
@@ -208,7 +273,6 @@ export async function POST(request: Request) {
   );
   const invalidCount = parsedItems.length - validItems.length;
 
-  // If nothing is processable, report validation errors (backwards-compatible 400).
   if (validItems.length === 0 && errors.length > 0) {
     return NextResponse.json({ ok: false, errors }, { status: 400 });
   }
@@ -220,6 +284,8 @@ export async function POST(request: Request) {
   let updated = 0;
   let skipped = invalidCount;
 
+  const notifyCandidates: NotifyCandidate[] = [];
+
   try {
     await db.transaction(async (tx) => {
       for (const item of validItems) {
@@ -228,11 +294,100 @@ export async function POST(request: Request) {
           : normalizeUrl(item.sourceUrl);
         const hash = sha256Hex(normalized);
         const itemRunId = item.runId ?? runId;
+
         await tx.execute(sql`SAVEPOINT item_sp`);
         try {
-            const [upsertResult] = await tx
-            .insert(festChances)
-            .values({
+          // Matching: eventKey first, else sourceUrlNormalized
+          let existing: any[] = [];
+          if (item.eventKey) {
+            existing = await tx
+              .select()
+              .from(festChances)
+              .where(eq(festChances.eventKey, item.eventKey))
+              .limit(1);
+          }
+          if (existing.length === 0) {
+            existing = await tx
+              .select()
+              .from(festChances)
+              .where(eq(festChances.sourceUrlNormalized, normalized))
+              .limit(1);
+          }
+
+          const recheckDate = item.recheckAt ? new Date(item.recheckAt + "T00:00:00Z") : null;
+
+          if (existing.length > 0) {
+            const old = existing[0];
+            const oldScore = old.score ?? 0;
+            const oldEmergency = !!old.emergency;
+            const oldLeadType = old.leadType || "open";
+            const newLeadType = item.leadType || "open";
+            const newPriority = LEAD_PRIORITY[newLeadType] ?? 1;
+            const oldPriority = LEAD_PRIORITY[oldLeadType] ?? 1;
+
+            // leadType-Priorität: watch darf open nicht downgraden
+            const canOverwriteTypeScore =
+              newPriority >= oldPriority && item.score >= oldScore;
+
+            // sourceUrls append
+            const oldUrls: string[] = Array.isArray(old.sourceUrls) ? old.sourceUrls : [];
+            const srcUrl = item.sourceUrl.trim();
+            const newUrls = oldUrls.includes(srcUrl) ? oldUrls : [...oldUrls, srcUrl];
+
+            const updateSet: Record<string, any> = {
+              sourceUrl: srcUrl,
+              sourceUrlNormalized: normalized,
+              urlHash: hash,
+              lastSeenAt: now,
+              updatedAt: now,
+              sourceUrls: newUrls,
+            };
+            if (canOverwriteTypeScore) {
+              updateSet.leadType = newLeadType;
+              updateSet.score = item.score;
+            }
+            // Update other metadata fields (contact, etc.) always (non-null preferred)
+            if (item.title != null) updateSet.title = item.title;
+            if (item.organizer != null) updateSet.organizer = item.organizer;
+            if (item.location != null) updateSet.location = item.location;
+            if (item.region != null) updateSet.region = item.region;
+            if (item.eventDate != null) updateSet.eventDate = item.eventDate;
+            if (item.monthsAhead != null) updateSet.monthsAhead = item.monthsAhead;
+            if (item.jubileeYears != null) updateSet.jubileeYears = item.jubileeYears;
+            if (item.festwirtStatus) updateSet.festwirtStatus = item.festwirtStatus;
+            if (item.eventType) updateSet.eventType = item.eventType;
+            if (item.contactName != null) updateSet.contactName = item.contactName;
+            if (item.contactEmail != null) updateSet.contactEmail = item.contactEmail;
+            if (item.contactPhone != null) updateSet.contactPhone = item.contactPhone;
+            if (item.contactRole != null) updateSet.contactRole = item.contactRole;
+            if (item.incumbentFestwirt != null) updateSet.incumbentFestwirt = item.incumbentFestwirt;
+            if (item.brauereiPartner != null) updateSet.brauereiPartner = item.brauereiPartner;
+            if (item.scoreReason != null) updateSet.scoreReason = item.scoreReason;
+            if (item.nimModel != null) updateSet.nimModel = item.nimModel;
+            if (item.runId != null) updateSet.runId = item.runId;
+            if (item.notes != null) updateSet.notes = item.notes;
+            if (item.eventKey != null) updateSet.eventKey = item.eventKey;
+            if (item.eventYear != null) updateSet.eventYear = item.eventYear;
+            if (item.dateAssumed !== undefined) updateSet.dateAssumed = item.dateAssumed;
+            if (item.foundingYear != null) updateSet.foundingYear = item.foundingYear;
+            if (item.planningSignal) updateSet.planningSignal = item.planningSignal;
+            if (item.recurring !== undefined) updateSet.recurring = item.recurring;
+            if (recheckDate) updateSet.recheckAt = recheckDate;
+            if (item.emergency !== undefined) updateSet.emergency = item.emergency;
+
+            await tx
+              .update(festChances)
+              .set(updateSet)
+              .where(eq(festChances.id, old.id));
+
+            // sync legacy
+            await syncFestOpportunity(tx, item, normalized, hash, itemRunId, now);
+
+            updated++;
+            notifyCandidates.push({ item, isNew: false, oldScore, oldEmergency });
+          } else {
+            // Insert
+            await tx.insert(festChances).values({
               urlHash: hash,
               sourceUrl: item.sourceUrl.trim(),
               sourceUrlNormalized: normalized,
@@ -253,43 +408,32 @@ export async function POST(request: Request) {
               scoreReason: item.scoreReason,
               nimModel: item.nimModel,
               runId: itemRunId,
-              status: "new",
+              status: item.status || "new",
               notes: item.notes,
               discoveredAt: item.discoveredAt ? new Date(item.discoveredAt) : now,
               lastSeenAt: now,
               createdAt: now,
               updatedAt: now,
-            })
-            .onConflictDoUpdate({
-              target: festChances.urlHash,
-              set: {
-                score: item.score,
-                scoreReason: item.scoreReason,
-                festwirtStatus: item.festwirtStatus,
-                eventType: item.eventType,
-                eventDate: item.eventDate,
-                monthsAhead: item.monthsAhead,
-                jubileeYears: item.jubileeYears,
-                contactName: item.contactName,
-                contactEmail: item.contactEmail,
-                contactPhone: item.contactPhone,
-                emergency: item.emergency,
-                nimModel: item.nimModel,
-                runId: itemRunId,
-                lastSeenAt: now,
-                updatedAt: now,
-                sourceUrl: item.sourceUrl.trim(),
-                sourceUrlNormalized: normalized,
-              },
-            })
-            .returning({ inserted: sql<boolean>`(xmax = 0)` });
-          const wasInserted = upsertResult?.inserted === true;
+              leadType: item.leadType || "open",
+              eventKey: item.eventKey,
+              eventYear: item.eventYear,
+              dateAssumed: item.dateAssumed,
+              foundingYear: item.foundingYear,
+              incumbentFestwirt: item.incumbentFestwirt,
+              brauereiPartner: item.brauereiPartner,
+              contactRole: item.contactRole,
+              planningSignal: item.planningSignal || "none",
+              recurring: item.recurring,
+              recheckAt: recheckDate,
+              sourceUrls: [item.sourceUrl.trim()],
+              wirtStatus: "neu",
+            });
 
-          // Keep legacy fest_opportunities in sync for admin UI.
-          await syncFestOpportunity(tx, item, normalized, hash, itemRunId, now);
+            await syncFestOpportunity(tx, item, normalized, hash, itemRunId, now);
 
-          if (wasInserted) inserted++;
-          else updated++;
+            inserted++;
+            notifyCandidates.push({ item, isNew: true, oldScore: 0, oldEmergency: false });
+          }
         } catch {
           await tx.execute(sql`ROLLBACK TO SAVEPOINT item_sp`);
           skipped++;
@@ -302,7 +446,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
   }
 
-  // Record run (best effort).
+  // Record run
   if (runId) {
     try {
       await db
@@ -322,9 +466,19 @@ export async function POST(request: Request) {
             error: null,
           },
         });
-    } catch {
-      // ignore
+    } catch { /* ignore */ }
+  }
+
+  // Notifications (best effort, after commit)
+  for (const c of notifyCandidates) {
+    // Only notify on insert or new emergency/score jump
+    if (!c.isNew) {
+      const newEmergency = c.item.emergency && !c.oldEmergency;
+      const scoreJump = c.item.score - c.oldScore >= 10;
+      if (!newEmergency && !scoreJump) continue;
     }
+    // fire and forget
+    notifyLead(c).catch(() => {});
   }
 
   return NextResponse.json({
@@ -333,7 +487,6 @@ export async function POST(request: Request) {
     inserted,
     updated,
     skipped,
-    runId,
   });
 }
 

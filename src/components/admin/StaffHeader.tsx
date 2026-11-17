@@ -17,6 +17,11 @@ const NAV_ITEMS = [
     isActive: (pathname: string) => pathname.startsWith('/admin/festchancen'),
   },
   {
+    href: '/admin/vereins-radar',
+    label: 'Vereins-Radar',
+    isActive: (pathname: string) => pathname.startsWith('/admin/vereins-radar'),
+  },
+  {
     href: '/admin/kunden',
     label: 'Kunden',
     isActive: (pathname: string) => pathname.startsWith('/admin/kunden'),

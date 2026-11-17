@@ -638,19 +638,85 @@ export const festChances = pgTable('fest_chances', {
   runId: text('run_id'),
   status: text('status').default('new').notNull(),
   notes: text('notes'),
+  // Lead-Typ + Erweiterungen (Task 1)
+  leadType: text('lead_type').default('open').notNull(), // open | watch | signal
+  eventKey: text('event_key'),
+  eventYear: integer('event_year'),
+  dateAssumed: boolean('date_assumed').default(false).notNull(),
+  foundingYear: integer('founding_year'),
+  incumbentFestwirt: text('incumbent_festwirt'),
+  brauereiPartner: text('brauerei_partner'),
+  contactRole: text('contact_role'),
+  planningSignal: text('planning_signal').default('none').notNull(), // none | festausschuss | termin | presse
+  recurring: boolean('recurring').default(false).notNull(),
+  recheckAt: timestamp('recheck_at'),
+  sourceUrls: jsonb('source_urls').$type<string[]>().default([]),
+  // Wirt-CRM (Task 3)
+  wirtStatus: text('wirt_status').default('neu').notNull(), // neu | kontaktiert | im_gespraech | angebot | gewonnen | verloren | vertagt
+  wirtNotiz: text('wirt_notiz'),
+  wiedervorlage: timestamp('wiedervorlage'),
   discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   urlHashUnique: unique('fest_chances_url_hash_unique').on(table.urlHash),
+  eventKeyIdx: index('fest_chances_event_key_idx').on(table.eventKey),
+  leadTypeIdx: index('fest_chances_lead_type_idx').on(table.leadType),
   statusScoreIdx: index('fest_chances_status_score_idx').on(table.status, table.score),
   regionIdx: index('fest_chances_region_idx').on(table.region),
   runIdIdx: index('fest_chances_run_id_idx').on(table.runId),
+  recheckIdx: index('fest_chances_recheck_idx').on(table.recheckAt),
 }));
 
 // Backwards-compatible alias (singular) for callers/tests that expect `festChance`.
 export const festChance = festChances;
+
+export const vereinsRadar = pgTable('vereins_radar', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  leadKey: text('lead_key').notNull(),
+  vereinName: text('verein_name'),
+  ort: text('ort'),
+  region: text('region'),
+  vereinsTyp: text('vereins_typ'),
+  foundingYear: integer('founding_year'),
+  mitglieder: integer('mitglieder'),
+  eventYear: integer('event_year'),
+  jubileeYears: integer('jubilee_years'),
+  monthsAhead: integer('months_ahead'),
+  dateAssumed: boolean('date_assumed').default(false).notNull(),
+  phase: text('phase'),
+  status: text('status').default('beobachten').notNull(), // connecten | jetzt_anbieten | beobachten
+  score: integer('score').default(0).notNull(),
+  scoreReason: text('score_reason'),
+  planningSignals: jsonb('planning_signals').$type<string[]>().default([]),
+  incumbentFestwirt: text('incumbent_festwirt'),
+  brauereiPartner: text('brauerei_partner'),
+  contactName: text('contact_name'),
+  contactRole: text('contact_role'),
+  contactEmail: text('contact_email'),
+  contactPhone: text('contact_phone'),
+  nextAction: text('next_action'),
+  sourceUrl: text('source_url'),
+  domain: text('domain'),
+  contentHash: text('content_hash'),
+  queryType: text('query_type'),
+  runId: text('run_id'),
+  discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  // Wirt-CRM
+  wirtStatus: text('wirt_status').default('neu').notNull(),
+  wirtNotiz: text('wirt_notiz'),
+  wiedervorlage: timestamp('wiedervorlage'),
+}, (table) => ({
+  leadKeyUnique: unique('vereins_radar_lead_key_unique').on(table.leadKey),
+  statusIdx: index('vereins_radar_status_idx').on(table.status),
+  regionIdx: index('vereins_radar_region_idx').on(table.region),
+  scoreIdx: index('vereins_radar_score_idx').on(table.score),
+  runIdIdx: index('vereins_radar_run_id_idx').on(table.runId),
+}));
 
 export const emailLog = pgTable('email_log', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -62,6 +62,10 @@ const CSV_COLUMNS = [
   "nimModel",
   "runId",
   "status",
+  "leadType",
+  "wirtStatus",
+  "wiedervorlage",
+  "eventKey",
   "notes",
   "discoveredAt",
   "lastSeenAt",
@@ -91,6 +95,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
   const region = url.searchParams.get("region");
+  const leadType = url.searchParams.get("leadType");
+  const wirtStatus = url.searchParams.get("wirtStatus");
   const minScoreRaw = url.searchParams.get("minScore");
   const q = url.searchParams.get("q");
   const sort = url.searchParams.get("sort") || "-score";
@@ -105,6 +111,8 @@ export async function GET(request: Request) {
   const conditions = [];
   if (status) conditions.push(eq(festChances.status, status));
   if (region) conditions.push(eq(festChances.region, region));
+  if (leadType) conditions.push(eq(festChances.leadType, leadType));
+  if (wirtStatus) conditions.push(eq(festChances.wirtStatus, wirtStatus));
   if (minScore !== null && !Number.isNaN(minScore)) conditions.push(gte(festChances.score, minScore));
   if (q) {
     const like = `%${q}%`;

@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import { festOpportunities, festRuns } from "@/db/schema";
+import { festOpportunities, festRuns, festChances, vereinsRadar } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { eq, desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export type FestOpportunity = typeof festOpportunities.$inferSelect;
@@ -20,10 +20,59 @@ export async function getFestRuns(limit = 10) {
   return rows;
 }
 
+export async function getFestChances(leadType?: string) {
+  await requireAdmin();
+  const q = db.select().from(festChances);
+  if (leadType) {
+    return q.where(eq(festChances.leadType, leadType)).orderBy(desc(festChances.score), desc(festChances.discoveredAt));
+  }
+  return q.orderBy(desc(festChances.score), desc(festChances.discoveredAt));
+}
+
+export async function getVereinsRadar(status?: string) {
+  await requireAdmin();
+  const q = db.select().from(vereinsRadar);
+  if (status) {
+    return q.where(eq(vereinsRadar.status, status)).orderBy(desc(vereinsRadar.score), desc(vereinsRadar.discoveredAt));
+  }
+  return q.orderBy(desc(vereinsRadar.score), desc(vereinsRadar.discoveredAt));
+}
+
+export async function updateVereinsRadarStatus(id: string, status: string) {
+  await requireAdmin();
+  await db.update(vereinsRadar).set({ status, updatedAt: new Date() }).where(eq(vereinsRadar.id, id));
+  revalidatePath("/[locale]/admin/vereins-radar", "page");
+  return { ok: true };
+}
+
 export async function updateFestOpportunityStatus(id: string, status: string) {
   await requireAdmin();
   await db.update(festOpportunities).set({ status, updatedAt: new Date() }).where(eq(festOpportunities.id, id));
   revalidatePath("/[locale]/admin/festchancen", "page");
+  return { ok: true };
+}
+
+export async function updateFestChanceWirt(id: string, wirtStatus: string, wirtNotiz?: string | null, wiedervorlage?: string | null) {
+  await requireAdmin();
+  await db.update(festChances).set({
+    wirtStatus,
+    wirtNotiz: wirtNotiz ?? undefined,
+    wiedervorlage: wiedervorlage ? new Date(wiedervorlage + "T00:00:00Z") : (wiedervorlage === null ? null : undefined),
+    updatedAt: new Date(),
+  }).where(eq(festChances.id, id));
+  revalidatePath("/[locale]/admin/festchancen", "page");
+  return { ok: true };
+}
+
+export async function updateVereinsRadarWirt(id: string, wirtStatus: string, wirtNotiz?: string | null, wiedervorlage?: string | null) {
+  await requireAdmin();
+  await db.update(vereinsRadar).set({
+    wirtStatus,
+    wirtNotiz: wirtNotiz ?? undefined,
+    wiedervorlage: wiedervorlage ? new Date(wiedervorlage + "T00:00:00Z") : (wiedervorlage === null ? null : undefined),
+    updatedAt: new Date(),
+  }).where(eq(vereinsRadar.id, id));
+  revalidatePath("/[locale]/admin/vereins-radar", "page");
   return { ok: true };
 }
 
