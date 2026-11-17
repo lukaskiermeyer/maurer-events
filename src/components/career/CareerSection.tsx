@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Turnstile } from '@marsidev/react-turnstile';
 
 import { submitApplication } from "@/app/actions/career";
+import DropZone from "@/components/ui/DropZone";
 import type { CareerContent } from "@/types/domain";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -39,8 +40,7 @@ export default function CareerSection({ content }: { content: CareerContent }) {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = event.target.files?.[0] ?? null;
+  const handlePickedFile = (selected: File | null) => {
     setErrorMessage('');
     if (!selected) {
       setFile(null);
@@ -60,6 +60,7 @@ export default function CareerSection({ content }: { content: CareerContent }) {
     }
     setFile(selected);
   };
+
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -202,13 +203,11 @@ export default function CareerSection({ content }: { content: CareerContent }) {
 
           <div>
             <label htmlFor="career-file" className="block text-sm font-bold mb-1">Lebenslauf (optional)</label>
-            <input
-              ref={fileInputRef}
-              id="career-file"
-              type="file"
+            <DropZone
               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-              onChange={handleFile}
-              className="w-full text-sm text-base-dark/70 border border-border-light rounded-xl p-3 bg-white file:mr-3 file:rounded-lg file:border-0 file:bg-canvas-light file:px-3 file:py-2 file:font-bold"
+              label={file ? file.name : "Lebenslauf hierher ziehen oder klicken"}
+              hint="PDF, JPG, PNG oder Word, maximal 2 MB"
+              onFiles={files => handlePickedFile(files[0] || null)}
             />
             <p className="text-xs opacity-50 mt-1">PDF, JPG, PNG oder Word, maximal 2 MB.</p>
           </div>

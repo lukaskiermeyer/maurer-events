@@ -1,36 +1,75 @@
 "use client";
 
-import { useState } from "react";
-import { attachSignedContract, signContractText } from "@/app/actions/contracts";
+import { useRef, useState } from "react";
+import { attachSignedContract } from "@/app/actions/contracts";
+import DropZone from "@/components/ui/DropZone";
 
 export default function ContractSign({
   contractId,
-  signatureMode,
   status,
   signedFileUrl,
-  memberName,
 }: {
   contractId: string;
   signatureMode: "text" | "handwritten";
   status: string;
   signedFileUrl: string | null;
-  memberName: string;
 }) {
-  const [name, setName] = useState(memberName);
-  const [accepted, setAccepted] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  const signText = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!accepted) { setMessage("Bitte den Vertrag bestätigen."); return; }
+  const getCtx = () => canvasRef.current?.getContext("2d") || null;
+
+  const startDraw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const ctx = getCtx();
+    if (!ctx) return;
+    const rect = canvasRef.current!.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(event.clientX - rect.left, event.clientY - rect.top);
+    setDrawing(true);
+  };
+  const draw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+    const rect = canvasRef.current!.getBoundingClientRect();
+    ctx.lineTo(event.clientX - rect.left, event.clientY - rect.top);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    setHasSignature(true);
+  };
+  const endDraw = () => setDrawing(false);
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = getCtx();
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+  };
+
+  const submitCanvas = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasSignature) { setMessage("Bitte zuerst unterschreiben."); return; }
     setBusy(true);
     setMessage("");
     try {
-      const result = await signContractText(contractId, name);
-      if (!result.success) { setMessage(result.error || "Unterschrift fehlgeschlagen."); return; }
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Unterschrift konnte nicht erstellt werden.");
+      const data = new FormData();
+      data.append("file", new File([blob], "unterschrift.png", { type: "image/png" }));
+      data.append("contractId", contractId);
+      const response = await fetch("/api/team/upload", { method: "POST", body: data, credentials: "include" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) { setMessage(result?.error || "Upload fehlgeschlagen."); return; }
+      const attach = await attachSignedContract(contractId, result.fileUrl, result.sha256);
+      if (!attach.success) { setMessage(attach.error || "Vertrag konnte nicht gespeichert werden."); return; }
       window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unterschrift fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -51,6 +90,8 @@ export default function ContractSign({
       const attach = await attachSignedContract(contractId, result.fileUrl, result.sha256);
       if (!attach.success) { setMessage(attach.error || "Vertrag konnte nicht gespeichert werden."); return; }
       window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Upload fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -67,27 +108,40 @@ export default function ContractSign({
   }
 
   return (
-    <div className="no-print bg-white border border-border-light rounded-2xl p-5 space-y-4">
+    <div className="no-print bg-white border border-border-light rounded-2xl p-5 space-y-6">
       <h2 className="font-display font-bold text-xl">Vertrag unterschreiben</h2>
-      {signatureMode === "text" ? (
-        <form onSubmit={signText} className="space-y-3">
-          <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} className="mt-1 w-5 h-5 accent-accent-green" />
-            <span>Ich habe den Vertrag gelesen und akzeptiere ihn.</span>
-          </label>
-          <div><label className="block text-xs font-bold uppercase mb-1">Vollständiger Name</label><input required value={name} onChange={event => setName(event.target.value)} className="w-full max-w-md bg-base-light border border-border-light rounded-lg p-3" /></div>
-          <button type="submit" disabled={busy} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird unterschrieben…" : "Digital unterschreiben"}</button>
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-base-dark/70">Dieser Vertrag muss handschriftlich unterschrieben werden. Drucke ihn aus, unterschreibe ihn und lade die unterschriebene Seite wieder hoch.</p>
-          <button type="button" onClick={() => window.print()} className="bg-base-dark text-white px-6 py-3 rounded-xl font-bold">Vertrag drucken</button>
-          <form onSubmit={uploadSigned} className="space-y-3">
-            <div><label className="block text-xs font-bold uppercase mb-1">Unterschriebener Vertrag (PDF/Foto)</label><input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={event => setFile(event.target.files?.[0] || null)} className="w-full bg-base-light border border-border-light rounded-lg p-2 text-sm" /></div>
-            <button type="submit" disabled={busy || !file} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird hochgeladen…" : "Unterschriebenen Vertrag hochladen"}</button>
-          </form>
+
+      <div className="space-y-3">
+        <p className="text-sm font-bold">Option 1: Unterschrift mit Stift/Stylus (digital)</p>
+        <canvas
+          ref={canvasRef}
+          width={500}
+          height={160}
+          className="w-full max-w-[500px] h-40 border border-border-light rounded-xl bg-white touch-none cursor-crosshair"
+          onPointerDown={startDraw}
+          onPointerMove={draw}
+          onPointerUp={endDraw}
+          onPointerLeave={endDraw}
+        />
+        <div className="flex gap-3">
+          <button type="button" onClick={clearCanvas} className="bg-base-light text-base-dark px-4 py-2 rounded-xl font-bold text-sm">Löschen</button>
+          <button type="button" onClick={submitCanvas} disabled={busy || !hasSignature} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird gespeichert…" : "Digital unterschreiben"}</button>
         </div>
-      )}
+      </div>
+
+      <div className="space-y-3 pt-4 border-t border-border-light">
+        <p className="text-sm font-bold">Option 2: Ausdrucken, unterschreiben, einscannen und hochladen</p>
+        <p className="text-sm text-base-dark/70">Drucke den Vertrag aus, unterschreibe ihn handschriftlich und lade die unterschriebene Seite als PDF oder Foto hoch.</p>
+        <button type="button" onClick={() => window.print()} className="bg-base-dark text-white px-6 py-3 rounded-xl font-bold">Vertrag drucken</button>
+        <form onSubmit={uploadSigned} className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold uppercase mb-1">Unterschriebener Vertrag (PDF/Foto)</label>
+            <DropZone accept="application/pdf,image/jpeg,image/png,image/webp" label={file ? file.name : "Datei hierher ziehen oder klicken"} onFiles={files => setFile(files[0] || null)} />
+          </div>
+          <button type="submit" disabled={busy || !file} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird hochgeladen…" : "Unterschriebenen Vertrag hochladen"}</button>
+        </form>
+      </div>
+
       {message && <p className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">{message}</p>}
     </div>
   );

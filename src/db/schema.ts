@@ -13,6 +13,7 @@ export const events = pgTable('events', {
   date: timestamp('date').notNull(), // Start date
   endDate: timestamp('end_date'), // Optional end date for multi-day
   location: text('location').notNull(),
+  zip: text('zip'),
   description: text('description').notNull(),
   titleEn: text('title_en'),
   locationEn: text('location_en'),
@@ -121,6 +122,7 @@ export const staffRoles = pgTable('staff_roles', {
   name: text('name').notNull(),
   description: text('description'),
   hourlyRateCents: integer('hourly_rate_cents').default(0).notNull(),
+  profitSharePercent: real('profit_share_percent'),
   requiredDocuments: jsonb('required_documents').$type<string[]>().default([]).notNull(),
   requiresHandwrittenSignature: boolean('requires_handwritten_signature').default(false).notNull(),
   active: boolean('active').default(true).notNull(),
@@ -146,6 +148,7 @@ export const staff = pgTable('staff', {
   status: text('status').default('invited').notNull(), // invited | onboarding | ready | active | inactive
   employmentType: text('employment_type').default('minijob').notNull(), // minijob | short_term | student | employed
   hourlyRateCents: integer('hourly_rate_cents').default(0).notNull(),
+  profitSharePercent: real('profit_share_percent'),
   monthlySalaryCents: integer('monthly_salary_cents').default(0).notNull(),
   taxIdEnc: text('tax_id_enc'),
   taxClass: text('tax_class'),
@@ -207,7 +210,7 @@ export const staffDocuments = pgTable('staff_documents', {
 }, (table) => ({
   staffIdx: index('staff_document_staff_idx').on(table.staffId),
   statusCheck: check('staff_documents_status_check', sql`${table.status} in ('pending', 'verified', 'rejected')`),
-  kindCheck: check('staff_documents_kind_check', sql`${table.kind} in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'other')`),
+  kindCheck: check('staff_documents_kind_check', sql`${table.kind} in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'driver_license', 'other')`),
 }));
 
 export const contractTemplates = pgTable('contract_templates', {
@@ -282,6 +285,7 @@ export const payrollExports = pgTable('payroll_exports', {  id: uuid('id').defau
   periodFrom: timestamp('period_from'),
   periodTo: timestamp('period_to'),
   rowCount: integer('row_count').notNull(),
+  selectedStaffIds: jsonb('selected_staff_ids').$type<string[]>(),
   fileHash: text('file_hash').notNull(),
   tokenHash: text('token_hash').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
@@ -331,8 +335,8 @@ export const eventStaffRequirements = pgTable('event_staff_requirements', {
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
   roleId: uuid('role_id').references(() => staffRoles.id, { onDelete: 'restrict' }).notNull(),
   date: timestamp('date').notNull(),
-  startTime: text('start_time').notNull(),
-  endTime: text('end_time').notNull(),
+  startTime: text('start_time'),
+  endTime: text('end_time'),
   requiredCount: integer('required_count').notNull(),
   note: text('note'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -565,6 +569,33 @@ export const adminUsers = pgTable('admin_users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   emailUnique: uniqueIndex('admin_users_email_unique').on(sql`lower(trim(${table.email}))`),
+}));
+
+// TOTP (RFC 6238) MFA for admin accounts. One row per admin email (incl. env admins).
+export const adminMfa = pgTable('admin_mfa', {
+  email: text('email').primaryKey(),
+  totpSecretEnc: text('totp_secret_enc'),
+  totpEnabledAt: timestamp('totp_enabled_at'),
+  totpLastCounter: integer('totp_last_counter'),
+  recoveryCodes: jsonb('recovery_codes').$type<string[]>().default([]).notNull(),
+  pendingSecretEnc: text('pending_secret_enc'),
+  pendingCreatedAt: timestamp('pending_created_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// "Dieses Gerät merken" (7 Tage) – trusted device tokens for admins.
+export const adminTrustedDevices = pgTable('admin_trusted_devices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  fingerprint: text('fingerprint'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at'),
+}, (table) => ({
+  tokenUnique: unique('admin_trusted_device_token_unique').on(table.tokenHash),
+  emailIdx: index('admin_trusted_device_email_idx').on(table.email),
 }));
 
 

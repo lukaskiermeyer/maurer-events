@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { events, eventSettings } from "@/db/schema";
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, isNotNull, desc, count } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_noStore as noStore, unstable_cache } from "next/cache";
 import { translateContent } from "@/lib/translate";
 import { requireAdmin } from "@/lib/auth";
@@ -16,6 +16,7 @@ export async function createEvent(data: {
   endDate?: Date;
   reservableDates?: string[];
   location: string;
+  zip?: string;
   description: string;
   imageUrl?: string;
   mapUrl?: string;
@@ -61,6 +62,7 @@ export async function createEvent(data: {
     date: data.date,
     endDate: data.endDate,
     location: data.location,
+    zip: data.zip,
     description: data.description,
     imageUrl: data.imageUrl,
     mapUrl: data.mapUrl,
@@ -137,25 +139,12 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
 
 export async function deleteEvent(id: string) {
   await requireAdmin();
-
-  const { reservations } = await import("@/db/schema");
+  uuid(id);
 
   await db.transaction(async (tx) => {
-    await lockLayout(tx); await lockEvent(tx, uuid(id));
-    const { galleries, waitlists } = await import("@/db/schema");
-
-    // Blockade: Prüfe, ob es Reservierungen, Galerien oder Wartelisten-Einträge gibt
-    const [resCount, galCount, waitCount] = await Promise.all([
-      tx.select({ id: reservations.id }).from(reservations).where(eq(reservations.eventId, id)).limit(1),
-      tx.select({ id: galleries.id }).from(galleries).where(eq(galleries.eventId, id)).limit(1),
-      tx.select({ id: waitlists.id }).from(waitlists).where(eq(waitlists.eventId, id)).limit(1)
-    ]);
-
-    if (resCount.length > 0 || galCount.length > 0 || waitCount.length > 0) {
-      throw new Error("Event kann nicht gelöscht werden, da noch Reservierungen, Galerien oder Wartelisten-Einträge verknüpft sind.");
-    }
-
-    await tx.update(events).set({ deletedAt: new Date() }).where(eq(events.id, id));
+    await lockLayout(tx); await lockEvent(tx, id);
+    // Soft delete: Event wird nur als gelöscht markiert und kann innerhalb von X Tagen wiederhergestellt werden.
+    await tx.update(events).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(events.id, id));
   });
 
   revalidatePath("/");
@@ -163,6 +152,38 @@ export async function deleteEvent(id: string) {
   revalidatePath("/termine/ohne-reservierung");
   revalidatePath("/admin");
   revalidateTag("events", "max");
+}
+
+export async function getEventDeletionSummary(id: string) {
+  await requireAdmin();
+  uuid(id);
+  const { reservations, galleries, waitlists } = await import("@/db/schema");
+  const [[resRow], [galRow], [waitRow]] = await Promise.all([
+    db.select({ count: count() }).from(reservations).where(eq(reservations.eventId, id)),
+    db.select({ count: count() }).from(galleries).where(eq(galleries.eventId, id)),
+    db.select({ count: count() }).from(waitlists).where(eq(waitlists.eventId, id)),
+  ]);
+  return {
+    reservations: Number(resRow?.count ?? 0),
+    galleries: Number(galRow?.count ?? 0),
+    waitlists: Number(waitRow?.count ?? 0),
+  };
+}
+
+export async function restoreEvent(id: string) {
+  await requireAdmin();
+  uuid(id);
+  await db.update(events).set({ deletedAt: null, updatedAt: new Date() }).where(eq(events.id, id));
+  revalidatePath("/");
+  revalidatePath("/termine/mit-reservierung");
+  revalidatePath("/termine/ohne-reservierung");
+  revalidatePath("/admin");
+  revalidateTag("events", "max");
+}
+
+export async function getDeletedEvents() {
+  await requireAdmin();
+  return await db.select().from(events).where(isNotNull(events.deletedAt)).orderBy(desc(events.deletedAt));
 }
 
 

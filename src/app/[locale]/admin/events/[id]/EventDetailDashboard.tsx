@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import DropZone from "@/components/ui/DropZone";
 import { Link } from "@/i18n/routing";
+import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import Image from "next/image";
 import { updateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
@@ -20,16 +24,8 @@ function stringToColor(str: string) {
 }
 
 import { removeGalleryImage, addGalleryImage } from "@/app/actions/gallery";
-import dynamic from "next/dynamic";
-import "react-quill-new/dist/quill.snow.css";
-
-const ReactQuill = dynamic(() => import("react-quill-new"), {
-  ssr: false,
-  loading: () => <div className="h-40 bg-canvas-light animate-pulse rounded-lg flex items-center justify-center opacity-50 text-sm">Lade Editor...</div>
-});
-
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
-
+import { findCustomersNearEvent, sendEventInvitations } from "@/app/actions/eventInvitations";
 import { updateEventSettings } from "@/app/actions/eventSettings";
 import { deletePackagePreset, getPackagePresets, savePackagePreset, saveTaxStatus } from "@/app/actions/settings";
 import ScannerAccessPanel from '@/components/admin/ScannerAccessPanel';
@@ -39,8 +35,7 @@ import { resolveReservationMode } from '@/lib/reservation-mode';
 import { formatEuroCents, packageTax, type TaxStatus } from '@/lib/pricing';
 import type { CustomerRecord } from '@/types/domain';
 
-type DashboardTab = "overview" | "reservations" | "tables" | "documents" | "settings" | "waitlist" | "team" | "gallery";
-
+type DashboardTab = "overview" | "reservations" | "tables" | "documents" | "settings" | "waitlist" | "team" | "gallery" | "invitations";
 const statusNames: Record<string, string> = { pending: 'Ausstehend', paid: 'Bezahlt', confirmed: 'Bestätigt', checked_in: 'Eingecheckt', cancelled: 'Storniert', expired: 'Abgelaufen', refunded: 'Erstattet', payment_pending: 'Zahlung wird verarbeitet', payment_review: 'Zahlung prüfen', disputed: 'Zahlung angefochten', requested: 'Anfrage offen', declined: 'Abgelehnt' };
 const statusOptions = (status: string) => [status, ...(ADMIN_TRANSITIONS[status] || [])].filter(next => next !== 'checked_in' || next === status);
 function taxSummaryPrefix(status: TaxStatus) {
@@ -60,9 +55,12 @@ interface EventDetailProps {
   initialDocuments?: EventDocument[];
   scannerGrants?: ScannerGrant[];
   customers?: CustomerRecord[];
+  stripeEnabled?: boolean;
 }
 
-export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [] }: EventDetailProps) {
+export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], stripeEnabled = false }: EventDetailProps) {
+  const toast = useToast();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -71,12 +69,25 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   const [selectedBulkIds, setSelectedBulkIds] = useState<string[]>([]);
   const requestCount = initialReservations.filter(row => row.reservation.status === 'requested').length;
 
+  // Customer invitation state
+  const [inviteRadius, setInviteRadius] = useState(50);
+  const [inviteManualLocation, setInviteManualLocation] = useState("");
+  const [inviteUseMap, setInviteUseMap] = useState<boolean>(!!event.mapUrl || !!event.location);
+  const [inviteMarketingOnly, setInviteMarketingOnly] = useState(true);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteResults, setInviteResults] = useState<Array<{ customer: CustomerRecord; distanceKm: number }>>([]);
+  const [inviteCenter, setInviteCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [inviteSelected, setInviteSelected] = useState<string[]>([]);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
   const [formData, setFormData] = useState({
     title: event.title,
     date: new Date(event.date).toISOString().split('T')[0],
     endDate: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : "",
     reservableDates: event.reservableDates || ([] as string[]),
     location: event.location,
+    zip: event.zip || "",
     description: event.description,
     imageUrl: event.imageUrl || "",
     mapUrl: event.mapUrl || "",
@@ -133,9 +144,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       setPresets(await getPackagePresets());
       setSelectedPreset(presetName.trim());
       setPresetName("");
-      alert("Vorlage gespeichert.");
+      toast.showToast("Vorlage gespeichert.", "success");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Vorlage konnte nicht gespeichert werden.");
+      toast.showToast(error instanceof Error ? error.message : "Vorlage konnte nicht gespeichert werden.", "error");
     } finally {
       setIsPresetBusy(false);
     }
@@ -149,7 +160,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       setPresets(await getPackagePresets());
       setSelectedPreset("");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Vorlage konnte nicht gelöscht werden.");
+      toast.showToast(error instanceof Error ? error.message : "Vorlage konnte nicht gelöscht werden.", "error");
     } finally {
       setIsPresetBusy(false);
     }
@@ -161,10 +172,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     try {
       await updateEventSettings(event.id, settingsData);
       await saveTaxStatus(taxStatus);
-      alert("Einstellungen erfolgreich gespeichert!");
+      toast.showToast("Einstellungen erfolgreich gespeichert!", "success");
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Fehler beim Speichern der Einstellungen");
+      toast.showToast(error instanceof Error ? error.message : "Fehler beim Speichern der Einstellungen", "error");
     } finally {
       setIsUpdating(false);
     }
@@ -221,7 +232,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate) {
-      alert("Bitte wähle zuerst einen Tag aus!");
+      toast.showToast("Bitte wähle zuerst einen Tag aus!", "warning");
       return;
     }
     setIsUpdating(true);
@@ -237,10 +248,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       });
       setManualRes({ name: "", email: "", guests: 4 });
       setShowManualForm(false);
-      window.location.reload();
+      router.refresh();
     } catch (error) {
       console.error("Fehler beim Erstellen der manuellen Reservierung:", error);
-      alert(error instanceof Error ? error.message : 'Reservierung konnte nicht erstellt werden.');
+      toast.showToast(error instanceof Error ? error.message : 'Reservierung konnte nicht erstellt werden.', "error");
     } finally {
       setIsUpdating(false);
     }
@@ -258,7 +269,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         if (uploadRes.success) {
           finalImageUrl = uploadRes.url;
         } else {
-          alert("Fehler beim Bildupload.");
+          toast.showToast("Bildupload fehlgeschlagen. Prüfe die Dateigröße (max. 10 MB) und das Format (JPG, PNG, WebP).", "error");
           setIsUpdating(false);
           return;
         }
@@ -271,6 +282,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         reservationEmail: formData.reservationEmail,
         reservationNote: formData.reservationNote || null,
         imageUrl: finalImageUrl,
+        zip: formData.zip || undefined,
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         reservableDates: formData.reservableDates,
@@ -278,9 +290,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         maxCapacity: formData.maxCapacity,
         walkInReserve: formData.walkInReserve
       });
-      alert("Event erfolgreich aktualisiert!");
+      toast.showToast("Event erfolgreich aktualisiert!", "success");
     } catch {
-      alert("Fehler beim Aktualisieren.");
+      toast.showToast("Fehler beim Aktualisieren.", "error");
     }
     setIsUpdating(false);
   };
@@ -289,9 +301,9 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(true);
     const res = await updateReservationStatus(id, status);
     if (res && !res.success && res.error) {
-      alert(res.error);
+      toast.showToast(res.error, "error");
     }
-    if (res?.warning) alert(res.warning);
+    if (res?.warning) toast.showToast(res.warning, "warning");
     setIsUpdating(false);
   };
 
@@ -302,7 +314,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     const results = await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status)));
     const errors = results.filter(r => r && !r.success && r.error).map(r => r.error);
     if (errors.length > 0) {
-      alert(`Einige Updates sind fehlgeschlagen:\n${errors.join('\n')}`);
+      toast.showToast(`Einige Updates sind fehlgeschlagen:\n${errors.join('\n')}`, "error");
     }
     setSelectedBulkIds([]);
     setIsUpdating(false);
@@ -312,8 +324,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(true);
     try {
       const result = await assignTableToReservation(id, tableId === "none" ? null : tableId);
-      if (result.warning) alert(result.warning);
-    } catch (error) { alert(error instanceof Error ? error.message : 'Tischzuweisung fehlgeschlagen.'); }
+      if (result.warning) toast.showToast(result.warning, "warning");
+    } catch (error) { toast.showToast(error instanceof Error ? error.message : 'Tischzuweisung fehlgeschlagen.', "error"); }
     finally { setIsUpdating(false); }
   };
 
@@ -322,7 +334,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     if(confirm("ACHTUNG: Dies löscht ALLE bestehenden Tische und generiert ein komplett neues Raster. Fortfahren?")) {
       setIsUpdating(true);
       await generateTentLayout(genW, genL, genCap);
-      window.location.reload();
+      router.refresh();
     }
   };
 
@@ -360,7 +372,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       setGalleryFiles([]);
       setGalleryUrl("");
     } catch {
-      alert("Fehler beim Bildupload.");
+      toast.showToast("Bildupload fehlgeschlagen. Prüfe die Dateigröße (max. 10 MB) und das Format (JPG, PNG, WebP).", "error");
     }
     setIsUpdating(false);
   };
@@ -410,10 +422,10 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     const price = makeVip ? prompt('VIP Aufpreis für den gesamten Tisch (in €)?', '100') : '0';
     if (price === null) return;
     const cents = Math.round(Number(price.replace(',', '.')) * 100);
-    if (!Number.isFinite(cents) || cents < 0) { alert('Bitte einen gültigen Aufpreis eingeben.'); return; }
+    if (!Number.isFinite(cents) || cents < 0) { toast.showToast('Bitte einen gültigen Aufpreis eingeben.', "warning"); return; }
     setIsUpdating(true);
     try { await toggleTableVip(table.id, makeVip, cents); }
-    catch { alert('VIP-Einstellung konnte nicht gespeichert werden.'); }
+    catch { toast.showToast('VIP-Einstellung konnte nicht gespeichert werden.', "error"); }
     finally { setIsUpdating(false); }
   };
 
@@ -541,8 +553,48 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     );
   };
 
-  const busyCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && r.reservation.tableId).length;
-  const unassignedCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && !r.reservation.tableId).length;
+  const handleFindInviteCustomers = async () => {
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteMessage("");
+    try {
+      const res = await findCustomersNearEvent({
+        eventId: event.id,
+        radiusKm: inviteRadius,
+        manualLocation: inviteUseMap ? null : inviteManualLocation,
+        marketingOnly: inviteMarketingOnly,
+      });
+      if (!res.success) {
+        setInviteError(res.error || "Fehler bei der Suche.");
+        setInviteResults([]);
+        return;
+      }
+      setInviteCenter(res.center || null);
+      setInviteResults(res.customers || []);
+      setInviteSelected((res.customers || []).map((c: { customer: { id: string } }) => c.customer.id));      setInviteMessage(`${(res.customers || []).length} Kunden im Umkreis von ${res.radiusKm} km gefunden.`);
+    } catch (e) {
+      setInviteError(e instanceof Error ? e.message : "Fehler bei der Suche.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleSendInviteEmails = async () => {
+    if (inviteSelected.length === 0) return;
+    if (!confirm(`${inviteSelected.length} Kunden per E-Mail einladen?`)) return;
+    setInviteSending(true);
+    setInviteError("");
+    try {
+      const res = await sendEventInvitations({ eventId: event.id, customerIds: inviteSelected });
+      setInviteMessage(`Eingeladen: ${res.sent ?? 0}, fehlgeschlagen: ${res.failed ?? 0}${res.errors?.length ? " (" + res.errors.join(", ") + ")" : ""}.`);
+    } catch (e) {
+      setInviteError(e instanceof Error ? e.message : "Fehler beim Versenden.");
+    } finally {
+      setInviteSending(false);
+    }
+  };
+
+  const busyCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && r.reservation.tableId).length;  const unassignedCount = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status) && !r.reservation.tableId).length;
   const guestsTotal = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status)).reduce((sum, r) => sum + r.reservation.guestCount, 0);
   const revenueCents = initialReservations.filter(r => ['paid','confirmed','checked_in'].includes(r.reservation.status)).reduce((sum, r) => sum + r.reservation.amountTotal, 0);
 
@@ -557,8 +609,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             { key: 'tables', label: 'Tisch & Zelt' },
             { key: 'documents', label: `Dokumente (${initialDocuments.length})` },
             { key: 'waitlist', label: `Warteliste (${initialWaitlist.length})` },
-            { key: 'team', label: 'Einlass' },
-          ] as const : [
+            { key: 'invitations', label: 'Kunden einladen' },
+            { key: 'team', label: 'Einlass' },          ] as const : [
             { key: 'gallery', label: `📸 Galerie (${initialGallery.length})` },
           ] as const),
           { key: 'settings', label: 'Event & Buchung' },
@@ -656,20 +708,20 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Location</label>
-                <input required type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
+                <label className="block text-sm font-bold mb-1 opacity-70">Ort *</label>
+                <input required type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Schwaig" />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Beschreibung</label>
-                <div className="bg-white rounded-lg overflow-hidden border border-border-light">
-                  <ReactQuill
-                    theme="snow"
-                    value={formData.description}
-                    onChange={(content) => setFormData({...formData, description: content})}
-                    className="min-h-[150px]"
-                  />
-                </div>
+                <label className="block text-sm font-bold mb-1 opacity-70">PLZ *</label>
+                <input required type="text" inputMode="numeric" pattern="[0-9]*" maxLength={5} value={formData.zip} onChange={e => setFormData({...formData, zip: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. 93149" />
               </div>
+              <MarkdownEditor
+                 label="Beschreibung"
+                 value={formData.description}
+                 onChange={value => setFormData({ ...formData, description: value })}
+                 placeholder="Event-Beschreibung..."
+                 collapsedByDefault={false}
+               />
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <div
@@ -696,10 +748,26 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               )}
               {!file && formData.imageUrl && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-2">
                   <p className="text-xs font-bold text-base-dark/60 mb-1">Aktuelles Bild:</p>
                   {/* eslint-disable-line @next/next/no-img-element */}<img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                    className="text-xs font-bold text-red-600 hover:underline"
+                  >
+                    Bild entfernen
+                  </button>
                 </div>
+              )}
+              {file && (
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  className="text-xs font-bold text-red-600 hover:underline"
+                >
+                  Auswahl entfernen
+                </button>
               )}
               </div>
 
@@ -1228,6 +1296,161 @@ export default function EventDetailDashboard({ event, initialReservations, initi
           </div>
         )}
 
+        {/* INVITATIONS TAB */}
+        {activeTab === "invitations" && (
+          <div className="space-y-6 animate-fade-in">
+            <div>
+              <h3 className="font-display font-bold text-2xl">Kunden per E-Mail einladen</h3>
+              <p className="text-sm opacity-70 mt-1">
+                Finde Kunden im Umkreis des Event-Standorts und lade sie per E-Mail zum neuen Fest ein.
+              </p>
+            </div>
+
+            <div className="bg-canvas-light border border-border-light rounded-2xl p-5 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={inviteUseMap}
+                    onChange={(e) => setInviteUseMap(e.target.checked)}
+                    className="w-5 h-5 accent-accent-green"
+                    disabled={!event.mapUrl && !event.location}
+                  />
+                  Maps-Standort verwenden (gespeichert)
+                </label>
+                {!event.mapUrl && !event.location && (
+                  <span className="text-xs text-amber-700">Kein Standort gespeichert – bitte manuell eingeben.</span>
+                )}
+              </div>
+
+              {!inviteUseMap && (
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1 opacity-70">Manueller Standort</label>
+                  <input
+                    type="text"
+                    value={inviteManualLocation}
+                    onChange={(e) => setInviteManualLocation(e.target.value)}
+                    placeholder="z. B. Pfaffenhofen an der Ilm oder Adresse"
+                    className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1 opacity-70">Radius (km)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={inviteRadius}
+                    onChange={(e) => setInviteRadius(Number(e.target.value))}
+                    className="w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green"
+                  />
+                </div>
+                <label className="flex items-end gap-2 text-sm font-bold cursor-pointer pb-3">
+                  <input
+                    type="checkbox"
+                    checked={inviteMarketingOnly}
+                    onChange={(e) => setInviteMarketingOnly(e.target.checked)}
+                    className="w-5 h-5 accent-accent-green"
+                  />
+                  Nur Kunden mit Marketing-Einwilligung
+                </label>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleFindInviteCustomers}
+                    disabled={inviteLoading || (!inviteUseMap && !inviteManualLocation.trim())}
+                    className="w-full bg-accent-green text-white font-bold py-3 rounded-lg hover:bg-base-dark transition-colors disabled:opacity-50"
+                  >
+                    {inviteLoading ? "Suche…" : "Kunden suchen"}
+                  </button>
+                </div>
+              </div>
+
+              {inviteCenter && (
+                <p className="text-xs opacity-60">
+                  Zentrum: {inviteCenter.lat.toFixed(4)}, {inviteCenter.lng.toFixed(4)}
+                </p>
+              )}
+              {inviteError && <p className="text-sm font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">{inviteError}</p>}
+              {inviteMessage && <p className="text-sm font-bold bg-accent-green/10 text-accent-green rounded-xl p-3">{inviteMessage}</p>}
+            </div>
+
+            {inviteResults.length > 0 && (
+              <div className="bg-white border border-border-light rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-border-light">
+                  <span className="font-bold">{inviteResults.length} Kunden gefunden</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInviteSelected(inviteResults.map((r) => r.customer.id))}
+                      className="text-sm font-bold text-accent-green hover:underline"
+                    >
+                      Alle auswählen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteSelected([])}
+                      className="text-sm font-bold text-base-dark/60 hover:underline"
+                    >
+                      Keine
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-canvas-light text-left">
+                      <tr>
+                        <th className="px-4 py-3 font-bold w-10"></th>
+                        <th className="px-4 py-3 font-bold">Name</th>
+                        <th className="px-4 py-3 font-bold">E-Mail</th>
+                        <th className="px-4 py-3 font-bold">Ort</th>
+                        <th className="px-4 py-3 font-bold">Entfernung</th>
+                        <th className="px-4 py-3 font-bold">Marketing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inviteResults.map((r) => (
+                        <tr key={r.customer.id} className="border-t border-border-light">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 accent-accent-green"
+                              checked={inviteSelected.includes(r.customer.id)}
+                              onChange={(e) =>
+                                setInviteSelected((ids) =>
+                                  e.target.checked ? [...ids, r.customer.id] : ids.filter((id) => id !== r.customer.id)
+                                )
+                              }
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-bold">{r.customer.displayName}</td>
+                          <td className="px-4 py-3 text-base-dark/70">{r.customer.email || "—"}</td>
+                          <td className="px-4 py-3 text-base-dark/70">{[r.customer.zip, r.customer.city].filter(Boolean).join(" ") || "—"}</td>
+                          <td className="px-4 py-3">{r.distanceKm} km</td>
+                          <td className="px-4 py-3">{r.customer.marketingConsent ? "Ja" : "Nein"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 border-t border-border-light flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSendInviteEmails}
+                    disabled={inviteSending || inviteSelected.length === 0}
+                    className="bg-accent-green text-white font-bold px-6 py-3 rounded-xl hover:bg-base-dark transition-colors disabled:opacity-50"
+                  >
+                    {inviteSending ? "Sende…" : `${inviteSelected.length} Kunden einladen`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (
           <div className="space-y-8 animate-fade-in">
@@ -1238,7 +1461,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               <form onSubmit={handleGalleryUpload} className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full">
                   <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei(en)</label>
-                  <input type="file" multiple accept="image/*" onChange={e => setGalleryFiles(e.target.files ? Array.from(e.target.files) : [])} className="w-full bg-white p-2 rounded-lg border border-border-light text-sm" disabled={galleryUrl.length > 0} />
+                  <DropZone multiple accept="image/*" disabled={galleryUrl.length > 0} label={galleryFiles.length ? `${galleryFiles.length} Datei(en) ausgewählt` : "Bilder hierher ziehen oder klicken"} onFiles={files => setGalleryFiles(files)} />
                 </div>
                 <div className="font-bold opacity-50 py-2">ODER</div>
                 <div className="flex-1 w-full">
@@ -1277,7 +1500,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             setIsUpdating(true);
                             await updateEvent(event.id, { imageUrl: img.imageUrl });
                             setIsUpdating(false);
-                            alert("Cover erfolgreich geändert!");
+                            toast.showToast("Cover erfolgreich geändert!", "success");
                           }
                         }}
                         className="admin-image-action absolute bottom-2 left-2 right-2 bg-white/90 text-base-dark min-h-11 py-2 rounded-lg transition-opacity font-bold text-xs shadow-sm hover:bg-accent-green hover:text-white"
@@ -1351,8 +1574,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                                     setIsUpdating(true);
                                     try {
                                       const result = await notifyWaitlistEntry(entry.id);
-                                      if (!result.success) alert(result.error || 'Benachrichtigung fehlgeschlagen.');
-                                    } catch { alert('Benachrichtigung fehlgeschlagen. Bitte erneut versuchen.'); }
+                                      if (!result.success) toast.showToast(result.error || 'Benachrichtigung fehlgeschlagen.', "error");
+                                    } catch { toast.showToast('Benachrichtigung fehlgeschlagen. Bitte erneut versuchen.', "error"); }
                                     finally { setIsUpdating(false); }
                                   }
                                 }}
@@ -1367,7 +1590,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                                 if (confirm("Eintrag aus der Warteliste löschen?")) {
                                   setIsUpdating(true);
                                   try { await removeWaitlistEntry(entry.id, event.id); }
-                                  catch { alert('Löschen fehlgeschlagen. Bitte erneut versuchen.'); }
+                                  catch { toast.showToast('Löschen fehlgeschlagen. Bitte erneut versuchen.', "error"); }
                                   finally { setIsUpdating(false); }
                                 }
                               }}
@@ -1614,8 +1837,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
               </section>
 
               {/* H) Service-Fee */}
-              <section>
-                <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Service-Gebühr (Stripe)</h3>
+              <section className={!stripeEnabled ? "opacity-50 pointer-events-none" : ""}>
+                <h3 className="text-xl font-bold mb-4 border-b border-border-light pb-2">Service-Gebühr (Stripe){!stripeEnabled && <span className="ml-2 text-xs font-normal text-base-dark/50">(Stripe nicht konfiguriert)</span>}</h3>
                 <label className="flex items-center gap-3 cursor-pointer mb-4">
                   <input type="checkbox" checked={settingsData.customServiceFee} onChange={(e) => setSettingsData(p => ({ ...p, customServiceFee: e.target.checked }))} className="w-5 h-5 text-accent-green rounded" />
                   <span className="font-bold">Benutzerdefinierte Service-Gebühr für dieses Event verwenden</span>

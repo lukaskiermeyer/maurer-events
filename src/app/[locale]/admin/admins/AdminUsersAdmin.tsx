@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addAdminUser, removeAdminUser } from '@/app/actions/adminUsers';
+import { resetAdminTotp } from '@/app/actions/authActions';
 import type { AdminUserRow } from '@/app/actions/adminUsers';
 
 const inputCls = 'w-full bg-canvas-light border border-border-light rounded-lg p-3 focus:outline-none focus:border-accent-green transition-colors';
@@ -41,6 +42,18 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
     } finally { setBusy(false); }
   };
 
+  const handleResetTotp = async (mail: string) => {
+    if (!confirm(`2FA für ${mail} zurücksetzen? Die Person muss sich beim nächsten Login neu einrichten.`)) return;
+    setBusy(true); setMessage('');
+    try {
+      const res = await resetAdminTotp(mail);
+      if (!res.success) { setMessage(res.error || 'Zurücksetzen fehlgeschlagen.'); return; }
+      setMessage(`2FA für ${mail} zurückgesetzt.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Zurücksetzen fehlgeschlagen.');
+    } finally { setBusy(false); }
+  };
+
   return (
     <section className="space-y-6 max-w-2xl">
       <div>
@@ -77,6 +90,9 @@ export default function AdminUsersAdmin({ initialUsers }: { initialUsers: AdminU
                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString('de-DE') : '—'}
               </p>
             </div>
+            <button disabled={busy} className="min-h-11 px-4 rounded-lg bg-amber-50 text-amber-700 font-bold text-sm" onClick={() => handleResetTotp(u.email)}>
+              2FA zurücksetzen
+            </button>
             <button disabled={busy} className="min-h-11 px-4 rounded-lg bg-red-50 text-red-700 font-bold text-sm" onClick={() => handleRemove(u.id, u.email)}>
               Entfernen
             </button>

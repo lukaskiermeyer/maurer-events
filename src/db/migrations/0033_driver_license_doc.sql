@@ -1,0 +1,2 @@
+ALTER TABLE "public"."staff_documents" DROP CONSTRAINT IF EXISTS "staff_documents_kind_check";
+ALTER TABLE "public"."staff_documents" ADD CONSTRAINT "staff_documents_kind_check" CHECK ("public"."staff_documents"."kind" in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'driver_license', 'other'));

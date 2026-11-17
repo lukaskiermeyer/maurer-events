@@ -225,6 +225,13 @@
       "when": 1794930296238,
       "tag": "0031_gallery_event_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795000000000,
+      "tag": "0035_admin_mfa",
+      "breakpoints": true
     }
   ]
 }

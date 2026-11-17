@@ -3,7 +3,7 @@ import { decryptField } from "./secure-fields";
 
 const HEADERS = [
   "Personalnummer", "Anrede", "Titel", "Vorname", "Nachname", "Geburtsdatum", "Straße", "PLZ", "Ort",
-  "Eintritt", "Austritt", "Beschäftigungsart", "Rolle", "Stundensatz", "Monatsgehalt",
+  "Eintritt", "Austritt", "Beschäftigungsart", "Rolle", "Stundensatz", "Gewinnbeteiligung (%)", "Monatsgehalt",
   "Steuer-ID", "Steuerklasse", "Kinderfreibeträge", "SV-Nummer", "Krankenkasse", "IBAN", "BIC", "Status",
 ];
 
@@ -44,6 +44,7 @@ export function payrollRow(member: StaffRecord, role: StaffRole | null) {
     EMPLOYMENT_LABELS[member.employmentType] || member.employmentType,
     role?.name || "",
     money(member.hourlyRateCents),
+    member.profitSharePercent === null || member.profitSharePercent === undefined ? "" : String(member.profitSharePercent).replace(".", ","),
     money(member.monthlySalaryCents),
     decrypted(member.taxIdEnc),
     member.taxClass || "",

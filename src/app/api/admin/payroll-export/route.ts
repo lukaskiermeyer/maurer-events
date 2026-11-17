@@ -20,10 +20,15 @@ export async function GET(request: Request) {
     )).returning();
     if (!record) return new Response("Der Download-Link ist abgelaufen oder wurde bereits verwendet.", { status: 410 });
 
-    const members = await db.select({ member: staff, role: staffRoles }).from(staff)
+    const selectedIds = (record.selectedStaffIds as string[] | null) || null;
+    const baseQuery = db.select({ member: staff, role: staffRoles }).from(staff)
       .leftJoin(staffRoles, eq(staffRoles.id, staff.roleId))
       .where(and(isNull(staff.exitDate), inArray(staff.status, ["onboarding", "ready", "active"])))
       .orderBy(asc(staff.lastName), asc(staff.firstName));
+    const allMembers = await baseQuery;
+    const members = selectedIds && selectedIds.length > 0
+      ? allMembers.filter(({ member }) => selectedIds.includes(member.id))
+      : allMembers;
     const csv = buildPayrollCsv(members.map(({ member, role }) => payrollRow(member, role || null)));
     await audit("admin", staffActor.email, "payroll.export.download", "payroll_export", record.id, { rowCount: members.length });
     return new Response(csv, {

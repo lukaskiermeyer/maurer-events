@@ -16,6 +16,7 @@ export default function EventDetailStage({ event, dateLabel }: { event: EventRec
 
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const zip = event.zip;
   const badge = reservationBadge(resolveReservationMode(event), locale);
 
   const dateObj = new Date(event.date);
@@ -93,7 +94,7 @@ export default function EventDetailStage({ event, dateLabel }: { event: EventRec
                 </div>
                 <div className="text-left">
                   <span className="block text-xs font-bold uppercase tracking-widest text-accent-wood mb-0.5">{t("location")}</span>
-                  <span className="font-bold text-base-dark leading-tight block">{location}</span>
+                  <span className="font-bold text-base-dark leading-tight block">{location}{zip ? ` · ${zip}` : ""}</span>
                 </div>
               </div>
             </motion.div>

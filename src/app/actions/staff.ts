@@ -79,7 +79,7 @@ export async function getRoles() {
   return db.select().from(staffRoles).orderBy(asc(staffRoles.name));
 }
 
-export async function createRole(data: { key: string; name: string; description?: string; hourlyRateCents?: number; requiredDocuments?: string[]; requiresHandwrittenSignature?: boolean }) {
+export async function createRole(data: { key: string; name: string; description?: string; hourlyRateCents?: number; profitSharePercent?: number | null; requiredDocuments?: string[]; requiresHandwrittenSignature?: boolean }) {
   const actor = await requireAdmin();
   const key = text(data.key, "Rollen-Schlüssel", 50, true)!;
   if (!/^[a-z0-9_-]+$/.test(key)) throw new BookingError("Rollen-Schlüssel nur mit Kleinbuchstaben, Zahlen, _ und -.");
@@ -88,6 +88,7 @@ export async function createRole(data: { key: string; name: string; description?
     key, name,
     description: text(data.description, "Beschreibung", 500),
     hourlyRateCents: integer(data.hourlyRateCents ?? 0, 0, 99999999, "Stundensatz"),
+    profitSharePercent: data.profitSharePercent === null || data.profitSharePercent === undefined ? null : (typeof data.profitSharePercent === "number" && Number.isFinite(data.profitSharePercent) && data.profitSharePercent >= 0 && data.profitSharePercent <= 100 ? data.profitSharePercent : null),
     requiredDocuments: Array.isArray(data.requiredDocuments) ? data.requiredDocuments.slice(0, 20).map(value => String(value).slice(0, 50)) : [],
     requiresHandwrittenSignature: data.requiresHandwrittenSignature === true,
   }).returning();
@@ -96,13 +97,14 @@ export async function createRole(data: { key: string; name: string; description?
   return { success: true, role: created };
 }
 
-export async function updateRole(roleId: string, data: Partial<{ name: string; description: string | null; hourlyRateCents: number; requiredDocuments: string[]; requiresHandwrittenSignature: boolean; active: boolean }>) {
+export async function updateRole(roleId: string, data: Partial<{ name: string; description: string | null; hourlyRateCents: number; profitSharePercent: number | null; requiredDocuments: string[]; requiresHandwrittenSignature: boolean; active: boolean }>) {
   const actor = await requireAdmin();
   uuid(roleId);
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (data.name !== undefined) patch.name = text(data.name, "Rollenname", 100, true);
   if (data.description !== undefined) patch.description = text(data.description, "Beschreibung", 500);
   if (data.hourlyRateCents !== undefined) patch.hourlyRateCents = integer(data.hourlyRateCents, 0, 99999999, "Stundensatz");
+  if (data.profitSharePercent !== undefined) patch.profitSharePercent = data.profitSharePercent === null ? null : (typeof data.profitSharePercent === "number" && Number.isFinite(data.profitSharePercent) && data.profitSharePercent >= 0 && data.profitSharePercent <= 100 ? data.profitSharePercent : null);
   if (data.requiredDocuments !== undefined) patch.requiredDocuments = data.requiredDocuments.slice(0, 20).map(value => String(value).slice(0, 50));
   if (data.requiresHandwrittenSignature !== undefined) patch.requiresHandwrittenSignature = data.requiresHandwrittenSignature === true;
   let deactivationWarning: string | undefined;
@@ -135,6 +137,7 @@ export async function createStaff(data: { email: string; firstName: string; last
     email: mail, firstName, lastName, roleId,
     phone: text(data.phone, "Telefon", 50),
     hourlyRateCents: role.hourlyRateCents,
+    profitSharePercent: role.profitSharePercent,
     status: "invited",
   }).returning();
   const token = randomToken();
@@ -192,7 +195,7 @@ const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}
   return { success: true, inviteUrl, warning };
 }
 
-export async function updateStaffAdmin(staffId: string, data: Partial<{ firstName: string; lastName: string; phone: string | null; roleId: string; status: string; hourlyRateCents: number; employmentType: string; entryDate: string | null; exitDate: string | null }>) {
+export async function updateStaffAdmin(staffId: string, data: Partial<{ firstName: string; lastName: string; phone: string | null; roleId: string; status: string; hourlyRateCents: number; profitSharePercent: number | null; employmentType: string; entryDate: string | null; exitDate: string | null }>) {
   const actor = await requireAdmin();
   uuid(staffId);
   const patch: Record<string, unknown> = { updatedAt: new Date() };
@@ -205,6 +208,7 @@ export async function updateStaffAdmin(staffId: string, data: Partial<{ firstNam
     patch.status = data.status;
   }
   if (data.hourlyRateCents !== undefined) patch.hourlyRateCents = integer(data.hourlyRateCents, 0, 99999999, "Stundensatz");
+  if (data.profitSharePercent !== undefined) patch.profitSharePercent = data.profitSharePercent === null ? null : (typeof data.profitSharePercent === "number" && Number.isFinite(data.profitSharePercent) && data.profitSharePercent >= 0 && data.profitSharePercent <= 100 ? data.profitSharePercent : null);
   if (data.employmentType !== undefined) {
     if (!["minijob", "short_term", "student", "employed"].includes(data.employmentType)) throw new BookingError("Ungültige Beschäftigungsart.");
     patch.employmentType = data.employmentType;
@@ -349,8 +353,8 @@ export async function saveMyOnboarding(data: {
 }) {
   const member = await requireStaffMember();
   if (data.privacyVersion !== PRIVACY_VERSION) throw new BookingError("Bitte bestätige die aktuelle Datenschutzerklärung.");
-  const employmentType = data.employmentType || member.employmentType;
-  if (!["minijob", "short_term", "student", "employed"].includes(employmentType)) throw new BookingError("Ungültige Beschäftigungsart.");
+  const employmentType = "short_term";
+  if (!["short_term"].includes(employmentType)) throw new BookingError("Ungültige Beschäftigungsart.");
   // Validiere vor dem Encryption-Schreibpfad, damit ungültige Werte nie ankommen.
   const iban = ibanField(data.iban);
   const bic = bicField(data.bic);

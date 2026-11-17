@@ -5,9 +5,10 @@ import type { EventRecord, GalleryWithEvent } from '@/types/domain';
 
 import { useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
-import { deleteEvent, createEvent, convertEventToGallery, toggleFeaturedGallery } from "@/app/actions/events";
+import { deleteEvent, createEvent, convertEventToGallery, toggleFeaturedGallery, getEventDeletionSummary } from "@/app/actions/events";
 import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
 import { uploadImage } from "@/lib/client-image-upload";
+import DropZone from "@/components/ui/DropZone";
 
 export default function AdminGalleryTab({ 
   galleries,
@@ -30,8 +31,8 @@ export default function AdminGalleryTab({
 
   const [file, setFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-  const [formData, setFormData] = useState({
-    title: "",
+  const [createStep, setCreateStep] = useState(1);
+  const [formData, setFormData] = useState({    title: "",
     date: "",
     location: "",
     description: "",
@@ -86,9 +87,19 @@ export default function AdminGalleryTab({
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if(confirm("Album wirklich löschen? Es wird erst in 7 Tagen endgültig gelöscht.")) {
+    try {
+      const summary = await getEventDeletionSummary(id);
+      const parts = [];
+      if (summary.reservations > 0) parts.push(`${summary.reservations} Reservierung(en)`);
+      if (summary.galleries > 0) parts.push(`${summary.galleries} Galeriebild(er)`);
+      if (summary.waitlists > 0) parts.push(`${summary.waitlists} Wartelisteneintrag/-einträge`);
+      const detail = parts.length ? `\nVerknüpft: ${parts.join(", ")}.` : "";
+      const msg = `Album wirklich löschen?${detail}\n\nEs wird zuerst nur als gelöscht markiert und kann innerhalb von 7 Tagen wiederhergestellt werden. Danach wird es endgültig gelöscht.`;
+      if (!confirm(msg)) return;
       await deleteEvent(id);
       window.location.reload();
+    } catch (err) {
+      alert("Fehler beim Löschen: " + (err instanceof Error ? err.message : ""));
     }
   };
 
@@ -112,6 +123,14 @@ export default function AdminGalleryTab({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createStep === 1) {
+      if (!formData.title.trim() || !formData.date || !formData.location.trim() || !formData.description.trim()) {
+        alert("Bitte alle Pflichtfelder ausfüllen.");
+        return;
+      }
+      setCreateStep(2);
+      return;
+    }
     setLoading(true);
     try {
       let finalImageUrl = formData.imageUrl;
@@ -157,6 +176,8 @@ export default function AdminGalleryTab({
       });
       setFile(null);
       setGalleryFiles([]);
+      setCreateStep(1);
+      setShowCreateForm(false);
       window.location.reload();
     } catch {
       alert("Fehler beim Speichern.");
@@ -222,13 +243,12 @@ export default function AdminGalleryTab({
 
             <div className="flex-1 w-full">
               <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei(en)</label>
-              <input
-                type="file"
+              <DropZone
                 multiple
                 accept="image/*"
-                onChange={e => setUploadFiles(e.target.files ? Array.from(e.target.files) : [])}
-                className="w-full bg-base-light p-2 rounded-lg border border-border-light text-sm"
                 disabled={uploadUrl.length > 0}
+                label={uploadFiles.length ? `${uploadFiles.length} Datei(en) ausgewählt` : "Bilder hierher ziehen oder klicken"}
+                onFiles={files => setUploadFiles(files)}
               />
             </div>
             <div className="font-bold opacity-50 py-3 text-sm">ODER</div>
@@ -371,8 +391,8 @@ export default function AdminGalleryTab({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div role="dialog" aria-label="Galerie-Album erstellen" className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
             <div className="sticky top-0 bg-white p-4 sm:p-6 border-b border-border-light flex justify-between items-center gap-3 z-10">
-              <h2 className="text-xl font-bold font-display">Galerie-Album erstellen</h2>
-              <button aria-label="Dialog schließen" onClick={() => { setIsModalOpen(false); setShowCreateForm(false); }} className="p-2 min-h-11 min-w-11 shrink-0 hover:bg-base-light rounded-full">
+              <h2 className="text-xl font-bold font-display">Galerie-Album erstellen{showCreateForm ? ` – Schritt ${createStep} von 2` : ""}</h2>
+              <button aria-label="Dialog schließen" onClick={() => { setIsModalOpen(false); setShowCreateForm(false); setCreateStep(1); }} className="p-2 min-h-11 min-w-11 shrink-0 hover:bg-base-light rounded-full">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -384,7 +404,7 @@ export default function AdminGalleryTab({
                 <>
                   <div>
                     <button 
-                      onClick={() => setShowCreateForm(true)}
+                      onClick={() => { setShowCreateForm(true); setCreateStep(1); }}
                       className="w-full bg-accent-green text-white font-bold py-4 rounded-xl hover:bg-base-dark transition-colors flex items-center justify-center gap-2"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -425,6 +445,8 @@ export default function AdminGalleryTab({
                 </>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4 font-sans">
+                  {createStep === 1 && (
+                    <>
                   <div>
                     <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
                     <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Fasching 2019" />
@@ -441,15 +463,19 @@ export default function AdminGalleryTab({
                     <label className="block text-sm font-bold mb-1 opacity-70">Beschreibung</label>
                     <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green min-h-[100px]" placeholder="Kurze Event-Beschreibung..." />
                   </div>
+                     </>
+                   )}
+
+                   {createStep === 2 && (
+                     <>
                   <div className="space-y-2">
                     <label className="block text-sm font-bold mb-1 opacity-70">Cover-Bild</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="min-w-0">
-                        <input 
-                          type="file" 
+                        <DropZone
                           accept="image/*"
-                          onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                          className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm" 
+                          label={file ? file.name : "Bild hierher ziehen oder klicken"}
+                          onFiles={files => setFile(files[0] || null)}
                         />
                          {file && (/* eslint-disable-line @next/next/no-img-element */ <img src={URL.createObjectURL(file)} alt="Vorschau" className="mt-2 max-h-32 rounded-lg border border-border-light" />)}
                       </div>
@@ -469,24 +495,33 @@ export default function AdminGalleryTab({
                   
                   <div className="space-y-2">
                     <label className="block text-sm font-bold mb-1 opacity-70">Weitere Bilder (alle auf einmal)</label>
-                    <input
-                      type="file"
+                    <DropZone
                       multiple
                       accept="image/*"
-                      onChange={e => setGalleryFiles(e.target.files ? Array.from(e.target.files) : [])}
-                      className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green text-sm"
+                      label={galleryFiles.length ? `${galleryFiles.length} Datei(en) ausgewählt` : "Bilder hierher ziehen oder klicken"}
+                      onFiles={files => setGalleryFiles(files)}
                     />
                     {galleryFiles.length > 0 && (
                       <p className="text-xs opacity-60">{galleryFiles.length} Bild(er) ausgewählt</p>
                     )}
                   </div>
 
+                     </>
+                   )}
+
                   <div className="pt-4 flex gap-3">
-                    <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 bg-base-light font-bold py-3 rounded-lg hover:bg-border-light transition-colors">
-                      Zurück
-                    </button>
+                    {createStep === 2 && (
+                      <button type="button" onClick={() => setCreateStep(1)} className="flex-1 bg-base-light font-bold py-3 rounded-lg hover:bg-border-light transition-colors">
+                        Zurück
+                      </button>
+                    )}
+                    {createStep === 1 && (
+                      <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 bg-base-light font-bold py-3 rounded-lg hover:bg-border-light transition-colors">
+                        Abbrechen
+                      </button>
+                    )}
                     <button disabled={loading} type="submit" className="flex-1 bg-accent-green text-white font-bold py-3 rounded-lg disabled:opacity-50 hover:bg-base-dark transition-colors">
-                      {loading ? "Speichert..." : "Album Speichern"}
+                      {loading ? "Speichert..." : (createStep === 1 ? "Weiter" : "Album Speichern")}
                     </button>
                   </div>
                 </form>

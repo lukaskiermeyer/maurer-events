@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ReservationRow, TableRecord } from "@/types/domain";
 import { confirmReservationRequest, declineReservationRequest } from "@/app/actions/reservationRequests";
+import { useToast } from "@/components/ui/Toast";
 
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -10,6 +12,8 @@ function formatDate(value: Date | string) {
 
 function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord[] }) {
   const request = row.reservation;
+  const toast = useToast();
+  const router = useRouter();
   const [tableId, setTableId] = useState("");
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -19,7 +23,7 @@ function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord
     try {
       const priceCents = price.trim() ? Math.round(Number(price.replace(",", ".")) * 100) : null;
       if (priceCents !== null && (!Number.isFinite(priceCents) || priceCents < 0)) {
-        alert("Bitte einen gültigen Preis eingeben.");
+        toast.showToast("Bitte einen gültigen Preis eingeben.", "warning");
         return;
       }
       const result = await confirmReservationRequest(request.id, {
@@ -27,11 +31,12 @@ function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord
         priceCents,
       });
       if (!result.success) {
-        alert(result.error || "Anfrage konnte nicht bestätigt werden.");
+        toast.showToast(result.error || "Anfrage konnte nicht bestätigt werden.", "error");
         return;
       }
-      if (result.warning) alert(result.warning);
-      window.location.reload();
+      if (result.warning) toast.showToast(result.warning, "warning");
+      toast.showToast("Anfrage bestätigt. E-Mail wird gesendet.", "success");
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -44,11 +49,12 @@ function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord
     try {
       const result = await declineReservationRequest(request.id, reason);
       if (!result.success) {
-        alert(result.error || "Anfrage konnte nicht abgelehnt werden.");
+        toast.showToast(result.error || "Anfrage konnte nicht abgelehnt werden.", "error");
         return;
       }
-      if (result.warning) alert(result.warning);
-      window.location.reload();
+      if (result.warning) toast.showToast(result.warning, "warning");
+      toast.showToast("Anfrage abgelehnt.", "success");
+      router.refresh();
     } finally {
       setBusy(false);
     }

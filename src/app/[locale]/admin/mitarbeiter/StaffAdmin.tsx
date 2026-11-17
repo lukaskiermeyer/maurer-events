@@ -35,7 +35,7 @@ const SAMPLE_CONTRACT = `<h2>Arbeitsvertrag</h2>
 <p>Die Vergütung erfolgt auf Basis der geleisteten Stunden.</p>
 <h3>§ 3 Datenschutz</h3>
 <p>Die Verarbeitung der personenbezogenen Daten erfolgt zum Zweck der Beschäftigung.</p>
-<p>Ort, Datum: {{heute}}</p>
+<p>Ort, Datum: {{ort}}, {{heute}}</p>
 <p>Unterschrift Arbeitgeber: ____________________</p>
 <p>Unterschrift Arbeitnehmer: ____________________</p>`;
 
@@ -48,6 +48,7 @@ const CONTRACT_PLACEHOLDERS = [
   { token: "{{eintritt}}", label: "Eintrittsdatum", example: "01.12.2026" },
   { token: "{{adresse}}", label: "Adresse", example: "Musterstraße 1, 12345 Musterstadt" },
   { token: "{{heute}}", label: "Heutiges Datum", example: "07.11.2026" },
+  { token: "{{ort}}", label: "Ort (manuell ausfüllen)", example: "München" },
 ] as const;
 
 function buildPreviewHtml(html: string, overrides: Record<string, string> = {}) {

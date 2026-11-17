@@ -142,7 +142,7 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
     setMessage("");
     setFieldErrors({});
     try {
-      const result = await saveMyOnboarding({ ...form, privacyVersion: PRIVACY_VERSION });
+      const result = await saveMyOnboarding({ ...form, employmentType: "short_term", privacyVersion: PRIVACY_VERSION });
       setMessage(result.documentWarning || (result.document ? "Daten gespeichert. Das Minijob-Formular wurde automatisch aus deinen Daten erstellt." : "Daten gespeichert."));
       if (result.document) {
         setDocuments(current => {
@@ -168,7 +168,14 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
       const response = await fetch("/api/team/upload", { method: "POST", body: data, credentials: "include" });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) {
-        setMessage(result?.error || "Upload fehlgeschlagen.");
+        const msg = result?.error || "Upload fehlgeschlagen.";
+        if (response.status === 401 || response.status === 403) {
+          setMessage("Upload nicht möglich: Du bist nicht angemeldet oder hast keine Berechtigung. Bitte melde dich erneut an.");
+        } else if (response.status === 413) {
+          setMessage("Die Datei ist zu groß. Bitte wähle eine Datei unter 10 MB.");
+        } else {
+          setMessage(`Upload fehlgeschlagen: ${msg}`);
+        }
         return;
       }
       setDocuments(current => [...current, result.document]);
@@ -238,12 +245,10 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
           <h2 className="font-display font-bold text-xl mb-3">Beschäftigung & Lohn</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field field="employmentType" label="Beschäftigungsart" error={fieldErrors.employmentType}>
-              <select data-field="employmentType" aria-invalid={!!fieldErrors.employmentType} value={form.employmentType} onChange={event => update("employmentType", event.target.value)} className={fieldCls("employmentType")}>
-                <option value="minijob">Minijob</option>
+              <select data-field="employmentType" aria-invalid={!!fieldErrors.employmentType} value="short_term" onChange={event => update("employmentType", event.target.value)} className={fieldCls("employmentType")} disabled>
                 <option value="short_term">Kurzfristig</option>
-                <option value="student">Werkstudent</option>
-                <option value="employed">Angestellt</option>
               </select>
+              <input type="hidden" name="employmentType" value="short_term" />
             </Field>
             <Field field="entryDate" label="Eintrittsdatum (TT.MM.JJJJ)" error={fieldErrors.entryDate}>
               <input inputMode="numeric" placeholder="z. B. 01.12.2026" data-field="entryDate" aria-invalid={!!fieldErrors.entryDate} value={isoToDe(form.entryDate)} onChange={event => update("entryDate", deToIso(formatDeDateInput(event.target.value)))} className={fieldCls("entryDate")} />

@@ -55,14 +55,19 @@ export async function saveStaffingRule(roleId: string, data: { guestsPerStaff: n
   return { success: true, rule: saved };
 }
 
-export async function saveRequirement(eventId: string, data: { roleId: string; date: string; startTime: string; endTime: string; requiredCount: number; note?: string }) {
+export async function saveRequirement(eventId: string, data: { roleId: string; date: string; startTime?: string | null; endTime?: string | null; requiredCount: number; note?: string }) {
   await requireAdmin();
   uuid(eventId); uuid(data.roleId, "Rolle");
   const day = calendarDate(data.date);
-  const startTime = cleanTime(data.startTime);
-  const endTime = cleanTime(data.endTime);
+  const startTime = data.startTime ? cleanTime(data.startTime) : null;
+  const endTime = data.endTime ? cleanTime(data.endTime) : null;
+  // Wenn Zeiten fehlen: ganztägige Anforderung (00:00–23:59)
+  const effectiveStart = startTime || "00:00";
+  const effectiveEnd = endTime || "23:59";
+  if (effectiveStart !== "00:00" || effectiveEnd !== "23:59") {
+    if (shiftHours(effectiveStart, effectiveEnd) <= 0 || shiftHours(effectiveStart, effectiveEnd) > 24) throw new BookingError("Ungültige Schichtdauer.");
+  }
   const requiredCount = int(data.requiredCount, 1, 500, "Anzahl");
-  if (shiftHours(startTime, endTime) <= 0 || shiftHours(startTime, endTime) > 24) throw new BookingError("Ungültige Schichtdauer.");
   const [created] = await db.insert(eventStaffRequirements).values({ eventId, roleId: data.roleId, date: day, startTime, endTime, requiredCount, note: data.note?.trim().slice(0, 500) || null }).returning();
   revalidatePath("/[locale]/admin", "layout");
   return { success: true, requirement: created };
@@ -111,7 +116,7 @@ export async function autoAssign(eventId: string, date?: string) {
     })) as StaffingAssignmentInput[];
   const plan = planStaffing({
     eventId,
-    requirements: requirements.map(requirement => ({ id: requirement.id, roleId: requirement.roleId, date: requirement.date, startTime: requirement.startTime, endTime: requirement.endTime, requiredCount: requirement.requiredCount })),
+    requirements: requirements.map(requirement => ({ id: requirement.id, roleId: requirement.roleId, date: requirement.date, startTime: requirement.startTime || "00:00", endTime: requirement.endTime || "23:59", requiredCount: requirement.requiredCount })),
     availability: data.availability.map(item => ({ staffId: item.staffId, eventId: item.eventId, date: item.date, startTime: item.startTime, endTime: item.endTime, kind: item.kind as "available" | "unavailable" | "preferred" })),
     staff: data.team.map(({ member }) => ({ id: member.id, firstName: member.firstName, lastName: member.lastName, roleId: member.roleId, status: member.status, employmentType: member.employmentType, birthDate: member.birthDate, hourlyRateCents: member.hourlyRateCents })),
     rules: data.rules.map(rule => ({ roleId: rule.roleId, guestsPerStaff: rule.guestsPerStaff, minStaff: rule.minStaff, fixedStaff: rule.fixedStaff, maxHoursPerDay: rule.maxHoursPerDay, minRestHours: rule.minRestHours, minAge: rule.minAge, active: rule.active })),

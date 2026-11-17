@@ -1,4 +1,3 @@
-import sanitizeHtml from "sanitize-html";
 import { Link } from "@/i18n/routing";
 import { getMyContract } from "@/app/actions/staff";
 import ContractSign from "./ContractSign";
@@ -6,7 +5,7 @@ import ContractSign from "./ContractSign";
 export const dynamic = "force-dynamic";
 
 export default async function ContractPage() {
-  const { member, role, contract } = await getMyContract();
+  const { role, contract } = await getMyContract();
   if (!contract) {
     return (
       <div className="bg-white border border-border-light rounded-2xl p-8 text-center">
@@ -16,27 +15,30 @@ export default async function ContractPage() {
       </div>
     );
   }
-  const safeBody = sanitizeHtml(contract.bodyHtml, {
-    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "h1", "h2", "h3", "h4", "ul", "ol", "li", "table", "thead", "tbody", "tr", "td", "th", "a", "hr"],
-    allowedAttributes: { a: ["href", "target", "rel"] },
-  });
+  const pdfUrl = `/api/team/contract/pdf?contractId=${contract.id}`;
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent-wood mb-2">Vertrag</p>
         <h1 className="text-3xl font-display font-black text-base-dark">{role?.name || "Mitarbeiter"} · Version {contract.templateVersion}</h1>
-        <p className="text-base-dark/60 mt-1">Status: {contract.status} · Unterschrift: {contract.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</p>
+        <p className="text-base-dark/60 mt-1">Status: {contract.status} · Unterschrift: handschriftlich</p>
       </div>
 
-      <article className="contract-document bg-white border border-border-light rounded-2xl p-6 sm:p-10 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: safeBody }} />
+      <div className="bg-white border border-border-light rounded-2xl overflow-hidden">
+        <iframe src={pdfUrl} title="Vertrag (PDF)" className="w-full h-[70vh] min-h-[480px]" />
+      </div>
+
+      <div className="flex flex-wrap gap-3 no-print">
+        <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-base-dark text-white px-5 py-3 rounded-xl font-bold">PDF öffnen / herunterladen</a>
+        <button type="button" onClick={() => window.print()} className="inline-block bg-accent-green text-white px-5 py-3 rounded-xl font-bold">Drucken</button>
+      </div>
 
       <ContractSign
         contractId={contract.id}
         signatureMode={contract.signatureMode as "text" | "handwritten"}
         status={contract.status}
         signedFileUrl={contract.signedFileUrl}
-        memberName={`${member.firstName} ${member.lastName}`}
       />
 
       <style>{`

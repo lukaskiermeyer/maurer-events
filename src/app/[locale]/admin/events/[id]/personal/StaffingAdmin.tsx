@@ -26,7 +26,7 @@ function dateLabel(value: Date | string) {
 export default function StaffingAdmin({ data }: { data: Data }) {
   const router = useRouter();
   const [date, setDate] = useState(day(data.event.date));
-  const [form, setForm] = useState({ roleId: data.roles[0]?.id || "", date: day(data.event.date), startTime: "16:00", endTime: "23:00", requiredCount: 1, note: "" });
+  const [form, setForm] = useState({ roleId: data.roles[0]?.id || "", date: day(data.event.date), startTime: "", requiredCount: 1, note: "" });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [plan, setPlan] = useState<StaffingPlan | null>(null);
@@ -179,7 +179,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
           </select>
           <select value={manualRequirementId} onChange={e => setManualRequirementId(e.target.value)} className="bg-base-light border border-border-light rounded-lg p-3">
             <option value="">Schicht wählen</option>
-            {data.requirements.map(r => <option key={r.id} value={r.id}>{roleName(r.roleId)} · {dateLabel(r.date)} {r.startTime}–{r.endTime}</option>)}
+            {data.requirements.map(r => <option key={r.id} value={r.id}>{roleName(r.roleId)} · {dateLabel(r.date)} {r.startTime ? (r.endTime ? `${r.startTime}-${r.endTime}` : `ab ${r.startTime}`) : "ganztägig"}</option>)}
           </select>
           <button type="button" onClick={handleManualAssign} disabled={busy} className="bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">Zuteilen</button>
         </div>
@@ -193,7 +193,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
             {data.roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
           </select>
           <input type="date" required value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" />
-          <div className="grid grid-cols-2 gap-3"><input type="time" required value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" /><input type="time" required value={form.endTime} onChange={event => setForm({ ...form, endTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" /></div>
+          <div className="grid grid-cols-1 gap-3"><input type="time" value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" placeholder="Startzeit (optional)" /></div>
           <div className="flex items-center gap-3"><span className="text-sm font-bold">Personen</span><input type="number" min={1} value={form.requiredCount} onChange={event => setForm({ ...form, requiredCount: Number(event.target.value) })} className="w-24 bg-base-light border border-border-light rounded-lg p-3" /></div>
           <input placeholder="Notiz (optional)" value={form.note} onChange={event => setForm({ ...form, note: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" />
           <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">Bedarf hinzufügen</button>
@@ -205,8 +205,8 @@ export default function StaffingAdmin({ data }: { data: Data }) {
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Schicht</th><th className="px-4 py-3">Benötigt</th><th className="px-4 py-3">Zugewiesen</th><th className="px-4 py-3"></th></tr></thead>
               <tbody>{requirementsForDate.map(requirement => {
-                const assigned = data.assignments.filter(assignment => assignment.roleId === requirement.roleId && day(assignment.date) === day(requirement.date) && assignment.startTime === requirement.startTime).length;
-                return <tr key={requirement.id} className="border-t border-border-light"><td className="px-4 py-3 font-bold">{roleName(requirement.roleId)}</td><td className="px-4 py-3">{requirement.startTime}–{requirement.endTime}</td><td className="px-4 py-3">{requirement.requiredCount}</td><td className={`px-4 py-3 font-bold ${assigned < requirement.requiredCount ? "text-amber-700" : "text-accent-green"}`}>{assigned}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => removeRequirement(requirement.id)} className="text-red-600 font-bold">Löschen</button></td></tr>;
+                const assigned = data.assignments.filter(assignment => assignment.roleId === requirement.roleId && day(assignment.date) === day(requirement.date) && (requirement.startTime === null || assignment.startTime === requirement.startTime)).length;
+                return <tr key={requirement.id} className="border-t border-border-light"><td className="px-4 py-3 font-bold">{roleName(requirement.roleId)}</td><td className="px-4 py-3">{requirement.startTime ? (requirement.endTime ? `${requirement.startTime}–${requirement.endTime}` : `ab ${requirement.startTime}`) : "ganztägig"}</td><td className="px-4 py-3">{requirement.requiredCount}</td><td className={`px-4 py-3 font-bold ${assigned < requirement.requiredCount ? "text-amber-700" : "text-accent-green"}`}>{assigned}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => removeRequirement(requirement.id)} className="text-red-600 font-bold">Löschen</button></td></tr>;
               })}</tbody>
             </table></div>
           )}
@@ -216,7 +216,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
 {plan && (plan.gaps.length > 0 || plan.warnings.length > 0) && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <h2 className="font-display font-bold text-xl text-amber-900 mb-3">Lücken & Hinweise</h2>
-          {plan.gaps.map(gap => <p key={`${gap.requirementId}-${gap.startTime}`} className="text-sm font-bold text-amber-900">{roleName(gap.roleId)} · {gap.startTime}–{gap.endTime}: {gap.missing} fehlen ({gap.assigned}/{gap.required}).</p>)}
+          {plan.gaps.map(gap => <p key={`${gap.requirementId}-${gap.startTime}`} className="text-sm font-bold text-amber-900">{roleName(gap.roleId)} · {gap.startTime ? (gap.endTime ? `${gap.startTime}-${gap.endTime}` : `ab ${gap.startTime}`) : "ganztägig"}: {gap.missing} fehlen ({gap.assigned}/{gap.required}).</p>)}
           {plan.warnings.slice(0, 12).map((warning, index) => <p key={index} className="text-xs text-amber-800 mt-1">{warning.message}</p>)}
         </div>
       )}
@@ -231,7 +231,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
               return (
                 <div key={requirement.id}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-bold">{roleName(requirement.roleId)} · {requirement.startTime}–{requirement.endTime}</span>
+                    <span className="font-bold">{roleName(requirement.roleId)} · {requirement.startTime ? (requirement.endTime ? `${requirement.startTime}-${requirement.endTime}` : `ab ${requirement.startTime}`) : "ganztägig"}</span>
                     <span className={assigned < requirement.requiredCount ? "text-amber-700 font-bold" : "text-accent-green font-bold"}>{assigned}/{requirement.requiredCount}</span>
                   </div>
                   <div className="w-full bg-canvas-light rounded-full h-3 overflow-hidden">

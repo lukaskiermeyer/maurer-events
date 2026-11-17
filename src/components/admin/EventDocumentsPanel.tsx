@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { EventDocument } from "@/types/domain";
 import { deleteEventDocument } from "@/app/actions/eventDocuments";
+import DropZone from "@/components/ui/DropZone";
 
 function kindLabel(kind: string) {
   return kind === "program" ? "Programm" : "Speisekarte";
@@ -22,7 +23,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error" | "warning"; text: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+
 
   const upload = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,7 +47,6 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
       setDocuments(current => [...current, data.document]);
       setFile(null);
       setTitle("");
-      if (fileRef.current) fileRef.current.value = "";
       setMessage(data.warning
         ? { kind: "warning", text: data.warning }
         : { kind: "ok", text: "Dokument hochgeladen." });
@@ -89,7 +89,12 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
         </div>
         <div>
           <label className="block text-xs font-bold uppercase mb-1">Datei (PDF, JPG, PNG, WebP · max. 15 MB)</label>
-          <input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={event => setFile(event.target.files?.[0] || null)} className="w-full bg-white border border-border-light rounded-lg p-2 text-sm" />
+          <DropZone
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            label={file ? file.name : "Datei hierher ziehen oder klicken"}
+            hint="PDF, JPG, PNG, WebP · max. 15 MB"
+            onFiles={files => setFile(files[0] || null)}
+          />
         </div>
         <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
           <input type="checkbox" checked={isPublic} onChange={event => setIsPublic(event.target.checked)} className="w-5 h-5 accent-accent-green" />

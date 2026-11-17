@@ -6,6 +6,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { uploadImage } from "@/lib/client-image-upload";
 import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
+import DropZone from "@/components/ui/DropZone";
 
 export default function AdminGlobalGallery({ events, initialGallery }: { events: EventRecord[], initialGallery: GalleryWithEvent[] }) {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -90,12 +91,11 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
 
           <div className="flex-1 w-full">
             <label className="block text-xs font-bold uppercase opacity-70 mb-1">Lokale Datei</label>
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={e => setGalleryFile(e.target.files ? e.target.files[0] : null)} 
-              className="w-full bg-base-light p-2 rounded-lg border border-border-light text-sm" 
-              disabled={galleryUrl.length > 0} 
+            <DropZone
+              accept="image/*"
+              disabled={galleryUrl.length > 0}
+              label={galleryFile ? galleryFile.name : "Bild hierher ziehen oder klicken"}
+              onFiles={files => setGalleryFile(files[0] || null)}
             />
           </div>
           <div className="font-bold opacity-50 py-3 text-sm">ODER</div>

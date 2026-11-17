@@ -7,6 +7,7 @@ export const DOCUMENT_KIND_LABELS: Record<string, string> = {
   health_certificate: "Gesundheitszeugnis",
   tax_card: "Steuerkarte",
   minijob_form: "Minijob-Formular",
+  driver_license: "Führerschein",
   other: "Sonstiges",
 };
 
@@ -27,6 +28,8 @@ const LABEL_TO_KIND: Record<string, string> = {
   "steuerkarte": "tax_card",
   "minijob-formular": "minijob_form",
   "minijob formular": "minijob_form",
+  "fuhrerschein": "driver_license",
+  "fuehrerschein": "driver_license",
 };
 
 export function kindForRequiredDoc(label: string): string {
@@ -58,6 +61,7 @@ const DOC_INFO: Record<string, DocInfo> = {
   "minijob formular": docInfo("Minijob-Formular", "Wird von uns automatisch aus deinen gerade angegebenen Daten erstellt und gespeichert. Keine extra Datei nötig – einfach deine Daten oben speichern."),
   "arbeitszeugnis": docInfo("Arbeitszeugnis", "Bei deinem letzten Arbeitgeber anfordern (einfaches Arbeitszeugnis reicht). Schriftlich per Brief oder E-Mail; Anspruch besteht nach Beendigung des Arbeitsverhältnisses."),
   "fuhrerschein": docInfo("Führerschein", "Beim Amt für Fahrerlaubniswesen ausgestellt. Falls vorhanden, reicht eine Kopie/Scan."),
+  "fuehrerschein": docInfo("Führerschein", "Beim Amt für Fahrerlaubniswesen ausgestellt. Falls vorhanden, reicht eine Kopie/Scan."),
 };
 
 const KIND_DEFAULT_INFO: Record<string, DocInfo> = {
@@ -65,6 +69,7 @@ const KIND_DEFAULT_INFO: Record<string, DocInfo> = {
   health_certificate: docInfo("Gesundheitszeugnis (§ 43 IfSG)", "Beim Gesundheitsamt deines Landkreises beantragen (ca. 20–50 €, ~2 Wochen, kurze Einweisung vor Ort)."),
   tax_card: docInfo("Steuerkarte / Steuer-ID", "Hast du automatisch vom Finanzamt erhalten. Ersatz gibt es dort oder online über ELSTER."),
   minijob_form: docInfo("Minijob-Formular", "Wird von uns automatisch aus deinen gerade angegebenen Daten erstellt und gespeichert. Keine extra Datei nötig – einfach deine Daten oben speichern."),
+  driver_license: docInfo("Führerschein", "Beim Amt für Fahrerlaubniswesen ausgestellt. Falls vorhanden, reicht eine Kopie/Scan."),
   other: docInfo("Dokument", "Lade ein Foto oder PDF hoch. Im Zweifel frag den Festwirt, was genau er braucht."),
 };
 

@@ -4,12 +4,12 @@ import { getGalleryImages } from "@/app/actions/gallery";
 import { Link } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
-import parse from 'html-react-parser';
-import sanitizeHtml from 'sanitize-html';
+
 import { getTranslations } from "next-intl/server";
 import EmailReservationCard from "@/components/EmailReservationCard";
 import EventDocuments from "@/components/EventDocuments";
 import EventDetailStage from "@/components/event-detail/EventDetailStage";
+import DescriptionRenderer from "@/components/DescriptionRenderer";
 import GalleryGrid from "@/components/GalleryGrid";
 import { getPublicEventDocuments } from "@/app/actions/eventDocuments";
 import { reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
@@ -127,15 +127,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <h2 className="font-display font-bold text-3xl md:text-4xl mb-6 text-base-dark">
               {t("about_1")} <span className="text-accent-green">{t("about_2")}</span>
             </h2>
-            <div className="event-prose font-sans text-base-dark/80 max-w-none">
-              {/* Parse the HTML output from the rich text editor safely */}
-              {parse(sanitizeHtml((description || '').replace(/\r\n|\r|\n/g, '<br>'), {
-                allowedTags: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h2', 'h3'],
-                allowedAttributes: {
-                  'a': ['href', 'target', 'rel']
-                }
-              }))}
-            </div>
+            <DescriptionRenderer content={description} />
           </div>
 
           {/* Sidebar */}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Printer } from "lucide-react";
 import { markSlipsPrinted } from "@/app/actions/reservations";
 
 export default function SlipPrintControls({ eventId, reservationIds }: { eventId: string; reservationIds: string[] }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   const print = () => window.print();
@@ -13,7 +15,7 @@ export default function SlipPrintControls({ eventId, reservationIds }: { eventId
     setBusy(true);
     try {
       await markSlipsPrinted(eventId, reservationIds);
-      window.location.reload();
+      router.refresh();
     } finally {
       setBusy(false);
     }

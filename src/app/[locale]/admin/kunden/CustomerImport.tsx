@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CUSTOMER_FIELDS, mapImportRows, parseCsv, type CustomerField } from "@/lib/customer-import";
 import { importCustomers } from "@/app/actions/customers";
+import DropZone from "@/components/ui/DropZone";
 
 function guessColumn(headers: string[], field: CustomerField) {
   const checks: Record<CustomerField, RegExp> = {
@@ -80,7 +81,12 @@ export default function CustomerImport({ onClose }: { onClose: () => void }) {
 
       <div>
         <label className="block text-xs font-bold uppercase mb-1">CSV-Datei (Semikolon oder Komma)</label>
-        <input type="file" accept=".csv,text/csv" onChange={event => readFile(event.target.files?.[0])} className="w-full bg-base-light border border-border-light rounded-lg p-2 text-sm" />
+        <DropZone
+          accept=".csv,text/csv"
+          label="CSV-Datei hierher ziehen oder klicken"
+          hint="Semikolon oder Komma"
+          onFiles={files => readFile(files[0])}
+        />
       </div>
 
       {headers.length > 0 && (

@@ -16,10 +16,13 @@ export function renderContract(bodyHtml: string, staff: StaffRow, role: RoleRow 
     telefon: staff.phone || "",
     rolle: role?.name || "",
     stundensatz: (staff.hourlyRateCents / 100).toFixed(2).replace(".", ","),
+    gewinnbeteiligung: (staff.profitSharePercent ?? role?.profitSharePercent ?? 0).toString().replace(".", ","),
     eintritt: staff.entryDate ? new Date(staff.entryDate).toLocaleDateString("de-DE") : "",
     heute: new Date().toLocaleDateString("de-DE"),
   };
-  return bodyHtml.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => escapeHtml(values[key] ?? ""));
+  // {{ort}} wird nicht auto-gefüllt: leere Ausfüllzeile für manuelle Eingabe (Ort, Datum).
+  const withOrt = bodyHtml.replace(/\{\{\s*ort\s*\}\}/gi, '<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">&nbsp;</span>');
+  return withOrt.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => escapeHtml(values[key] ?? ""));
 }
 
 export async function activeTemplateForRole(roleId: string | null) {

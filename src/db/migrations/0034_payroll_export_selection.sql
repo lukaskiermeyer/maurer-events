@@ -1,0 +1,1 @@
+ALTER TABLE "payroll_exports" ADD COLUMN "selected_staff_ids" jsonb;
