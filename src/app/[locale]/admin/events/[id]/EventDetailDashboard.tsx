@@ -79,6 +79,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     location: event.location,
     description: event.description,
     imageUrl: event.imageUrl || "",
+    mapUrl: event.mapUrl || "",
     link: event.link,
     reservable: event.reservable,
     allowTableSelection: event.allowTableSelection ?? true,
@@ -700,6 +701,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   {/* eslint-disable-line @next/next/no-img-element */}<img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
                 </div>
               )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-1 opacity-70">Maps-Link (optional)</label>
+                <input
+                  type="url"
+                  value={formData.mapUrl}
+                  onChange={e => setFormData({ ...formData, mapUrl: e.target.value })}
+                  className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green"
+                  placeholder="https://maps.google.com/... oder Google Maps Link"
+                />
+                <p className="text-xs opacity-50 mt-1">Link zu Google Maps (Standort des Events).</p>
               </div>
 
               <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">

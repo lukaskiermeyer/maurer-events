@@ -158,7 +158,31 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   </span>
                 </li>
               </ul>
-              {reservationCta && (
+              {location && (
+                 <div className="mt-6 pt-6 border-t border-border-light">
+                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">Karte</span>
+                   <div className="rounded-2xl overflow-hidden border border-border-light">
+                     <iframe
+                       src={`https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`}
+                       width="100%"
+                       height="200"
+                       style={{ border: 0 }}
+                       loading="lazy"
+                       referrerPolicy="no-referrer-when-downgrade"
+                       title={`Karte: ${location}`}
+                     />
+                   </div>
+                   <a
+                     href={event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-accent-green hover:underline"
+                   >
+                     In Google Maps öffnen
+                   </a>
+                 </div>
+               )}
+               {reservationCta && (
                 <a
                   href="#reservierung"
                   className="mt-8 flex items-center justify-center gap-2 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors shadow-sm"

@@ -18,6 +18,7 @@ export async function createEvent(data: {
   location: string;
   description: string;
   imageUrl?: string;
+  mapUrl?: string;
   link: string;
   reservable: boolean;
   allowTableSelection?: boolean;
@@ -62,6 +63,7 @@ export async function createEvent(data: {
     location: data.location,
     description: data.description,
     imageUrl: data.imageUrl,
+    mapUrl: data.mapUrl,
     link: data.link,
     reservable,
     allowTableSelection: data.allowTableSelection ?? true,

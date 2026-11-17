@@ -20,6 +20,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     location: "",
     description: "",
     imageUrl: "",
+    mapUrl: "",
     link: "/termine/ohne-reservierung",
     reservable: false,
     allowTableSelection: true,
@@ -57,7 +58,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
   const resetForm = () => {
     setFormData({
-      title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: "", isPublished: true
+      title: "", date: "", endDate: "", location: "", description: "", imageUrl: "", mapUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: "", isPublished: true
     });
     setFile(null);
     setEditingEvent(null);
@@ -72,6 +73,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
       location: event.location || "",
       description: event.description || "",
       imageUrl: event.imageUrl || "",
+      mapUrl: event.mapUrl || "",
       link: event.link || "/termine/ohne-reservierung",
       reservable: event.reservable ?? false,
       allowTableSelection: event.allowTableSelection ?? true,
@@ -112,6 +114,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         reservationMode: formData.reservationMode as 'none' | 'email' | 'online',
         reservable: formData.reservationMode === 'online',
         imageUrl: finalImageUrl,
+        mapUrl: formData.mapUrl || undefined,
         isPublished: formData.isPublished,
         date: new Date(formData.date),
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
@@ -301,6 +304,18 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                 {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-32 rounded-lg border border-border-light" />
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold mb-1 opacity-70">Maps-Link (optional)</label>
+            <input
+              type="url"
+              value={formData.mapUrl}
+              onChange={e => setFormData({...formData, mapUrl: e.target.value})}
+              className="w-full border border-border-light rounded-lg p-2 bg-base-light focus:outline-none focus:border-accent-green"
+              placeholder="https://maps.google.com/... oder Google Maps Link"
+            />
+            <p className="text-xs opacity-50 mt-1">Link zu Google Maps (Standort des Events). Wird im Eventbereich als Karte angezeigt.</p>
           </div>
 
           <div className="flex items-center gap-3 bg-base-light p-3 rounded-lg border border-border-light">

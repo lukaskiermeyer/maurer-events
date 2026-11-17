@@ -18,6 +18,7 @@ export const events = pgTable('events', {
   locationEn: text('location_en'),
   descriptionEn: text('description_en'),
   imageUrl: text('image_url'),
+  mapUrl: text('map_url'),
   link: text('link'),
   reservable: boolean('reservable').default(false).notNull(),
   allowTableSelection: boolean('allow_table_selection').default(true).notNull(),
