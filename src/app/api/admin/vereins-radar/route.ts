@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/db";
 import { vereinsRadar } from "@/db/schema";
-import { and, desc, eq, gte, ilike, or, sql, asc } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
 
   // monthsAhead dynamisch aus eventYear (Annahme 1. Juni) neu berechnen
   const now = new Date();
-  for (const it of items as any[]) {
+  for (const it of items as (typeof items)[number][]) {
     if (it.eventYear) {
       const ev = new Date(Date.UTC(it.eventYear, 5, 1));
       it.monthsAhead = Math.round((ev.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44));

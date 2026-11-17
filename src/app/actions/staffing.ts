@@ -135,7 +135,6 @@ export async function autoAssign(eventId: string, date?: string) {
     const roleMap = new Map(data.roles.map(r => [r.id, r.name]));
     for (const member of members) {
       const myAssignments = plan.assignments.filter(a => a.staffId === member.id);
-      const lines = myAssignments.map(a => new Date(a.date).toLocaleDateString("de-DE") + " " + a.startTime + "–" + a.endTime + " (" + (roleMap.get(a.roleId) || "Schicht") + ")").join("<br/>");
       try {
         await new Resend(process.env.RESEND_API_KEY).emails.send({
           from: emailFrom(), to: [member.email], subject: "Neue Schichtzuweisung – " + event.title,

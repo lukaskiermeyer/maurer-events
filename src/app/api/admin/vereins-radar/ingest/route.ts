@@ -139,7 +139,6 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const runId = validItems.length > 0 ? (validItems[0].runId ?? null) : null;
 
   let inserted = 0;
   let updated = 0;
@@ -172,43 +171,35 @@ export async function POST(request: Request) {
             }
 
             // Upsert
-            const updateSet: Record<string, any> = {
+            const updateSet: Partial<typeof vereinsRadar.$inferInsert> = {
               lastSeenAt: now,
               updatedAt: now,
               planningSignals: mergedSignals,
             };
-            // fields that should not be overwritten with null
-            const nullableFields: [string, any][] = [
-              ["vereinName", item.vereinName],
-              ["ort", item.ort],
-              ["region", item.region],
-              ["vereinsTyp", item.vereinsTyp],
-              ["foundingYear", item.foundingYear],
-              ["mitglieder", item.mitglieder],
-              ["eventYear", item.eventYear],
-              ["jubileeYears", item.jubileeYears],
-              ["phase", item.phase],
-              ["status", item.status],
-              ["score", item.score],
-              ["scoreReason", item.scoreReason],
-              ["incumbentFestwirt", item.incumbentFestwirt],
-              ["brauereiPartner", item.brauereiPartner],
-              ["contactName", item.contactName],
-              ["contactRole", item.contactRole],
-              ["contactEmail", item.contactEmail],
-              ["contactPhone", item.contactPhone],
-              ["nextAction", item.nextAction],
-              ["sourceUrl", item.sourceUrl],
-              ["domain", item.domain],
-              ["contentHash", item.contentHash],
-              ["queryType", item.queryType],
-              ["runId", item.runId],
-            ];
-            for (const [key, val] of nullableFields) {
-              if (val !== null && val !== undefined) {
-                updateSet[key] = val;
-              }
-            }
+            if (item.vereinName != null) updateSet.vereinName = item.vereinName;
+            if (item.ort != null) updateSet.ort = item.ort;
+            if (item.region != null) updateSet.region = item.region;
+            if (item.vereinsTyp != null) updateSet.vereinsTyp = item.vereinsTyp;
+            if (item.foundingYear != null) updateSet.foundingYear = item.foundingYear;
+            if (item.mitglieder != null) updateSet.mitglieder = item.mitglieder;
+            if (item.eventYear != null) updateSet.eventYear = item.eventYear;
+            if (item.jubileeYears != null) updateSet.jubileeYears = item.jubileeYears;
+            if (item.phase != null) updateSet.phase = item.phase;
+            if (item.status) updateSet.status = item.status;
+            if (item.score !== undefined) updateSet.score = item.score;
+            if (item.scoreReason != null) updateSet.scoreReason = item.scoreReason;
+            if (item.incumbentFestwirt != null) updateSet.incumbentFestwirt = item.incumbentFestwirt;
+            if (item.brauereiPartner != null) updateSet.brauereiPartner = item.brauereiPartner;
+            if (item.contactName != null) updateSet.contactName = item.contactName;
+            if (item.contactRole != null) updateSet.contactRole = item.contactRole;
+            if (item.contactEmail != null) updateSet.contactEmail = item.contactEmail;
+            if (item.contactPhone != null) updateSet.contactPhone = item.contactPhone;
+            if (item.nextAction != null) updateSet.nextAction = item.nextAction;
+            if (item.sourceUrl != null) updateSet.sourceUrl = item.sourceUrl;
+            if (item.domain != null) updateSet.domain = item.domain;
+            if (item.contentHash != null) updateSet.contentHash = item.contentHash;
+            if (item.queryType != null) updateSet.queryType = item.queryType;
+            if (item.runId != null) updateSet.runId = item.runId;
             if (item.dateAssumed !== undefined) updateSet.dateAssumed = item.dateAssumed;
             // monthsAhead dynamisch aus eventYear neu berechnen
             const ey = item.eventYear ?? old.eventYear;

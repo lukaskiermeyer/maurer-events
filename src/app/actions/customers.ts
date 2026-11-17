@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customerImports, customers, events, reservations, tables } from "@/db/schema";
@@ -81,7 +81,7 @@ export async function getCustomers(filters: CustomerListFilters = {}): Promise<C
   const pageSize = Math.min(200, Math.max(10, Number(filters.pageSize) || 50));
   const offset = (page - 1) * pageSize;
 
-  const conditions: any[] = [isNull(customers.deletedAt)];
+  const conditions: (ReturnType<typeof eq> | ReturnType<typeof isNull> | ReturnType<typeof or> | ReturnType<typeof gte> | ReturnType<typeof ilike> | ReturnType<typeof sql>)[] = [isNull(customers.deletedAt)];
   if (search) {
     conditions.push(or(
       ilike(customers.displayName, `%${search}%`),
@@ -166,8 +166,8 @@ export async function findDuplicateCustomers(data: { displayName?: string; email
   const email = normalizeEmail(data.email || "");
   const phone = (data.phone || "").trim();
   if (!name && !email && !phone) return [];
-  const conditions: any[] = [isNull(customers.deletedAt)];
-  const ors: any[] = [];
+  const conditions: (ReturnType<typeof eq> | ReturnType<typeof isNull> | ReturnType<typeof or> | ReturnType<typeof gte> | ReturnType<typeof ilike> | ReturnType<typeof sql>)[] = [isNull(customers.deletedAt)];
+  const ors: (ReturnType<typeof eq> | ReturnType<typeof ilike>)[] = [];
   if (email) ors.push(eq(customers.email, email));
   if (phone) ors.push(eq(customers.phone, phone));
   if (name) ors.push(ilike(customers.displayName, name));

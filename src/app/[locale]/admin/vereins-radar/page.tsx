@@ -1,8 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
-import { getVereinsRadar, updateVereinsRadarWirt, updateVereinsRadarStatus } from "@/app/actions/festchancen";
+import { getVereinsRadar, updateVereinsRadarWirt } from "@/app/actions/festchancen";
 import StaffHeader from "@/components/admin/StaffHeader";
 import { Link } from "@/i18n/routing";
-import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,7 @@ export default async function VereinsRadarPage() {
     getVereinsRadar("beobachten"),
   ]);
 
-  const renderList = (items: any[], title: string) => (
+  const renderList = (items: Awaited<ReturnType<typeof getVereinsRadar>>, title: string) => (
     <div className="mb-8">
       <h2 className="text-xl font-display font-bold text-base-dark mb-3">{title} ({items.length})</h2>
       {items.length === 0 ? (

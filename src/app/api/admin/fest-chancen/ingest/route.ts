@@ -298,7 +298,7 @@ export async function POST(request: Request) {
         await tx.execute(sql`SAVEPOINT item_sp`);
         try {
           // Matching: eventKey first, else sourceUrlNormalized
-          let existing: any[] = [];
+          let existing: (typeof festChances.$inferSelect)[] = [];
           if (item.eventKey) {
             existing = await tx
               .select()
@@ -334,7 +334,7 @@ export async function POST(request: Request) {
             const srcUrl = item.sourceUrl.trim();
             const newUrls = oldUrls.includes(srcUrl) ? oldUrls : [...oldUrls, srcUrl];
 
-            const updateSet: Record<string, any> = {
+            const updateSet: Partial<typeof festChances.$inferInsert> = {
               sourceUrl: srcUrl,
               sourceUrlNormalized: normalized,
               urlHash: hash,

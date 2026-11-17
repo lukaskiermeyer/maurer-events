@@ -52,7 +52,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "validation_error", details: parsed.error.issues }, { status: 400 });
   }
   const data = parsed.data;
-  const update: Record<string, any> = { updatedAt: new Date() };
+  const update: Partial<typeof vereinsRadar.$inferInsert> = { updatedAt: new Date() };
   if (data.wirtStatus !== undefined) update.wirtStatus = data.wirtStatus;
   if (data.wirtNotiz !== undefined) update.wirtNotiz = data.wirtNotiz;
   if (data.wiedervorlage !== undefined) update.wiedervorlage = data.wiedervorlage ? new Date(data.wiedervorlage + "T00:00:00Z") : null;

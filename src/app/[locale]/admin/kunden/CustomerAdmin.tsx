@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Link } from "@/i18n/routing";
 import type { CustomerRecord } from "@/types/domain";
 import { getCustomers, exportCustomersCsv, createCustomer, findDuplicateCustomers, getDistinctCustomerTags, getCustomerStats } from "@/app/actions/customers";
@@ -25,7 +25,7 @@ export default function CustomerAdmin({ initialCustomers, initialTotal }: { init
   const [pageSize, setPageSize] = useState(50);
   const [filters, setFilters] = useState<Filters>({ query: "", source: "all", consent: "all", hasEmail: "all", hasPhone: "all", tag: "all", sort: "name" });
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [stats, setStats] = useState<any[]>([]);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getCustomerStats>>>([]);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [showCreate, setShowCreate] = useState(false);

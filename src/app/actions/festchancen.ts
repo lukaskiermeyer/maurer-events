@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { festOpportunities, festRuns, festChances, vereinsRadar } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export type FestOpportunity = typeof festOpportunities.$inferSelect;
