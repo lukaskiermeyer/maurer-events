@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/routing";
 import { getMyContract } from "@/app/actions/staff";
 import ContractSign from "./ContractSign";
+import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function ContractPage() {
 
       <div className="flex flex-wrap gap-3 no-print">
         <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-base-dark text-white px-5 py-3 rounded-xl font-bold">PDF öffnen / herunterladen</a>
-        <button type="button" onClick={() => window.print()} className="inline-block bg-accent-green text-white px-5 py-3 rounded-xl font-bold">Drucken</button>
+        <PrintButton />
       </div>
 
       <ContractSign
