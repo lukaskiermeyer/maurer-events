@@ -66,7 +66,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ""} https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.cloudflare.com https://res.cloudinary.com https://images.unsplash.com; font-src 'self' data:; connect-src 'self' data: blob: https://api.stripe.com https://challenges.cloudflare.com; frame-src https://js.stripe.com https://challenges.cloudflare.com https://www.google.com https://maps.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; worker-src 'self' blob:; child-src 'self' blob:;`
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ""} https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.cloudflare.com https://res.cloudinary.com https://images.unsplash.com; font-src 'self' data:; connect-src 'self' data: blob: https://api.stripe.com https://challenges.cloudflare.com; frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com https://maps.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; worker-src 'self' blob:; child-src 'self' blob:;`
           },
           {
             key: 'X-DNS-Prefetch-Control',
