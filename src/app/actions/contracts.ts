@@ -11,6 +11,7 @@ import { sha256 } from "@/lib/secure-fields";
 import { uuid } from "@/lib/reservation-policy";
 import { audit } from "@/lib/audit";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
+import { escapeHtml } from "@/lib/escape";
 
 export async function signContractText(contractId: string, fullName: string) {
   try {
@@ -100,5 +101,23 @@ export async function deleteContract(contractId: string) {
     hadSignedFile: Boolean(contract.signedFileUrl),
   });
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
+  return { success: true };
+}
+
+export async function updateContractOrt(contractId: string, ort: string) {
+  const member = await requireStaffMember();
+  uuid(contractId);
+  const [contract] = await db.select().from(contracts).where(and(eq(contracts.id, contractId), eq(contracts.staffId, member.id)));
+  if (!contract) throw new Error("Vertrag nicht gefunden.");
+  if (contract.status !== "pending") throw new Error("Der Ort kann nur bei einem offenen Vertrag geändert werden.");
+  const ortText = ort.trim();
+  const spanRegex = /<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">[^<]*<\/span>/;
+  const newBody = contract.bodyHtml.replace(
+    spanRegex,
+    `<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">${ortText ? escapeHtml(ortText) : "&nbsp;"}</span>`
+  );
+  await db.update(contracts).set({ bodyHtml: newBody, updatedAt: new Date() }).where(eq(contracts.id, contractId));
+  await audit("staff", member.id, "contract.update_ort", "contract", contractId, { ort: ortText });
+  revalidatePath("/[locale]/team", "layout");
   return { success: true };
 }

@@ -2,6 +2,7 @@ import { Link } from "@/i18n/routing";
 import { getMyContract } from "@/app/actions/staff";
 import ContractSign from "./ContractSign";
 import PrintButton from "./PrintButton";
+import OrtInput from "./OrtInput";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,36 @@ export default async function ContractPage() {
   // Bestehende Verträge (vor Einführung der Conditional-Logik) können die
   // Marker {{#if ...}} / {{/if}} noch als Klartext enthalten – diese entfernen,
   // damit der Vertrag wie ein sauberes Papier aussieht.
-  const cleanBodyHtml = contract.bodyHtml
+  // Unterschriftsfelder als zwei nebeneinander liegende Kästen (Arbeitgeber | Arbeitnehmer)
+  // mit Live-Vorschau der gezeichneten Unterschrift im rechten Kasten.
+  const combinedSigRegex = /Unterschrift Arbeitgeber:\s*_{2,}[\s\S]*?Unterschrift Arbeitnehmer:\s*_{2,}/i;
+  let paperHtml = contract.bodyHtml
     .replace(/\{\{#if\s+[a-zA-Z0-9_]+\s*\}\}/gi, "")
     .replace(/\{\{\/if\}\}/gi, "")
     .replace(/\{\{#unless\s+[a-zA-Z0-9_]+\s*\}\}/gi, "")
     .replace(/\{\{\/unless\}\}/gi, "");
+  if (combinedSigRegex.test(paperHtml)) {
+    paperHtml = paperHtml.replace(
+      combinedSigRegex,
+      '<div style="display:flex;gap:1.5rem;margin-top:1.5rem;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:200px;">' +
+          '<div style="border:1px solid #d1d5db;border-radius:0.5rem;height:5rem;margin-bottom:0.5rem;position:relative;overflow:hidden;" id="sig-employer-line"></div>' +
+          '<div style="text-align:center;font-size:0.75rem;color:#666;">Unterschrift Arbeitgeber</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:200px;">' +
+          '<div style="border:1px solid #d1d5db;border-radius:0.5rem;height:5rem;margin-bottom:0.5rem;position:relative;overflow:hidden;" id="sig-employee-line"></div>' +
+          '<div style="text-align:center;font-size:0.75rem;color:#666;">Unterschrift Arbeitnehmer</div>' +
+        '</div>' +
+      '</div>'
+    );
+  } else {
+    paperHtml = paperHtml
+      .replace(/Unterschrift Arbeitgeber:\s*_{2,}/gi, '<div style="border:1px solid #d1d5db;border-radius:0.5rem;height:5rem;margin-bottom:0.5rem;" id="sig-employer-line"></div><div style="font-size:0.75rem;color:#666;text-align:center;margin-bottom:1rem;">Unterschrift Arbeitgeber</div>')
+      .replace(/Unterschrift Arbeitnehmer:\s*_{2,}/gi, '<div style="border:1px solid #d1d5db;border-radius:0.5rem;height:5rem;margin-bottom:0.5rem;" id="sig-employee-line"></div><div style="font-size:0.75rem;color:#666;text-align:center;margin-bottom:1rem;">Unterschrift Arbeitnehmer</div>');
+  }
+
+  const ortMatch = contract.bodyHtml.match(/<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">([^<]*)<\/span>/);
+  const initialOrt = ortMatch ? ortMatch[1].replace(/&nbsp;/g, "").trim() : "";
 
   return (
     <div className="space-y-6">
@@ -38,7 +64,7 @@ export default async function ContractPage() {
       <div className="contract-document bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 max-w-[210mm] mx-auto">
         <div
           className="text-sm sm:text-base leading-relaxed [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_br]:leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: cleanBodyHtml }}
+          dangerouslySetInnerHTML={{ __html: paperHtml }}
         />
       </div>
 
@@ -46,6 +72,10 @@ export default async function ContractPage() {
         <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-base-dark text-white px-5 py-3 rounded-xl font-bold">PDF öffnen / herunterladen</a>
         <PrintButton />
       </div>
+
+      {contract.status === "pending" && (
+        <OrtInput contractId={contract.id} initialOrt={initialOrt} />
+      )}
 
       <ContractSign
         contractId={contract.id}

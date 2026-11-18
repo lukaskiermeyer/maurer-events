@@ -58,7 +58,13 @@ export async function ensureContractForStaff(staffId: string) {
     eq(contracts.templateId, template.id),
     eq(contracts.templateVersion, template.version),
   ));
-  if (existing) return existing;
+  // Bestehende Verträge mit noch nicht verarbeiteten Conditional-Markern ({{#if ...}})
+  // neu rendern, damit Stundensatz/Umsatzbeteiligung korrekt ein-/ausgeblendet werden.
+  if (existing && /\{\{#/.test(existing.bodyHtml)) {
+    await db.delete(contracts).where(eq(contracts.id, existing.id));
+  } else if (existing) {
+    return existing;
+  }
   try {
     const [created] = await db.insert(contracts).values({
       staffId,

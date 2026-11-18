@@ -15,7 +15,7 @@ export default function ContractSign({
   signedFileUrl: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [drawing, setDrawing] = useState(false);
+  const drawingRef = useRef(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,10 +29,10 @@ export default function ContractSign({
     const rect = canvasRef.current!.getBoundingClientRect();
     ctx.beginPath();
     ctx.moveTo(event.clientX - rect.left, event.clientY - rect.top);
-    setDrawing(true);
+    drawingRef.current = true;
   };
   const draw = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing) return;
+    if (!drawingRef.current) return;
     const ctx = getCtx();
     if (!ctx) return;
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -42,13 +42,29 @@ export default function ContractSign({
     ctx.lineCap = "round";
     ctx.stroke();
     setHasSignature(true);
+    updateLiveSignature();
   };
-  const endDraw = () => setDrawing(false);
+  const endDraw = () => { drawingRef.current = false; };
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = getCtx();
     if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
+    updateLiveSignature(true);
+  };
+
+  const updateLiveSignature = (clear = false) => {
+    const span = document.getElementById("sig-employee-line");
+    if (!span) return;
+    if (clear) {
+      span.innerHTML = "";
+      span.style.backgroundImage = "";
+      return;
+    }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/png");
+    span.innerHTML = `<img src="${dataUrl}" alt="" style="height:100%;width:100%;object-fit:contain;" />`;
   };
 
   const submitCanvas = async () => {

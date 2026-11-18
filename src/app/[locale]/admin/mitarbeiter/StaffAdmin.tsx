@@ -872,7 +872,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                     </div>
                     <div className="rounded-xl bg-slate-100 p-3">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · {selectedRoleName} · {templateForm.signatureMode === "handwritten" ? "Handschriftlich" : "Digital"}</p>
-                      <div className="bg-white shadow-sm rounded-lg p-4 sm:p-5 text-sm leading-relaxed max-h-80 overflow-auto [&_h2]:text-lg [&_h3]:text-base [&_h2]:font-bold [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                      <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-80 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: previewHtml }} />
                       {templateForm.signatureMode === "text" ? (
                         <div className="mt-3 bg-white rounded-lg border border-border-light p-3 text-sm space-y-2">
                           <label className="flex gap-2 items-center"><input type="checkbox" readOnly checked={false} className="w-5 h-5 accent-accent-green" /> Ich habe den Vertrag gelesen und akzeptiere ihn</label>
@@ -904,7 +904,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
             {contractStep === 3 && (
               <div className="space-y-4">
                 <p className="text-sm font-bold">4. So sieht die Person ihren Vertrag (Beispiel)</p>
-                <div className="rounded-xl border border-border-light bg-white p-4 text-sm max-h-72 overflow-auto [&_h2]:text-lg [&_h3]:text-base [&_h2]:font-bold [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-72 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: previewHtml }} />
                 <p className="text-xs text-base-dark/50">Grün markiert = das wird automatisch für jede Person eingetragen (Name, Rolle, Stundensatz …).</p>
                 <label className="flex items-start gap-2 text-sm font-bold cursor-pointer">
                   <input type="checkbox" checked={templateForm.status === "active"} onChange={event => setTemplateForm({ ...templateForm, status: event.target.checked ? "active" : "draft" })} className="w-5 h-5 mt-0.5 accent-accent-green shrink-0" />
@@ -984,7 +984,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                     </div>
                     <div className="rounded-xl bg-slate-100 p-3">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · Minijob-Formular (PDF)</p>
-                      <div className="bg-white shadow-sm rounded-lg p-4 sm:p-5 text-sm leading-relaxed max-h-80 overflow-auto [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_h1]:font-bold [&_h2]:font-bold [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
+                      <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-80 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
                       <p className="text-xs text-base-dark/50 mt-3">Das wird als fertiges PDF erstellt. Grün markiert = wird automatisch aus den Daten eingetragen.</p>
                     </div>
                   </div>
@@ -1005,7 +1005,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
             {minijobStep === 3 && (
               <div className="space-y-4">
                 <p className="text-sm font-bold">3. So sieht die Person ihr Formular (Beispiel)</p>
-                <div className="rounded-xl border border-border-light bg-white p-4 text-sm max-h-72 overflow-auto [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_h1]:font-bold [&_h2]:font-bold [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
+                <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-72 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
                 <p className="text-xs text-base-dark/50">Grün markiert = das wird automatisch für jede Person eingetragen (Name, Adresse, Steuer-ID, IBAN …).</p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setMinijobStep(2)} className="flex-1 border border-border-light py-3 rounded-xl font-bold">← Zurück</button>
