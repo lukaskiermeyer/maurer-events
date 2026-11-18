@@ -29,6 +29,31 @@ export default function MarkdownEditor({
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const selected = value.slice(start, end);
+
+    // Toggle: selection already contains the markers -> remove them
+    if (before && after && selected.startsWith(before) && selected.endsWith(after) && selected.length >= before.length + after.length) {
+      const inner = selected.slice(before.length, selected.length - after.length);
+      const next = value.slice(0, start) + inner + value.slice(end);
+      onChange(next);
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(start, start + inner.length);
+      });
+      return;
+    }
+
+    // Toggle: markers surround the current selection -> remove them
+    if (before && after && start >= before.length && value.slice(start - before.length, start) === before && value.slice(end, end + after.length) === after) {
+      const next = value.slice(0, start - before.length) + selected + value.slice(end + after.length);
+      onChange(next);
+      requestAnimationFrame(() => {
+        ta.focus();
+        const newStart = start - before.length;
+        ta.setSelectionRange(newStart, newStart + selected.length);
+      });
+      return;
+    }
+
     const next = value.slice(0, start) + before + (selected || "Text") + after + value.slice(end);
     onChange(next);
     requestAnimationFrame(() => {
@@ -65,9 +90,11 @@ export default function MarkdownEditor({
       >
         {preview ? "Bearbeiten" : "Vorschau"}
       </button>
-      <button type="button" onClick={() => setFullscreen(true)} className="ml-auto px-3 py-1.5 rounded-lg border border-border-light bg-white text-sm font-bold hover:bg-base-light transition-colors">
-        ⤢ Vollbild
-      </button>
+      {!fullscreen && (
+        <button type="button" onClick={() => setFullscreen(true)} className="ml-auto px-3 py-1.5 rounded-lg border border-border-light bg-white text-sm font-bold hover:bg-base-light transition-colors">
+          ⤢ Editor öffnen
+        </button>
+      )}
     </div>
   );
 
@@ -76,8 +103,8 @@ export default function MarkdownEditor({
       {full && formatToolbar}
       {viewToolbar}
       {preview ? (
-        <div className={`bg-base-light border border-border-light rounded-lg p-3 prose prose-sm max-w-none ${full ? "min-h-[60vh]" : "min-h-[120px]"}`}>
-          <ReactMarkdown>{value || "_Keine Beschreibung_"}</ReactMarkdown>
+        <div className={`bg-base-light border border-border-light rounded-lg p-3 prose prose-sm max-w-none whitespace-pre-wrap ${full ? "min-h-[60vh]" : "min-h-[120px]"}`}>
+          <ReactMarkdown>{(value || "_Keine Beschreibung_").replace(/\r\n/g, "\n").replace(/([^ \n])\n(?!\n)/g, "$1\\\n")}</ReactMarkdown>
         </div>
       ) : (
         <textarea
@@ -108,14 +135,14 @@ export default function MarkdownEditor({
       {open && editor(false)}
 
       {!open && value && (
-        <p className="text-xs text-base-dark/60 truncate">{value.slice(0, 80)}</p>
+        <p className="text-xs text-base-dark/60 whitespace-pre-line line-clamp-2">{value.slice(0, 120)}</p>
       )}
 
       {fullscreen && (
         <div className="fixed inset-0 z-[200] bg-base-dark/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-border-light">
-              <h2 className="font-display font-bold text-lg">{label} – Vollbild</h2>
+              <h2 className="font-display font-bold text-lg">{label}</h2>
               <button
                 type="button"
                 onClick={() => setFullscreen(false)}

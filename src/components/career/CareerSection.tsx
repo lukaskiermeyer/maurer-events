@@ -111,7 +111,7 @@ export default function CareerSection({ content }: { content: CareerContent }) {
   return (
     <>
       <section className="max-w-[1200px] mx-auto px-4 text-center mb-16">
-        <h1 className="text-5xl md:text-7xl font-black font-display uppercase tracking-tighter mb-6">
+        <h1 className="text-5xl md:text-7xl font-black font-display uppercase tracking-headline mb-6">
           {content.headline}
         </h1>
         <p className="text-lg max-w-2xl mx-auto opacity-80">{content.intro}</p>
@@ -159,7 +159,7 @@ export default function CareerSection({ content }: { content: CareerContent }) {
 
       {(content.closingTitle || content.closingText) && (
         <section className="max-w-[800px] mx-auto mt-24 text-center px-4">
-          {content.closingTitle && <h3 className="text-2xl font-bold font-display mb-4">{content.closingTitle}</h3>}
+          {content.closingTitle && <h3 className="text-2xl font-subhead mb-4">{content.closingTitle}</h3>}
           {content.closingText && <p className="opacity-70 mb-8">{content.closingText}</p>}
         </section>
       )}

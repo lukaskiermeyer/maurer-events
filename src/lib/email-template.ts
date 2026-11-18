@@ -2,10 +2,10 @@
 // Tabellenbasiert + inline-CSS fuer maximale Kompatibilitaet (Outlook, Gmail, Apple Mail).
 
 const BRAND = {
-  green: "#1F5732",
+  green: "#20603C",
   wood: "#cb7913",
   dark: "#0A0A0A",
-  light: "#FDFBF7",
+  light: "#FAF8F4",
   canvas: "#F4F0E8",
   border: "#F0EDE5",
   muted: "#6b6b6b",

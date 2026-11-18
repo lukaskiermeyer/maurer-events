@@ -30,7 +30,7 @@ export default function StaffingOverview({ data }: { data: { events: Row[] } }) 
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${row.gaps === 0 && row.totalRequired > 0 ? "bg-accent-green/15 text-accent-green" : "bg-amber-100 text-amber-800"}`}>
                   {row.totalRequired === 0 ? "Kein Bedarf" : row.gaps === 0 ? "Voll besetzt" : `${row.gaps} offen`}
                 </span>
-                <Link href={`/admin/events/${row.event.id}/personal`} className="font-bold text-accent-green hover:underline">Einteilen →</Link>
+                <Link href={`/admin/events/${row.event.id}/personal`} className="inline-flex items-center gap-1 min-h-9 px-3 py-1.5 rounded-lg bg-accent-green text-white text-xs font-bold hover:bg-base-dark transition-colors">Einteilen →</Link>
               </div>
             </article>
           ))}

@@ -4,7 +4,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { db } from "@/db";
-import { auditLog, contractTemplates, contracts, eventStaffRequirements, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffRoles, staffSessions } from "@/db/schema";
+import { auditLog, contractTemplates, contracts, eventStaffRequirements, shiftOffers, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffRoles, staffSessions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember, hashToken, randomToken } from "@/lib/staff-auth";
 import { BookingError, uuid } from "@/lib/reservation-policy";
@@ -339,6 +339,9 @@ export async function deleteRoleHardDev(roleId: string) {
   assertDevOnly();
   uuid(roleId);
   // staff.* und Verträge nutzen set null → Mitarbeiter bleiben, Rolle wird null (nur für Testmüll ok).
+  await db.delete(eventStaffRequirements).where(eq(eventStaffRequirements.roleId, roleId));
+  await db.delete(staffAssignments).where(eq(staffAssignments.roleId, roleId));
+  await db.delete(shiftOffers).where(eq(shiftOffers.roleId, roleId));
   const [deleted] = await db.delete(staffRoles).where(eq(staffRoles.id, roleId)).returning();
   if (!deleted) throw new BookingError("Rolle nicht gefunden.", 404);
   await audit("admin", actor.email, "staff_role.hard_delete_dev", "staff_role", roleId);
@@ -468,6 +471,17 @@ export async function saveContractTemplate(data: { roleId: string; name: string;
   await audit("admin", actor.email, "contract_template.create", "contract_template", created.id, { version: created.version });
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
   return { success: true, template: created };
+}
+
+export async function deleteContractTemplate(templateId: string) {
+  const actor = await requireAdmin();
+  uuid(templateId);
+  // contracts.templateId nutzt FK onDelete set null – bereits erstellte Verträge bleiben erhalten.
+  const [deleted] = await db.delete(contractTemplates).where(eq(contractTemplates.id, templateId)).returning();
+  if (!deleted) throw new BookingError("Vertragsvorlage nicht gefunden.", 404);
+  await audit("admin", actor.email, "contract_template.delete", "contract_template", templateId, { name: deleted.name, version: deleted.version, status: deleted.status });
+  revalidatePath("/[locale]/admin/mitarbeiter", "page");
+  return { success: true };
 }
 export async function deleteMyDocument(documentId: string) {
   const member = await requireStaffMember();

@@ -87,8 +87,7 @@ export default function AboutSection() {
                   {/* Handgeschriebener Text auf dem Polaroid */}
                   <div className="absolute bottom-4 left-0 w-full text-center">
                     <span 
-                      className="text-3xl text-base-dark/80 opacity-90 rotate-[-4deg] inline-block tracking-wide"
-                      style={{ fontFamily: "'Dancing Script', 'Caveat', 'Brush Script MT', 'Lucida Handwriting', cursive" }}
+                      className="font-script text-3xl text-base-dark/80 opacity-90 rotate-[-4deg] inline-block tracking-wide"
                     >
                       Da Maurerwirt
                     </span>

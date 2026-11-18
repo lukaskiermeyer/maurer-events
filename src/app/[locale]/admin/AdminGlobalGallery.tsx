@@ -71,7 +71,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
     <div className="space-y-8 animate-fade-in">
       
       <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm">
-        <h4 className="font-bold mb-4 font-display text-xl">Neues Bild zur Galerie hinzufügen</h4>
+        <h4 className="mb-4 font-subhead text-xl">Neues Bild zur Galerie hinzufügen</h4>
         <form onSubmit={handleGalleryUpload} className="flex flex-col md:flex-row gap-4 items-end">
           
           <div className="w-full md:w-1/4">
@@ -127,7 +127,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
           albumList.map((album) => (
             <div key={album.event.id} className="bg-white p-6 rounded-2xl border border-border-light shadow-sm">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold font-display text-xl text-base-dark">
+                <h3 className="font-subhead text-xl text-base-dark">
                   {album.event.title} <span className="text-sm font-sans font-normal opacity-50">({new Date(album.event.date).toLocaleDateString('de-DE')})</span>
                 </h3>
                 <div className="text-sm font-bold bg-base-light px-3 py-1 rounded-full text-base-dark/70">

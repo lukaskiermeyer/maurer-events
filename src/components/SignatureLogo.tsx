@@ -18,7 +18,7 @@ const SignatureLogo: React.FC<SignatureLogoProps> = ({
                                                        size = "md",
                                                        label = "Made by",
                                                        forceLabelColor,
-                                                       color = "#1F5732", // Fallback-Farbe (z.B. dein accent-green oder schwarz)
+                                                       color = "#20603C", // Fallback-Farbe (z.B. dein accent-green oder schwarz)
                                                      }) => {
   const pathVariants: Variants = {
     hidden: { pathLength: 0, opacity: 0 },

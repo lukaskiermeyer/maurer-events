@@ -2,13 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { ContractRecord, StaffDocumentRecord, StaffRecord, StaffRole } from "@/types/domain";
 import { DOCUMENT_KIND_LABELS } from "@/lib/required-documents";
 import { getStaffErasureStatus, updateStaffAdmin, anonymizeStaffForErasure, eraseDeletableStaffData, deleteStaffHardDev, verifyStaffDocument } from "@/app/actions/staff";
-import { verifyContract } from "@/app/actions/contracts";
+import { verifyContract, deleteContract } from "@/app/actions/contracts";
 
 type Detail = { member: StaffRecord; role: StaffRole | null; documents: StaffDocumentRecord[]; contracts: ContractRecord[] };
+
+const CONTRACT_STATUS_LABELS: Record<string, string> = {
+  pending: "Offen",
+  signed: "Unterschrieben",
+  verified: "Bestätigt",
+  declined: "Abgelehnt",
+};
 
 export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; roles: StaffRole[] }) {
   const { member, role, documents, contracts } = detail;
@@ -51,6 +59,17 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
     setBusy(true);
     try { await verifyContract(id); window.location.reload(); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Vertrag konnte nicht geprüft werden."); }
+    finally { setBusy(false); }
+  };
+
+  const deleteContractRecord = async (id: string, version: number, signed: boolean) => {
+    const label = signed
+      ? `Vertrag Version ${version} endgültig löschen? Er ist unterschrieben – die Unterschriftsdatei wird mitgelöscht. Prüfe vorher die steuerliche Aufbewahrungspflicht (§§ 147 AO, 257 HGB). Das kann nicht rückgängig gemacht werden.`
+      : `Vertrag Version ${version} (noch nicht unterschrieben) wirklich löschen? Wird der Vertrag erneut gebraucht, erstellt das System automatisch einen neuen aus der aktiven Vorlage.`;
+    if (!confirm(label)) return;
+    setBusy(true); setMessage("");
+    try { await deleteContract(id); window.location.reload(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Vertrag konnte nicht gelöscht werden."); }
     finally { setBusy(false); }
   };
 
@@ -124,12 +143,20 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
         <section className="bg-white border border-border-light rounded-2xl p-5">
           <h2 className="font-display font-bold text-xl mb-3">Verträge ({contracts.length})</h2>
           {contracts.length === 0 ? <p className="text-sm text-base-dark/60">Kein Vertrag.</p> : <div className="space-y-2">{contracts.map(contract => (
-            <div key={contract.id} className="border border-border-light rounded-xl p-3 text-sm">
-              <p className="font-bold">Version {contract.templateVersion} · {contract.status}</p>
-              <p className="text-base-dark/50">{contract.signatureMode === "handwritten" ? "handschriftlich" : "digital"} · {contract.signedAt ? new Date(contract.signedAt).toLocaleDateString("de-DE") : "nicht unterschrieben"}</p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {contract.signedFileUrl && <a href={`/api/team/file?contractId=${contract.id}`} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-green underline">Unterschrift öffnen</a>}
-                {contract.status === "signed" && <button type="button" onClick={() => verify(contract.id)} className="font-bold text-accent-green">Unterschrift bestätigen</button>}
+            <div key={contract.id} className="border border-border-light rounded-xl p-3 text-sm space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold">Version {contract.templateVersion} · {CONTRACT_STATUS_LABELS[contract.status] || contract.status}</p>
+                  <p className="text-base-dark/50">{contract.signatureMode === "handwritten" ? "handschriftlich" : "digital"} · {contract.signedAt ? new Date(contract.signedAt).toLocaleDateString("de-DE") : "nicht unterschrieben"}</p>
+                </div>
+                <button type="button" disabled={busy} onClick={() => deleteContractRecord(contract.id, contract.templateVersion, Boolean(contract.signedAt))} className="shrink-0 inline-flex items-center justify-center min-h-11 sm:min-h-9 min-w-11 sm:min-w-9 px-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors" title="Vertrag löschen" aria-label="Vertrag löschen">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <a href={`/api/team/contract/pdf?contractId=${contract.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-11 sm:min-h-7 font-bold text-accent-green underline">Vertrag als PDF</a>
+                {contract.signedFileUrl && <a href={`/api/team/file?contractId=${contract.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-11 sm:min-h-7 font-bold text-accent-green underline">Unterschrift öffnen</a>}
+                {contract.status === "signed" && <button type="button" onClick={() => verify(contract.id)} className="inline-flex items-center min-h-11 sm:min-h-7 font-bold text-accent-green">Unterschrift bestätigen</button>}
               </div>
             </div>
           ))}</div>}

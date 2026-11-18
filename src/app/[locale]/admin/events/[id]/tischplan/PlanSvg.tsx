@@ -55,7 +55,7 @@ export default function PlanSvg({
       ))}
 
       {tent.features?.map((feature, index) => {
-        const fill = feature.kind === 'stage' ? '#1F5732' : feature.kind === 'bar' ? '#CB7913' : feature.kind === 'blocked' ? '#9CA3AF' : '#E8E3D9';
+        const fill = feature.kind === 'stage' ? '#20603C' : feature.kind === 'bar' ? '#CB7913' : feature.kind === 'blocked' ? '#9CA3AF' : '#E8E3D9';
         const color = feature.kind === 'entrance' ? '#0A0A0A' : '#FFFFFF';
         return (
           <g key={`${feature.kind}-${index}`}>
@@ -91,7 +91,7 @@ export default function PlanSvg({
         const reservation = rows[0]?.reservation;
         const blocked = table.isBlocked;
         const vip = table.isVip;
-        const fill = blocked ? "#9CA3AF" : vip ? "#CB7913" : reservation ? "#1F5732" : "#FFFFFF";
+        const fill = blocked ? "#9CA3AF" : vip ? "#CB7913" : reservation ? "#20603C" : "#FFFFFF";
         const text = blocked || vip || reservation ? "#FFFFFF" : "#0A0A0A";
         const tableW = cell * 0.78;
         const tableH = cell * 0.64;
@@ -108,9 +108,9 @@ export default function PlanSvg({
         return (
           <g key={table.id} transform={table.rotation ? `rotate(${table.rotation} ${cx} ${cy})` : undefined}>
             {table.shape === "round" ? (
-              <ellipse cx={cx} cy={cy} rx={tableW / 2} ry={tableH / 2} fill={fill} stroke="#1F5732" strokeWidth={0.7} />
+              <ellipse cx={cx} cy={cy} rx={tableW / 2} ry={tableH / 2} fill={fill} stroke="#20603C" strokeWidth={0.7} />
             ) : (
-              <rect x={x} y={y} width={tableW} height={tableH} rx={cell * 0.06} fill={fill} stroke="#1F5732" strokeWidth={0.7} />
+              <rect x={x} y={y} width={tableW} height={tableH} rx={cell * 0.06} fill={fill} stroke="#20603C" strokeWidth={0.7} />
             )}
             <text x={cx} y={cy - cell * 0.1} textAnchor="middle" dominantBaseline="middle" fontSize={numberSize} fontWeight="800" fill={text} fontFamily="Helvetica, Arial, sans-serif">
               {displayNumber}

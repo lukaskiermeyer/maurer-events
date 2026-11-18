@@ -44,7 +44,7 @@ function layout(title: string, body: string) {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F4F0E8;padding:24px 12px;">
     <tr><td align="center">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:16px;overflow:hidden;">
-        <tr><td style="background:#1F5732;padding:18px 28px;color:#FFFFFF;font-size:13px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;">Maurer Events</td></tr>
+        <tr><td style="background:#20603C;padding:18px 28px;color:#FFFFFF;font-size:13px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;">Maurer Events</td></tr>
         <tr><td style="padding:28px;">
           <h1 style="margin:0 0 16px;font-size:26px;line-height:1.2;color:#0A0A0A;">${title}</h1>
           ${body}
@@ -81,7 +81,7 @@ function requestBody(data: ReservationRequestEmailData) {
       ['Uhrzeitwunsch', data.time],
       ['Nachricht', data.message],
     ])}
-    <p style="margin:20px 0 0;"><a href="${escapeHtml(`${baseUrl()}/admin/events/${data.eventId}`)}" style="display:inline-block;background:#1F5732;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:bold;">Im Admin öffnen</a></p>`;
+    <p style="margin:20px 0 0;"><a href="${escapeHtml(`${baseUrl()}/admin/events/${data.eventId}`)}" style="display:inline-block;background:#20603C;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:bold;">Im Admin öffnen</a></p>`;
 }
 
 function confirmationBody(data: ReservationConfirmationEmailData) {

@@ -4,6 +4,13 @@ Der aktuelle Stand für den **ersten Kundentest** steht in
 [project-acceptance.md](project-acceptance.md). Die frühere ausführliche
 Produktions-/Providerabnahme bleibt in [production-acceptance.md](production-acceptance.md).
 
+**Stand 18.11.2026:** Online-Reservierung und -Checkout bleiben für neue Events
+bewusst aus (Reservierungsmodus `none`/`email`; der Stripe-Wizard bleibt nur für
+Altdaten erhalten, siehe [konzept-2026-erweiterungen.md](konzept-2026-erweiterungen.md),
+§ 0, Entscheidung 5) – Produktentscheidung, kein Defekt. Die offenen Punkte aus
+der Datenschutz-/Sicherheitswelle November 2026 (AVVs, Löschkonzept, Register,
+Audits, Cloudinary-Härtung) sind in [TODO.md](TODO.md) gebündelt.
+
 - Freigegebene AGB und Stornobedingungen fehlen; `/agb` und `/widerruf` liefern 404.
 - Warteliste und Zahlungsabschluss mit Tischwahl sind noch offen. Echter OTP-Login mit
   CAPTCHA/Code-Mail sowie Gast-Wizard ohne Tischwahl mit Testzahlung und Rückkehr

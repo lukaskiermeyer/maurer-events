@@ -4,9 +4,9 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { Link } from "@/i18n/routing";
-import type { ContractTemplate, StaffRecord, StaffRole } from "@/types/domain";
+import { Pencil, Eye, Mail, Power, PowerOff, Trash2 } from "lucide-react";import type { ContractTemplate, StaffRecord, StaffRole } from "@/types/domain";
 import type { documentFormTemplates } from "@/db/schema";
-import { createRole, createStaff, deleteRoleHardDev, deleteStaffHardDev, resendStaffInvite, saveContractTemplate, updateRole, updateStaffAdmin } from "@/app/actions/staff";
+import { createRole, createStaff, deleteContractTemplate, deleteRoleHardDev, deleteStaffHardDev, resendStaffInvite, saveContractTemplate, updateRole, updateStaffAdmin } from "@/app/actions/staff";
 import { deleteDocumentTemplate, saveDocumentTemplate } from "@/app/actions/document-templates";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), {
@@ -28,11 +28,12 @@ const SAMPLE_MINIJOB = `<h1>Minijob-Formular</h1>
 
 const SAMPLE_CONTRACT = `<h2>Arbeitsvertrag</h2>
 <p>Zwischen Maurer Events und {{name}}, {{adresse}}, wird folgender Vertrag geschlossen.</p>
-<p>Rolle: {{rolle}}<br/>Stundensatz: {{stundensatz}} €<br/>Eintritt: {{eintritt}}</p>
+<p>Rolle: {{rolle}}<br/>{{#if stundensatz}}Stundensatz: {{stundensatz}} €<br/>{{/if}}{{#if gewinnbeteiligung}}Umsatzbeteiligung: {{gewinnbeteiligung}} %<br/>{{/if}}Eintritt: {{eintritt}}</p>
 <h3>§ 1 Tätigkeit</h3>
 <p>Die beschriebene Tätigkeit wird nach Weisung des Festwirts ausgeübt.</p>
 <h3>§ 2 Vergütung</h3>
-<p>Die Vergütung erfolgt auf Basis der geleisteten Stunden.</p>
+{{#if stundensatz}}<p>Die Vergütung erfolgt auf Basis der geleisteten Stunden ({{stundensatz}} €/Std.).</p>{{/if}}
+{{#if gewinnbeteiligung}}<p>Zusätzlich erhält die Person eine Umsatzbeteiligung in Höhe von {{gewinnbeteiligung}} %.</p>{{/if}}
 <h3>§ 3 Datenschutz</h3>
 <p>Die Verarbeitung der personenbezogenen Daten erfolgt zum Zweck der Beschäftigung.</p>
 <p>Ort, Datum: {{ort}}, {{heute}}</p>
@@ -45,14 +46,44 @@ const CONTRACT_PLACEHOLDERS = [
   { token: "{{name}}", label: "Name der Person", example: "Max Mustermann" },
   { token: "{{rolle}}", label: "Rolle / Job", example: "Servierkraft" },
   { token: "{{stundensatz}}", label: "Stundensatz", example: "15,00" },
+  { token: "{{gewinnbeteiligung}}", label: "Umsatzbeteiligung (%)", example: "5" },
   { token: "{{eintritt}}", label: "Eintrittsdatum", example: "01.12.2026" },
   { token: "{{adresse}}", label: "Adresse", example: "Musterstraße 1, 12345 Musterstadt" },
   { token: "{{heute}}", label: "Heutiges Datum", example: "07.11.2026" },
   { token: "{{ort}}", label: "Ort (manuell ausfüllen)", example: "München" },
 ] as const;
 
+
 function buildPreviewHtml(html: string, overrides: Record<string, string> = {}) {
-  return CONTRACT_PLACEHOLDERS.reduce((acc, item) => acc.split(item.token).join(`<mark style="background:#dcfce7;border-radius:4px;padding:0 4px;font-weight:700">${overrides[item.token] || item.example}</mark>`), html);
+  // Values used to evaluate conditional blocks ({{#if key}}...{{/if}}).
+  const values: Record<string, string> = {};
+  for (const item of CONTRACT_PLACEHOLDERS) {
+    values[item.token] = (item.token in overrides) ? overrides[item.token] : item.example;
+  }
+  // Also accept bare keys.
+  for (const k of Object.keys(overrides)) {
+    const bare = k.replace(/^\{\{|\}\}$/g, "").trim();
+    if (bare && !(bare in values) && !(k in values)) values[k] = overrides[k];
+    if (bare && !(("{{" + bare + "}}") in values)) values["{{" + bare + "}}"] = overrides[k];
+  }
+  const isTruthy = (v: string | undefined) => {
+    if (v === undefined || v === null || v === "") return false;
+    const n = String(v).replace(",", ".");
+    if (n === "0" || n === "0.0" || n === "0.00") return false;
+    return true;
+  };
+  let result = html.replace(/\{\{#if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/gi, (_, key, content) => {
+    const v = values[`{{${key}}}`] ?? values[key];
+    return isTruthy(v) ? content : "";
+  });
+  result = result.replace(/\{\{#unless\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/unless\}\}/gi, (_, key, content) => {
+    const v = values[`{{${key}}}`] ?? values[key];
+    return isTruthy(v) ? "" : content;
+  });
+  return CONTRACT_PLACEHOLDERS.reduce((acc, item) => {
+    const val = (item.token in overrides) ? overrides[item.token] : item.example;
+    return acc.split(item.token).join(`<mark style="background:#dcfce7;border-radius:4px;padding:0 4px;font-weight:700">${val}</mark>`);
+  }, result);
 }
 
 const MINIJOB_PLACEHOLDERS = [
@@ -111,6 +142,8 @@ function euroToCents(value: string) {
 }
 
 const inputCls = "w-full bg-canvas-light border border-border-light rounded-lg p-3 focus:outline-none focus:border-accent-green transition-colors";
+// Mobile-Aktionsbutton: 44px Touch-Target, 2 pro Zeile (ungerader letzter Button füllt die Zeile).
+const mBtn = "flex-1 basis-[calc(50%-0.25rem)] min-h-11 px-2 rounded-xl border text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors";
 
 function Help({ children }: { children: React.ReactNode }) {
   return (
@@ -128,11 +161,11 @@ function Help({ children }: { children: React.ReactNode }) {
 
 export default function StaffAdmin({ initialStaff, initialRoles, initialTemplates, initialDocumentTemplates }: { initialStaff: StaffRow[]; initialRoles: StaffRole[]; initialTemplates: TemplateRow[]; initialDocumentTemplates: DocumentTemplate[] }) {
   const [tab, setTab] = useState<TabKey>("team");
-  const [staffForm, setStaffForm] = useState({ email: "", firstName: "", lastName: "", roleId: initialRoles[0]?.id || "" });
+  const [staffForm, setStaffForm] = useState({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" });
   const [keyTouched, setKeyTouched] = useState(false);
-  const [roleForm, setRoleForm] = useState({ key: "", name: "", hourlyRateEuro: "", requiredDocuments: [] as string[], requiresHandwrittenSignature: false });
+  const [roleForm, setRoleForm] = useState({ key: "", name: "", hourlyRateEuro: "", profitSharePercent: "", requiredDocuments: [] as string[], requiresHandwrittenSignature: false });
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
-  const [editingStaff, setEditingStaff] = useState<{ id: string; firstName: string; lastName: string; phone: string; roleId: string; status: string; hourlyRateCents: number } | null>(null);
+  const [isEditingStaff, setIsEditingStaff] = useState(false);
   const [templateForm, setTemplateForm] = useState({ roleId: initialRoles[0]?.id || "", name: "Arbeitsvertrag", bodyHtml: SAMPLE_CONTRACT, signatureMode: "text" as "text" | "handwritten", status: "active" as "draft" | "reviewed" | "active" });
   const [contractStep, setContractStep] = useState(1);
   const [contractViewMode, setContractViewMode] = useState<"editor" | "live">("editor");
@@ -181,7 +214,15 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   const minijobPreviewHtml = buildMinijobPreviewHtml(minijobForm.bodyHtml, { "{{name}}": previewExample.name || "Max Mustermann", "{{stundensatz}}": previewExample.rate || "15,00" });
 
   const selectedRoleName = initialRoles.find(role => role.id === templateForm.roleId)?.name || "Mitarbeiter";
-  const previewHtml = buildPreviewHtml(templateForm.bodyHtml, { "{{name}}": previewExample.name || "Max Mustermann", "{{rolle}}": selectedRoleName, "{{stundensatz}}": previewExample.rate || "15,00" });
+  const selectedRoleForPreview = initialRoles.find(role => role.id === templateForm.roleId);
+  const hasSelectedRole = !!selectedRoleForPreview;
+  const previewStundensatz = hasSelectedRole
+    ? ((selectedRoleForPreview!.hourlyRateCents || 0) > 0 ? (selectedRoleForPreview!.hourlyRateCents / 100).toFixed(2).replace(".", ",") : "")
+    : (previewExample.rate || "15,00");
+  const previewGewinnbeteiligung = hasSelectedRole
+    ? (selectedRoleForPreview!.profitSharePercent != null ? String(selectedRoleForPreview!.profitSharePercent).replace(".", ",") : "0")
+    : "5";
+  const previewHtml = buildPreviewHtml(templateForm.bodyHtml, { "{{name}}": previewExample.name || "Max Mustermann", "{{rolle}}": selectedRoleName, "{{stundensatz}}": previewStundensatz, "{{gewinnbeteiligung}}": previewGewinnbeteiligung });
 
   const toggleDoc = (doc: string) => {
     setRoleForm(prev => ({
@@ -199,7 +240,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
       const result = await createStaff(staffForm);
       setInviteUrl(result.inviteUrl);
       setMessage(result.warning || "Mitarbeiter angelegt. Die Person erhält eine Einladungsmail mit einem persönlichen Link (7 Tage gültig).");
-      setStaffForm({ email: "", firstName: "", lastName: "", roleId: initialRoles[0]?.id || "" });
+      setStaffForm({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Mitarbeiter konnte nicht angelegt werden.");
     } finally { setBusy(false); }
@@ -212,13 +253,14 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
       const payload = {
         name: roleForm.name,
         hourlyRateCents: euroToCents(roleForm.hourlyRateEuro),
+        profitSharePercent: roleForm.profitSharePercent.trim() === "" ? null : Number(roleForm.profitSharePercent.trim().replace(",", ".")),
         requiredDocuments: roleForm.requiredDocuments,
         requiresHandwrittenSignature: roleForm.requiresHandwrittenSignature,
       };
       if (editingRoleId) {
         await updateRole(editingRoleId, payload);
         setEditingRoleId(null);
-        setRoleForm({ key: "", name: "", hourlyRateEuro: "", requiredDocuments: [], requiresHandwrittenSignature: false });
+        setRoleForm({ key: "", name: "", hourlyRateEuro: "", profitSharePercent: "", requiredDocuments: [], requiresHandwrittenSignature: false });
         setMessage("Rolle gespeichert.");
         window.location.reload();
       } else {
@@ -236,14 +278,14 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   const startEditRole = (role: StaffRole) => {
     setEditingRoleId(role.id);
     setKeyTouched(true);
-    setRoleForm({ key: role.key, name: role.name, hourlyRateEuro: (role.hourlyRateCents / 100).toFixed(2), requiredDocuments: role.requiredDocuments || [], requiresHandwrittenSignature: role.requiresHandwrittenSignature });
+    setRoleForm({ key: role.key, name: role.name, hourlyRateEuro: (role.hourlyRateCents / 100).toFixed(2), profitSharePercent: role.profitSharePercent != null ? String(role.profitSharePercent).replace(".", ",") : "", requiredDocuments: role.requiredDocuments || [], requiresHandwrittenSignature: role.requiresHandwrittenSignature });
     setMessage("");
   };
 
   const cancelEditRole = () => {
     setEditingRoleId(null);
     setKeyTouched(false);
-    setRoleForm({ key: "", name: "", hourlyRateEuro: "", requiredDocuments: [], requiresHandwrittenSignature: false });
+    setRoleForm({ key: "", name: "", hourlyRateEuro: "", profitSharePercent: "", requiredDocuments: [], requiresHandwrittenSignature: false });
   };
 
   const toggleRoleActive = async (role: StaffRole) => {
@@ -261,11 +303,21 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
 
   const saveStaffEdit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!editingStaff) return;
+    if (!staffForm.id) return;
     setBusy(true); setMessage("");
     try {
-      await updateStaffAdmin(editingStaff.id, { firstName: editingStaff.firstName, lastName: editingStaff.lastName, phone: editingStaff.phone || null, roleId: editingStaff.roleId || undefined, status: editingStaff.status, hourlyRateCents: editingStaff.hourlyRateCents });
-      setEditingStaff(null);
+      const selectedRole = initialRoles.find(r => r.id === staffForm.roleId);
+      await updateStaffAdmin(staffForm.id, {
+        firstName: staffForm.firstName,
+        lastName: staffForm.lastName,
+        phone: staffForm.phone || null,
+        roleId: staffForm.roleId || undefined,
+        status: staffForm.status,
+        hourlyRateCents: selectedRole ? selectedRole.hourlyRateCents : 0,
+        profitSharePercent: selectedRole ? selectedRole.profitSharePercent : null,
+      });
+      setIsEditingStaff(false);
+      setStaffForm({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" });
       setMessage("Mitarbeiter gespeichert.");
       window.location.reload();
     } catch (error) {
@@ -334,6 +386,20 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
     } finally { setBusy(false); }
   };
 
+  const deleteTemplate = async (templateId: string, name: string, status: string) => {
+    const label = status === "active"
+      ? `Aktive Vorlage „${name}“ löschen? Neue Mitarbeiter mit dieser Rolle erhalten dann keinen Vertrag mehr, bis du wieder eine aktive Vorlage anlegst. Bereits erstellte Verträge bleiben erhalten. Das kann nicht rückgängig gemacht werden.`
+      : `Vorlage „${name}“ löschen? Bereits erstellte Verträge bleiben erhalten. Das kann nicht rückgängig gemacht werden.`;
+    if (!confirm(label)) return;
+    setBusy(true); setMessage("");
+    try {
+      await deleteContractTemplate(templateId);
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Vorlage konnte nicht gelöscht werden.");
+    } finally { setBusy(false); }
+  };
+
   const saveMinijob = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true); setMessage("");
@@ -391,9 +457,10 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
           <div className="lg:col-span-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
             <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Team ({initialStaff.length})</h2>
             {initialStaff.length === 0 ? (
-              <p className="p-6 text-base-dark/60">Noch keine Mitarbeiter. Lade rechts das erste Teammitglied ein.</p>
+              <p className="p-6 text-base-dark/60">Noch keine Mitarbeiter. Lade hier neben dem Formular das erste Teammitglied ein.</p>
             ) : (
-              <div className="overflow-x-auto"><table className="w-full text-sm">
+              <>
+              <div className="hidden md:block overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Aktionen</th></tr></thead>
                 <tbody>{initialStaff.map(({ member, role }) => {
                   const status = STATUS_META[member.status] || STATUS_META.invited;
@@ -403,47 +470,77 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                       <td className="px-4 py-3">{role?.name || "—"}</td>
                       <td className="px-4 py-3"><span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span></td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex flex-col sm:flex-row sm:justify-end gap-1 text-xs font-bold">
-                          <button type="button" disabled={busy} onClick={() => setEditingStaff({ id: member.id, firstName: member.firstName, lastName: member.lastName, phone: member.phone || "", roleId: member.roleId || "", status: member.status, hourlyRateCents: member.hourlyRateCents })} className="text-accent-green hover:underline disabled:opacity-50">Bearbeiten</button>
-                          <Link href={`/admin/mitarbeiter/${member.id}`} className="text-accent-green hover:underline">Öffnen</Link>
-                          {(member.status === "invited" || member.status === "onboarding") && <button type="button" disabled={busy} onClick={() => resendInvite(member.id)} className="text-accent-green hover:underline disabled:opacity-50">Einladung</button>}
-                          <button type="button" disabled={busy} onClick={() => toggleStaffInactive(member.id, `${member.firstName} ${member.lastName}`, member.status)} className={`${member.status === "inactive" ? "text-accent-green" : "text-red-600"} hover:underline disabled:opacity-50`}>{member.status === "inactive" ? "Aktivieren" : "Inaktiv setzen"}</button>
-                          {isDev && <button type="button" disabled={busy} onClick={() => devDeleteStaff(member.id, `${member.firstName} ${member.lastName}`)} className="text-purple-700 hover:underline disabled:opacity-50" title="Nur Dev – endgültig löschen">🗑 Dev löschen</button>}
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button type="button" disabled={busy} onClick={() => {
+                             setStaffForm({ id: member.id, email: member.email, firstName: member.firstName, lastName: member.lastName, phone: member.phone || "", roleId: member.roleId || "", status: member.status, hourlyRateEuro: (member.hourlyRateCents / 100).toFixed(2), profitSharePercent: member.profitSharePercent != null ? String(member.profitSharePercent).replace(".", ",") : "" });
+                             setIsEditingStaff(true);
+                             setMessage("");
+                           }} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 disabled:opacity-50 transition-colors" title="Bearbeiten">
+                             <Pencil size={13} /> Bearbeiten
+                           </button>
+                          <Link href={`/admin/mitarbeiter/${member.id}`} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 transition-colors" title="Öffnen">
+                             <Eye size={13} /> Öffnen
+                           </Link>
+                          {(member.status === "invited" || member.status === "onboarding") && (
+                             <button type="button" disabled={busy} onClick={() => resendInvite(member.id)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 disabled:opacity-50 transition-colors" title="Einladung erneut senden">
+                               <Mail size={13} /> Einladung
+                             </button>
+                           )}
+                          <button type="button" disabled={busy} onClick={() => toggleStaffInactive(member.id, `${member.firstName} ${member.lastName}`, member.status)} className={`inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-50 transition-colors ${member.status === "inactive" ? "border-accent-green/40 bg-accent-green/5 text-accent-green hover:bg-accent-green/10" : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"}`} title={member.status === "inactive" ? "Aktivieren" : "Inaktiv setzen"}>
+                             {member.status === "inactive" ? <Power size={13} /> : <PowerOff size={13} />} {member.status === "inactive" ? "Aktivieren" : "Inaktiv setzen"}
+                           </button>
+                          {isDev && (
+                             <button type="button" disabled={busy} onClick={() => devDeleteStaff(member.id, `${member.firstName} ${member.lastName}`)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-xs font-bold text-purple-700 hover:bg-purple-100 disabled:opacity-50 transition-colors" title="Nur Dev – endgültig löschen">
+                               <Trash2 size={13} /> Dev löschen
+                             </button>
+                           )}
                         </div>
                       </td>
                     </tr>
                   );
                 })}</tbody>
               </table></div>
-            )}
-            {editingStaff && (
-              <form onSubmit={saveStaffEdit} className="mt-4 border-t border-border-light p-5 bg-canvas-light space-y-3">
-                <h3 className="font-bold text-sm">Mitarbeiter bearbeiten</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input required value={editingStaff.firstName} onChange={event => setEditingStaff({ ...editingStaff, firstName: event.target.value })} className={inputCls} aria-label="Vorname" />
-                  <input required value={editingStaff.lastName} onChange={event => setEditingStaff({ ...editingStaff, lastName: event.target.value })} className={inputCls} aria-label="Nachname" />
-                  <input value={editingStaff.phone} onChange={event => setEditingStaff({ ...editingStaff, phone: event.target.value })} className={inputCls} placeholder="Telefon" aria-label="Telefon" />
-                  <select value={editingStaff.roleId} onChange={event => setEditingStaff({ ...editingStaff, roleId: event.target.value })} className={inputCls} aria-label="Rolle">
-                    <option value="">Keine Rolle</option>
-                    {initialRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                  <select value={editingStaff.status} onChange={event => setEditingStaff({ ...editingStaff, status: event.target.value })} className={inputCls} aria-label="Status">
-                    <option value="invited">Eingeladen</option><option value="onboarding">Profil offen</option><option value="ready">Bereit</option><option value="active">Aktiv</option><option value="inactive">Inaktiv</option>
-                  </select>
-                  <label className="text-xs font-bold">Stundensatz (Cent)
-                    <input type="number" min={0} value={editingStaff.hourlyRateCents} onChange={event => setEditingStaff({ ...editingStaff, hourlyRateCents: Number(event.target.value) })} className={`${inputCls} mt-1`} />
-                  </label>
-                </div>
-                <div className="flex gap-2">
-                  <button type="submit" disabled={busy} className="flex-1 bg-accent-green text-white py-2.5 rounded-xl font-bold disabled:opacity-50">Speichern</button>
-                  <button type="button" onClick={() => setEditingStaff(null)} className="flex-1 border border-border-light py-2.5 rounded-xl font-bold">Abbrechen</button>
-                </div>
-              </form>
+
+              <div className="md:hidden divide-y divide-border-light">
+                {initialStaff.map(({ member, role }) => {
+                  const status = STATUS_META[member.status] || STATUS_META.invited;
+                  return (
+                    <div key={member.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold leading-tight">{member.firstName} {member.lastName}</p>
+                          <p className="text-xs text-base-dark/50 truncate">{member.email}</p>
+                          <p className="text-xs text-base-dark/60 mt-0.5">{role?.name || "—"}</p>
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" disabled={busy} onClick={() => {
+                          setStaffForm({ id: member.id, email: member.email, firstName: member.firstName, lastName: member.lastName, phone: member.phone || "", roleId: member.roleId || "", status: member.status, hourlyRateEuro: (member.hourlyRateCents / 100).toFixed(2), profitSharePercent: member.profitSharePercent != null ? String(member.profitSharePercent).replace(".", ",") : "" });
+                          setIsEditingStaff(true);
+                          setMessage("");
+                        }} className={`${mBtn} border-border-light bg-white text-accent-green hover:border-accent-green hover:bg-accent-green/5`}><Pencil size={14} /> Bearbeiten</button>
+                        <Link href={`/admin/mitarbeiter/${member.id}`} className={`${mBtn} border-border-light bg-white text-accent-green hover:border-accent-green hover:bg-accent-green/5`}><Eye size={14} /> Öffnen</Link>
+                        {(member.status === "invited" || member.status === "onboarding") && (
+                          <button type="button" disabled={busy} onClick={() => resendInvite(member.id)} className={`${mBtn} border-border-light bg-white text-accent-green hover:border-accent-green hover:bg-accent-green/5 disabled:opacity-50`}><Mail size={14} /> Einladung</button>
+                        )}
+                        <button type="button" disabled={busy} onClick={() => toggleStaffInactive(member.id, `${member.firstName} ${member.lastName}`, member.status)} className={`${mBtn} disabled:opacity-50 ${member.status === "inactive" ? "border-accent-green/40 bg-accent-green/5 text-accent-green hover:bg-accent-green/10" : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"}`}>
+                          {member.status === "inactive" ? <Power size={14} /> : <PowerOff size={14} />} {member.status === "inactive" ? "Aktivieren" : "Inaktiv"}
+                        </button>
+                        {isDev && (
+                          <button type="button" disabled={busy} onClick={() => devDeleteStaff(member.id, `${member.firstName} ${member.lastName}`)} className={`${mBtn} border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100`}><Trash2 size={14} /> Dev löschen</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </>
             )}
           </div>
 
-          <form onSubmit={createTeamMember} className="bg-white border border-border-light rounded-2xl p-5 space-y-4 h-fit shadow-sm">
-            <h2 className="font-display font-bold text-xl">Mitarbeiter einladen</h2>
+          <form onSubmit={isEditingStaff ? saveStaffEdit : createTeamMember} className="bg-white border border-border-light rounded-2xl p-5 space-y-4 h-fit shadow-sm">
+            <h2 className="font-display font-bold text-xl">{isEditingStaff ? "Mitarbeiter bearbeiten" : "Mitarbeiter einladen"}</h2>
             <Help>
               <p>Die Person bekommt eine E-Mail mit einem persönlichen Einladungslink (7 Tage gültig) und füllt anschließend selbstständig ihr Profil aus (Daten, Dokumente, Vertrag). Du musst danach nichts weiter tun.</p>
               <ul>
@@ -451,7 +548,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 <li><strong>Rolle:</strong> Die Rolle bestimmt den Stundensatz – er wird automatisch übernommen.</li>
               </ul>
             </Help>
-            <input required type="email" placeholder="E-Mail der Person" value={staffForm.email} onChange={event => setStaffForm({ ...staffForm, email: event.target.value })} className={inputCls} />
+            <input required type="email" placeholder="E-Mail der Person" value={staffForm.email} onChange={event => setStaffForm({ ...staffForm, email: event.target.value })} className={inputCls} disabled={isEditingStaff} />
             <div className="grid grid-cols-2 gap-3">
               <input required placeholder="Vorname" value={staffForm.firstName} onChange={event => setStaffForm({ ...staffForm, firstName: event.target.value })} className={inputCls} />
               <input required placeholder="Nachname" value={staffForm.lastName} onChange={event => setStaffForm({ ...staffForm, lastName: event.target.value })} className={inputCls} />
@@ -460,13 +557,22 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
               <option value="">Rolle wählen …</option>
               {initialRoles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
             </select>
+            {isEditingStaff && (
+              <>
+                <input placeholder="Telefon" value={staffForm.phone} onChange={event => setStaffForm({ ...staffForm, phone: event.target.value })} className={inputCls} />
+                <select value={staffForm.status} onChange={event => setStaffForm({ ...staffForm, status: event.target.value })} className={inputCls}>
+                  <option value="invited">Eingeladen</option><option value="onboarding">Profil offen</option><option value="ready">Bereit</option><option value="active">Aktiv</option><option value="inactive">Inaktiv</option>
+                </select>
+              </>
+            )}
             {staffForm.roleId && !hasActiveTemplate(staffForm.roleId) && (
               <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg p-3">
                 ⚠️ Für diese Rolle ist keine aktive Vertragsvorlage hinterlegt – die eingeladene Person erhält keinen Vertrag.{" "}
                 <button type="button" onClick={goCreateTemplateForRole} className="underline">Jetzt Vorlage anlegen →</button>
               </p>
             )}
-            <button type="submit" disabled={busy || initialRoles.length === 0} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50 hover:bg-accent-green/90 transition-colors">{busy ? "Wird eingeladen …" : "Einladung senden"}</button>
+            <button type="submit" disabled={busy || initialRoles.length === 0} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50 hover:bg-accent-green/90 transition-colors">{busy ? (isEditingStaff ? "Wird gespeichert …" : "Wird eingeladen …") : (isEditingStaff ? "Änderungen speichern" : "Einladung senden")}</button>
+            {isEditingStaff && <button type="button" onClick={() => { setIsEditingStaff(false); setStaffForm({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" }); setMessage(""); }} className="w-full border border-border-light py-2.5 rounded-xl font-bold text-sm hover:bg-canvas-light">Abbrechen</button>}
             {initialRoles.length === 0 && (
               <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
                 Bitte zuerst eine Rolle anlegen.{" "}
@@ -482,14 +588,15 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
           <div className="lg:col-span-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
             <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Rollen ({initialRoles.length})</h2>
             {initialRoles.length === 0 ? (
-              <p className="p-6 text-base-dark/60">Noch keine Rollen. Lege rechts deine erste Rolle an – z. B. „Servierkraft“.</p>
+              <p className="p-6 text-base-dark/60">Noch keine Rollen. Lege deine erste Rolle an – z. B. „Servierkraft“.</p>
             ) : (
-              <div className="overflow-x-auto"><table className="w-full text-sm">
-                <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Stundensatz</th><th className="px-4 py-3">Vertrag</th><th className="px-4 py-3">Unterschrift</th><th className="px-4 py-3">Pflichtdokumente</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Aktionen</th></tr></thead>
+              <>
+              <div className="hidden md:block overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
+                <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Vergütung</th><th className="px-4 py-3">Vertrag</th><th className="px-4 py-3">Unterschrift</th><th className="px-4 py-3">Pflichtdokumente</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Aktionen</th></tr></thead>
                 <tbody>{initialRoles.map(role => (
                   <tr key={role.id} className={`border-t border-border-light ${role.active ? "" : "opacity-60"}`}>
                     <td className="px-4 py-3 font-bold">{role.name}<div className="text-xs font-normal text-base-dark/50">{role.key}</div></td>
-                    <td className="px-4 py-3 whitespace-nowrap">{(role.hourlyRateCents / 100).toFixed(2)} €/Std.</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{(role.hourlyRateCents ?? 0) > 0 ? `${(role.hourlyRateCents / 100).toFixed(2)} €/Std.` : ""}{(role.hourlyRateCents ?? 0) > 0 && role.profitSharePercent != null ? " · " : ""}{role.profitSharePercent != null ? `${String(role.profitSharePercent).replace(".", ",")}%` : ""}{(role.hourlyRateCents ?? 0) === 0 && role.profitSharePercent == null ? "—" : ""}</td>
                     <td className="px-4 py-3">
                       {hasActiveTemplate(role.id)
                         ? <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-accent-green/15 text-accent-green">✓ Aktiv</span>
@@ -499,15 +606,53 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                     <td className="px-4 py-3">{role.requiredDocuments.length > 0 ? <span className="text-xs">{role.requiredDocuments.join(", ")}</span> : <span className="text-base-dark/40">—</span>}</td>
                     <td className="px-4 py-3">{role.active ? <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-accent-green/15 text-accent-green">Aktiv</span> : <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Deaktiviert</span>}</td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex flex-col sm:flex-row sm:justify-end gap-1 text-xs font-bold">
-                        <button type="button" disabled={busy} onClick={() => startEditRole(role)} className="text-accent-green hover:underline disabled:opacity-50">Bearbeiten</button>
-                        <button type="button" disabled={busy} onClick={() => toggleRoleActive(role)} className={`${role.active ? "text-red-600" : "text-accent-green"} hover:underline disabled:opacity-50`}>{role.active ? "Deaktivieren" : "Aktivieren"}</button>
-                        {isDev && <button type="button" disabled={busy} onClick={() => devDeleteRole(role.id, role.name)} className="text-purple-700 hover:underline disabled:opacity-50" title="Nur Dev – endgültig löschen">🗑 Dev löschen</button>}
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        <button type="button" disabled={busy} onClick={() => startEditRole(role)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 disabled:opacity-50 transition-colors" title="Bearbeiten">
+                          <Pencil size={13} /> Bearbeiten
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => toggleRoleActive(role)} className={`inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-50 transition-colors ${role.active ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100" : "border-accent-green/40 bg-accent-green/5 text-accent-green hover:bg-accent-green/10"}`} title={role.active ? "Deaktivieren" : "Aktivieren"}>
+                          {role.active ? <PowerOff size={13} /> : <Power size={13} />} {role.active ? "Deaktivieren" : "Aktivieren"}
+                        </button>
+                        {isDev && (
+                          <button type="button" disabled={busy} onClick={() => devDeleteRole(role.id, role.name)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-xs font-bold text-purple-700 hover:bg-purple-100 disabled:opacity-50 transition-colors" title="Nur Dev – endgültig löschen">
+                            <Trash2 size={13} /> Dev löschen
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}</tbody>
               </table></div>
+
+              <div className="md:hidden divide-y divide-border-light">
+                {initialRoles.map(role => (
+                  <div key={role.id} className={`p-4 space-y-3 ${role.active ? "" : "opacity-60"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold leading-tight">{role.name}</p>
+                        <p className="text-xs text-base-dark/50">{role.key}</p>
+                      </div>
+                      <span className={`shrink-0 inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${role.active ? "bg-accent-green/15 text-accent-green" : "bg-slate-100 text-slate-700"}`}>{role.active ? "Aktiv" : "Deaktiviert"}</span>
+                    </div>
+                    <dl className="text-sm space-y-1.5">
+                      <div className="flex items-center justify-between gap-3"><dt className="text-base-dark/50 shrink-0">Stundensatz</dt><dd className="font-bold whitespace-nowrap">{(role.hourlyRateCents / 100).toFixed(2)} €/Std.</dd></div>
+                      <div className="flex items-center justify-between gap-3"><dt className="text-base-dark/50 shrink-0">Vertrag</dt><dd>{hasActiveTemplate(role.id) ? <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-accent-green/15 text-accent-green">✓ Aktiv</span> : <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">⚠️ Kein aktiver Vertrag</span>}</dd></div>
+                      <div className="flex items-center justify-between gap-3"><dt className="text-base-dark/50 shrink-0">Unterschrift</dt><dd className="whitespace-nowrap">{role.requiresHandwrittenSignature ? "handschriftlich" : "digital"}</dd></div>
+                      <div className="flex items-start justify-between gap-3"><dt className="text-base-dark/50 shrink-0">Pflichtdokumente</dt><dd className="text-right text-xs">{role.requiredDocuments.length > 0 ? role.requiredDocuments.join(", ") : <span className="text-base-dark/40">—</span>}</dd></div>
+                    </dl>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={busy} onClick={() => startEditRole(role)} className={`${mBtn} border-border-light bg-white text-accent-green hover:border-accent-green hover:bg-accent-green/5`}><Pencil size={14} /> Bearbeiten</button>
+                      <button type="button" disabled={busy} onClick={() => toggleRoleActive(role)} className={`${mBtn} ${role.active ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100" : "border-accent-green/40 bg-accent-green/5 text-accent-green hover:bg-accent-green/10"}`}>
+                        {role.active ? <PowerOff size={14} /> : <Power size={14} />} {role.active ? "Deaktivieren" : "Aktivieren"}
+                      </button>
+                      {isDev && (
+                        <button type="button" disabled={busy} onClick={() => devDeleteRole(role.id, role.name)} className={`${mBtn} border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100`}><Trash2 size={14} /> Dev löschen</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </>
             )}
           </div>
 
@@ -547,6 +692,10 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 <p className="mt-1 text-xs text-accent-green font-bold">= {(euroToCents(roleForm.hourlyRateEuro) / 100).toFixed(2)} € pro Stunde</p>
               )}
             </div>
+            <div>
+              <label className="block text-sm font-bold mb-1 opacity-70">Umsatzbeteiligung (%)</label>
+              <input type="number" min={0} max={100} step="0.1" inputMode="decimal" placeholder="optional, z. B. 5" value={roleForm.profitSharePercent} onChange={event => setRoleForm({ ...roleForm, profitSharePercent: event.target.value })} className={inputCls} />
+            </div>
             <div className="flex flex-wrap gap-2">
               {DOC_OPTIONS.map(doc => {
                 const active = roleForm.requiredDocuments.includes(doc);
@@ -573,14 +722,35 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
       )}
 
       {tab === "contracts" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
-          <div className="order-2 lg:order-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
+         <>
+           <div className="bg-white border border-border-light rounded-2xl p-5 shadow-sm mb-6">
+             <h2 className="font-display font-bold text-xl mb-3">Rollen und ihre Vertraege</h2>
+             <p className="text-sm text-base-dark/60 mb-3">Uebersicht, welche Rolle bereits einen aktiven Vertrag hat.</p>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+               {initialRoles.map(role => {
+                 const tpl = initialTemplates.filter(t => t.role?.id === role.id && t.template.status === "active").sort((a, b) => b.template.version - a.template.version)[0];
+                 return (
+                   <div key={role.id} className={`rounded-xl border p-3 ${tpl ? "border-accent-green/40 bg-accent-green/5" : "border-amber-200 bg-amber-50"}`}>
+                     <div className="font-bold text-sm">{role.name}</div>
+                     {tpl ? (
+                       <div className="text-xs text-accent-green mt-1">OK {tpl.template.name} (v{tpl.template.version})</div>
+                     ) : (
+                       <div className="text-xs text-amber-800 mt-1">Kein aktiver Vertrag</div>
+                     )}
+                   </div>
+                 );
+               })}
+             </div>
+           </div>
+           <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
+          <div className="order-1 lg:order-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
             <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Vertragsvorlagen ({initialTemplates.length})</h2>
             {initialTemplates.length === 0 ? (
-              <p className="p-6 text-base-dark/60">Noch keine Vorlagen. Lege links eine Vorlage an – neue Teammitglieder erhalten dann automatisch ihren Vertrag zum Unterschreiben.</p>
+              <p className="p-6 text-base-dark/60">Noch keine Vorlagen. Neue Teammitglieder erhalten automatisch ihren Vertrag, sobald du eine Vorlage anlegst.</p>
             ) : (
-              <div className="overflow-x-auto"><table className="w-full text-sm">
-                <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Vorlage</th><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Version</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Unterschrift</th><th className="px-4 py-3">Live View</th></tr></thead>
+              <>
+              <div className="hidden md:block overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
+                <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Vorlage</th><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Version</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Unterschrift</th><th className="px-4 py-3">Aktionen</th></tr></thead>
                 <tbody>{initialTemplates.map(({ template, role }) => {
                   const status = TEMPLATE_STATUS_META[template.status] || TEMPLATE_STATUS_META.draft;
                   return (
@@ -590,15 +760,44 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                       <td className="px-4 py-3">v{template.version}</td>
                       <td className="px-4 py-3"><span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span></td>
                       <td className="px-4 py-3">{template.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</td>
-                      <td className="px-4 py-3"><button type="button" onClick={() => { loadExistingTemplate(template.id); setContractViewMode("live"); }} className="font-bold text-accent-green hover:underline">👁 Ansehen</button></td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button type="button" onClick={() => { loadExistingTemplate(template.id); setContractViewMode("live"); }} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 transition-colors" title="Live View ansehen">👁 Ansehen</button>
+                          <button type="button" disabled={busy} onClick={() => deleteTemplate(template.id, template.name, template.status)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors" title="Vorlage löschen">
+                            <Trash2 size={13} /> Löschen
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}</tbody>
               </table></div>
+
+              <div className="md:hidden divide-y divide-border-light">
+                {initialTemplates.map(({ template, role }) => {
+                  const status = TEMPLATE_STATUS_META[template.status] || TEMPLATE_STATUS_META.draft;
+                  return (
+                    <div key={template.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold leading-tight">{template.name}</p>
+                          <p className="text-xs text-base-dark/50">{role?.name || "—"} · v{template.version} · {template.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</p>
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => { loadExistingTemplate(template.id); setContractViewMode("live"); }} className={`${mBtn} border-accent-green/40 bg-white text-accent-green hover:bg-accent-green/5`}>👁 Ansehen</button>
+                        <button type="button" disabled={busy} onClick={() => deleteTemplate(template.id, template.name, template.status)} className={`${mBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100`}><Trash2 size={14} /> Löschen</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </>
             )}
           </div>
 
-          <form onSubmit={createTemplate} className="order-1 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
+          <form onSubmit={createTemplate} className="order-2 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
             <h2 className="font-display font-bold text-xl">Neuer Vertrag – in 3 Schritten</h2>
             <p className="text-sm text-base-dark/60">Du musst nichts Technisches eingeben. Folge einfach den Schritten.</p>
             {initialTemplates.length > 0 && (
@@ -620,8 +819,22 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 <fieldset>
                   <legend className="text-sm font-bold mb-2">1. Für wen ist dieser Vertrag?</legend>
                   <div className="flex flex-wrap gap-2">
-                    {initialRoles.map(role => (
-                      <button key={role.id} type="button" onClick={() => setTemplateForm({ ...templateForm, roleId: role.id })} aria-pressed={templateForm.roleId === role.id} className={`min-h-10 px-3 py-2 rounded-full text-xs font-bold border ${templateForm.roleId === role.id ? "bg-accent-green text-white border-accent-green" : "bg-canvas-light border-border-light"}`}>{templateForm.roleId === role.id ? "✓ " : ""}{role.name}</button>
+                    {initialRoles.filter(role => !hasActiveTemplate(role.id)).map(role => (
+                      <button key={role.id} type="button" onClick={() => {
+                        const activeTpl = initialTemplates
+                          .filter(({ template }) => template.roleId === role.id && template.status === "active")
+                          .sort((a, b) => b.template.version - a.template.version)[0];
+                        setTemplateForm(prev => {
+                          if (activeTpl) {
+                            return { ...prev, roleId: role.id, name: `${activeTpl.template.name} (Kopie)`, bodyHtml: activeTpl.template.bodyHtml, signatureMode: activeTpl.template.signatureMode as "text" | "handwritten" };
+                          }
+                          // Keine aktive Vorlage: Text bleibt unverändert – Stundensatz/Umsatzbeteiligung
+                          // werden beim Rendern des Vertrags automatisch anhand der Rolle ein-/ausgeblendet ({{#if ...}}).
+                          return { ...prev, roleId: role.id, bodyHtml: prev.bodyHtml };
+                        });
+                        if (activeTpl) setMessage(`Aktive Vorlage „${activeTpl.template.name}" für diese Rolle geladen – du kannst sie jetzt anpassen.`);
+                        else setMessage("Der Vertragstext passt sich beim Rendern automatisch an (Stundensatz/Umsatzbeteiligung je nach Rolle).");
+                      }} aria-pressed={templateForm.roleId === role.id} className={`min-h-10 px-3 py-2 rounded-full text-xs font-bold border ${templateForm.roleId === role.id ? "bg-accent-green text-white border-accent-green" : "bg-canvas-light border-border-light"}`}>{templateForm.roleId === role.id ? "✓ " : ""}{role.name}</button>
                     ))}
                   </div>
                   <input required placeholder="Name der Vorlage, z. B. Arbeitsvertrag" value={templateForm.name} onChange={event => setTemplateForm({ ...templateForm, name: event.target.value })} className={`${inputCls} mt-3`} />
@@ -656,7 +869,6 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
                       <label className="text-xs font-bold space-y-1">Beispiel-Name<input value={previewExample.name} onChange={event => setPreviewExample({ ...previewExample, name: event.target.value })} className={`${inputCls} mt-1`} /></label>
-                      <label className="text-xs font-bold space-y-1">Beispiel-Stundensatz<input value={previewExample.rate} onChange={event => setPreviewExample({ ...previewExample, rate: event.target.value })} className={`${inputCls} mt-1`} /></label>
                     </div>
                     <div className="rounded-xl bg-slate-100 p-3">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · {selectedRoleName} · {templateForm.signatureMode === "handwritten" ? "Handschriftlich" : "Digital"}</p>
@@ -712,11 +924,12 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
             )}
           </form>
         </div>
-      )}
+         </>
 
+      )}
       {tab === "minijob" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
-          <div className="order-2 lg:order-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
+          <div className="order-1 lg:order-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
             <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Aktuelles Formular</h2>
             {minijobTemplate ? (
               <div className="p-5 space-y-3">
@@ -728,11 +941,11 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 <button type="button" onClick={() => { setMinijobStep(2); setMinijobViewMode("live"); }} className="w-full min-h-11 border border-accent-green/40 text-accent-green rounded-xl font-bold hover:bg-accent-green/5">👁 Live View ansehen</button>
               </div>
             ) : (
-              <p className="p-6 text-base-dark/60">Noch kein Minijob-Formular angelegt. Bearbeite links dein Formular und schalte es auf Aktiv – danach wird es beim Onboarding automatisch aus den Daten der Person erstellt.</p>
+              <p className="p-6 text-base-dark/60">Noch kein Minijob-Formular angelegt. Bearbeite dein Formular und schalte es auf Aktiv – danach wird es beim Onboarding automatisch aus den Daten der Person erstellt.</p>
             )}
           </div>
 
-          <form onSubmit={saveMinijob} className="order-1 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
+          <form onSubmit={saveMinijob} className="order-2 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
             <h2 className="font-display font-bold text-xl">Minijob-Formular – in 3 Schritten</h2>
             <p className="text-sm text-base-dark/60">Das Formular wird automatisch aus den Onboarding-Daten erstellt – du musst keine Daten abtippen.</p>
             <div className="flex gap-2 text-xs font-bold">

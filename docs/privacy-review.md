@@ -1,6 +1,7 @@
 # Datenschutz: Textabgleich und offene Betreiberangaben
 
-Stand: 7. Oktober 2026. `src/lib/privacy-notice.ts` beschreibt die aktuelle
+Stand: 7. Oktober 2026, ergänzt am 14. November 2026 um die rechtliche Prüfung
+der Datenkategorien (Abschnitt unten). `src/lib/privacy-notice.ts` beschreibt die aktuelle
 Anwendung auf Deutsch und Englisch. Die Staging-Startseite wurde zusätzlich
 lesend geprüft: Vercel-Hosting, Cloudinary- und Unsplash-Bildreferenzen.
 Die Aktualisierung ist keine abgeschlossene Datenschutzfreigabe.

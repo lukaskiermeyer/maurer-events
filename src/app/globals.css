@@ -2,16 +2,21 @@
 
 @theme {
   --color-base-dark: #0A0A0A;
-  --color-base-light: #FDFBF7; /* Warm off-white */
+  --color-base-light: #FAF8F4; /* Styleguide Kunde Nr. 2: Off-White */
   --color-canvas-light: #F4F0E8; /* Festzelt Canvas color */
-  --color-accent-green: #1F5732; /* Logo dark green */
+  --color-accent-green: #20603C; /* Styleguide Kunde Nr. 1 */
   --color-accent-gold: #cb7913;
   --color-accent-wood: #cb7913; /* Warm Holz/Brezel tone */
   --color-border-subtle: #E2DFD8; /* Softer border for light mode */
   --color-border-light: #F0EDE5; 
   
-  --font-sans: var(--font-inter);
-  --font-display: "Helvetica Now", "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-aileron);
+  --font-display: var(--font-aileron);
+  --font-subhead: var(--font-yeseva); /* Styleguide: Unterüberschriften in Yeseva One */
+  --font-script: var(--font-dancing); /* Deko-Handschrift für Polaroid-Unterschriften (außerhalb Styleguide) */
+
+  /* Styleguide: Aileron All Capitals Bold mit Laufweite -75 (-75/1000 em). */
+  --tracking-headline: -0.075em;
 }
 
 /* Touch controls stay visible; mouse users can reveal them on hover or focus. */
@@ -130,6 +135,36 @@
   }
 }
 .hero-scene img { display: block; }
+/* Hero-Hintergrund und Szene sollen nicht markierbar/ziehbar sein
+   (Browser-Standardauswahl wuerde sonst dunkelblau uebermalen). */
+#start,
+#start * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+#start img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+/* Verhindert, dass beim Markieren von Text auf der Seite der Hero-
+   Bereich (Hintergrund) dunkelblau hervorgehoben wird. */
+#start ::selection,
+#start *::selection {
+  background: transparent;
+}
+/* Buttons/Links im Hero bleiben normal markierbar. */
+#start .select-text,
+#start .select-text * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+#start .select-text ::selection,
+#start .select-text *::selection {
+  background: revert;
+  color: revert;
+}
 .hero-sky,
 .hero-stage,
 .hero-sign { position: absolute; }
@@ -272,8 +307,8 @@
   margin: 1.75em 0 0.75em;
 }
 .event-prose h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-family: var(--font-subhead);
+  font-weight: 400;
   font-size: 1.25rem;
   line-height: 1.35;
   color: var(--color-base-dark);
@@ -303,7 +338,20 @@
     --bottom-bar-height: 88px;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* Styleguide Kunde:
+     - Hauptüberschriften: Aileron, All Capitals, Bold, Laufweite -75 (-0.075em).
+     - Unterüberschriften/kleinere Überschriften: Yeseva One, normal, Laufweite 0.
+     - Fließtext: Aileron, normal, Laufweite 0 (font-sans, siehe @theme). */
+  h1, h2 {
     font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-headline);
+  }
+
+  h3, h4, h5, h6 {
+    font-family: var(--font-subhead);
+    font-weight: 400;
+    letter-spacing: 0;
   }
 }

@@ -208,7 +208,7 @@ export default function AdminGalleryTab({
     <div className="relative min-h-[500px] pb-24">
       {/* Prominenter Hinzufügen-Button oben */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h3 className="font-display font-bold text-2xl text-base-dark">Galerie verwalten</h3>
+        <h3 className="font-subhead text-2xl text-base-dark">Galerie verwalten</h3>
         <button
           onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center gap-2 bg-accent-green text-white font-bold px-6 py-3 rounded-xl shadow-md hover:bg-base-dark transition-colors"
@@ -222,7 +222,7 @@ export default function AdminGalleryTab({
 
       {/* Bilder zu bestehendem Album hinzufügen */}
       <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm mb-6">
-        <h4 className="font-bold mb-4 font-display text-xl">Bilder zu Album hinzufügen</h4>
+        <h4 className="mb-4 font-subhead text-xl">Bilder zu Album hinzufügen</h4>
         {galleries.length === 0 ? (
           <p className="text-sm opacity-50">Noch keine Alben vorhanden. Erstelle zuerst ein Album.</p>
         ) : (
@@ -349,7 +349,7 @@ export default function AdminGalleryTab({
         if (unlinked.length === 0) return null;
         return (
           <div className="mt-8 bg-white p-6 rounded-2xl border border-border-light shadow-sm">
-            <h4 className="font-bold mb-4 font-display text-xl">Bilder ohne Fest ({unlinked.length})</h4>
+            <h4 className="mb-4 font-subhead text-xl">Bilder ohne Fest ({unlinked.length})</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {unlinked.map((img) => (
                 <div key={img.gallery.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light group shadow-sm bg-base-light">

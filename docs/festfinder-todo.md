@@ -2,9 +2,16 @@
 
 > **Ziel:** n8n findet automatisch Vereinsjubiläen & Feste in Ingolstadt, Kelheim, Regensburg, München, die in 9–24 Monaten starten und wo man sich noch als Festwirt bewerben kann. Ergebnisse landen im Admin Bereich von Maurer Events.
 
-**Status Datum:** 2026-11-07
+**Status Datum:** 2026-11-18
 **Workflow-Datei:** [`docs/n8n-festwirt-finder.json`](./n8n-festwirt-finder.json)
+**API-Doku (maßgeblich):** [`docs/fest-chances-ingest.md`](./fest-chances-ingest.md)
 **Prinzip:** Human-in-the-Loop – n8n findet & scored nur, du entscheidest & bewirbst dich.
+
+> **Stand der Umsetzung (17.11.2026):** Backend und Admin sind fertig.
+> Die API schreibt auf `fest_chances` (Legacy-Zwilling `fest_opportunities`
+> läuft mit, Abschaltpfad steht in der API-Doku). Schreibzugriffe der alten
+> Phase-2/3-Spezifikation unten sind dadurch überholt – die Details stehen in
+> der API-Doku, nicht mehr hier.
 
 ---
 
@@ -18,92 +25,62 @@
   - [ ] `LLM_BASE_URL` – Standard: `https://integrate.api.nvidia.com/v1` (NVIDIA NIM)
   - [ ] `LLM_API_KEY`
   - [ ] `LLM_MODEL` – Standard: `meta/llama-3.1-8b-instruct`
-  - [ ] `MAURER_API_URL` – Standard: `https://DEINE-DOMAIN.de/api/admin/fest-chancen/ingest` (später)
-  - [ ] `MAURER_N8N_KEY` (gemeinsames Secret für Ingest-API)
+  - [ ] `MAURER_API_URL` – Ziel: `https://<PRODUKTIONSDOMAIN>/api/admin/fest-chances/ingest`
+  - [ ] `MAURER_N8N_KEY` (bzw. `FEST_CHANCEN_INGEST_TOKEN`) – in Coolify als Runtime-Secret setzen (min. 32 zufällige Zeichen, siehe API-Doku)
 - [ ] In n8n testen: **Manual Trigger → Execute** (Webhook `/webhook/festfinder-start` testen)
 - [ ] Schedule prüfen: `Mo + Do 07:00 Uhr` (Europe/Berlin)
 - [ ] Optional: Free-Tier Alternativen bereithalten – Groq / Gemini Flash / OpenRouter `:free` (nur Env-Variablen ändern, kein Umbau)
 
-## Phase 1 – Kernkomponenten testen (noch ohne Maurer Events Backend)
+> Achtung: Der Workflow-Node muss `Authorization: Bearer` (oder `x-api-key`)
+> gegen `FEST_CHANCEN_INGEST_TOKEN` verwenden. Der frühere
+> `X-N8N-API-KEY`-Header aus dieser Datei ist nicht mehr aktuell.
 
-### Such-Qualität
+## Phase 1 – Such- und Extraktionsqualität (offen)
+
 - [ ] 1 Lauf mit allen 32 Queries (8 Templates x 4 Regionen) durchlaufen lassen
 - [ ] Treffer-Qualität prüfen: 5–10 echte Vereinsseiten pro Region mit Datum 2027/2028?
 - [ ] Irrelevante Treffer filtern (Facebook, Instagram, PDFs raus – bereits im Node „Suchtreffer parsen")
 - [ ] Queries nachschärfen falls zu breit/eng
+- [ ] 3–5 echte URLs manuell im Node „LLM extrahieren + scoren" testen; valides JSON prüfen
+- [ ] Score-Logik verifizieren (Jubiläum +40, Festwirt offen +25, Kernregion +20, 9–24 Monate +15, vergeben −30, zu kurz/langfristig −20)
+- [ ] Threshold `minScore = 60` kalibrieren (zu viel / zu wenig Treffer?)
+- [ ] Aktualitäts-Filter gegenchecken: serverseitig weist die API veraltete Elemente als `stale` ab (Eventdatum > 31 Tage zurück, Quellen > 24 Monate) – siehe API-Doku
 
-### LLM Extraktion + Scoring
-- [ ] 3–5 echte URLs manuell in Node „LLM extrahieren + scoren" testen
-- [ ] Prüfen: Kommt valides JSON raus? `title, organizer, location, eventDate, festwirtStatus, score, scoreReason`
-- [ ] Score-Logik verifizieren:
-  - `+40` Jubiläum 50/75/100/125/150 Jahre
-  - `+25` Festwirt offen / Ausschreibung / unklar
-  - `+20` Kernregion
-  - `+15` Fest in 9–24 Monaten (2027-08 bis 2028-11)
-  - `-30` Festwirt vergeben / geschlossen
-  - `-20` zu kurzfristig (<6 Monate ohne Notfall) oder zu früh (>36 Monate)
-- [ ] Threshold testen: Score-Schwelle `minScore = 60` – zu viel / zu wenig Treffer?
-- [ ] Datum-Check prüfen: >36 Monate raus, <4 Monate nur bei „Notfall / abgesprungen / frei"
+## Phase 2 – Maurer Events Backend ✅ (17.11.2026)
 
-### POST Test
-- [ ] Node „An Maurer Events senden" vorerst auf webhook.site zeigen lassen, Payload prüfen
-- [ ] Payload-Format checken: Array von Opportunities mit `status: 'new'`, `discoveredAt`, `runId`
-- [ ] Erst wenn Test sauber läuft → weiter zu Phase 2
+- [x] Tabelle `fest_chances` (+ Legacy `fest_opportunities`) im Schema
+- [x] `POST /api/admin/fest-chances/ingest` – Bearer/x-api-key, max. 200 Items, Dedupe über `urlHash`, Soft-Delete-Regel
+- [x] `GET /api/admin/fest-chances` (Filter, Sortierung, `?format=csv`)
+- [x] Recheck-Cron `GET /api/cron/fest-chancen-recheck` (Erinnerungen an offene Chancen)
+- [x] Backfill-Skript `npm run backfill:fest-chances` (idempotent, `--dry-run` verfügbar)
+- [x] Legacy-Dedupe + Abschaltpfad für `fest_opportunities` dokumentiert (API-Doku, „Abschaltpfad Legacy")
+- [ ] Legacy-Abschaltpfad tatsächlich durchziehen (Admin liest nur `fest_chances`, dann Tabelle archivieren) – wenn Stufe stabil läuft
 
-## Phase 2 – Maurer Events Backend (Next.js + Drizzle)
+## Phase 3 – Admin Bereich ✅ (17.11.2026)
 
-### Datenbank
-- [ ] Tabelle `fest_opportunities` anlegen (Migration in `src/db/schema.ts`):
-  - [ ] `id (uuid), title, organizer, location, region, eventDate, jubileeYears, categories[]`
-  - [ ] `contactName, contactEmail, contactPhone, sourceUrl`
-  - [ ] `festwirtStatus: open|unknown|taken|closed`
-  - [ ] `score (0-100), scoreReason, monthsAhead`
-  - [ ] `status: new|reviewing|applied|contacted|won|lost|ignore`
-  - [ ] `nextAction, discoveredAt, n8nRunId, createdAt, updatedAt`
-  - [ ] Unique Index auf `sourceUrl` + Index auf `status, region, eventDate, score`
-- [ ] Tabelle `fest_runs` anlegen (Protokoll pro n8n-Lauf: `runId, startedAt, foundCount, syncedCount, error`)
+- [x] Seite `src/app/[locale]/admin/festchancen` (Liste, Filter, Status, Kontakt, Quellen-Link, Soft-Delete)
+- [x] Status-Workflow im Admin (neu → prüfen → beworben → …)
+- [x] CSV-Export (`?format=csv`, RFC4180, UTF-8 mit BOM)
+- [ ] E-Mail-Benachrichtigung bei X neuen Opportunities (Resend) prüfen/aktivieren
+- [ ] Anschreibungs-Vorlagen-Generator (Textbaustein pro Jubiläum/Festtyp) – falls gewünscht
 
-### API
-- [ ] `POST /api/admin/fest-chancen/ingest` (Route, z.B. `src/app/api/admin/fest-chancen/ingest/route.ts`):
-  - [ ] Auth über Header `X-N8N-API-KEY` gegen Env `MAURER_N8N_KEY` prüfen (401 wenn falsch)
-  - [ ] JSON-Array validieren, Duplikate über `sourceUrl` abgleichen (Upsert)
-  - [ ] Einträge in `fest_opportunities` + Lauf in `fest_runs` schreiben
-  - [ ] Rate-Limit / Max-Payload Limit (z.B. max 200 Items)
-- [ ] Server Action `getFestOpportunities()` + `updateFestOpportunityStatus()` mit `requireAdmin()`-Guard (wie `src/lib/auth.ts`)
-- [ ] Admin-Übersicht: Stats (X neu, X geprüft, X beworben)
-
-## Phase 3 – Admin Bereich anzeigen
-
-- [ ] Neue Seite `src/app/[locale]/admin/festchancen/page.tsx` (ähnlich zu `/admin/events`)
-- [ ] Tabelle/Karten-Liste mit:
-  - [ ] Score-Badge (grün ≥80, gelb 60–79), Event-Datum, Region, Jubiläum
-  - [ ] Filter: Region (Ingolstadt / Kelheim / Regensburg / München), Status, Score ≥60, Datum 9–24 Monate
-  - [ ] Detail-Expand: Score-Begründung, Kontakt, Quellen-Link, Snippet/Text
-- [ ] Aktionen pro Eintrag:
-  - [ ] Status setzen: `Neu → Prüfen → Beworben → Kontaktiert → Zusage/Absage`
-  - [ ] Link „Vereinsseite öffnen" + „E-Mail schreiben" (falls Kontakt vorhanden)
-  - [ ] „Als ignoriert markieren"
-- [ ] Button **„Jetzt in n8n suchen"** → ruft n8n Webhook `/webhook/festfinder-start` auf
-- [ ] Neue Unterseite in `AdminTabs` / Navigation verlinken
-- [ ] `requireAdmin(true)` Schutz wie auf `/admin/page.tsx`
-
-## Phase 4 – Bewerbungs-Workflow (Phase 2)
-
-- [ ] Anschreibungs-Vorlage Generator (Textbaustein pro Jubiläum / Festtyp) – Platzhalter für Vereinsname + Festdatum
-- [ ] Feld `nextAction` + „Nächster Termin / Follow-up Datum"
-- [ ] Erinnerung / E-Mail Benachrichtigung: x neue Opportunities → E-Mail an Festwirt (Resend Free Tier, hast du schon in `package.json`)
-- [ ] Export: Opportunities als CSV/Excel exportieren (für eigene Bewerbungsliste)
-- [ ] Archivierung alter Einträge (`won/lost/ignore` nicht in Default-Liste)
-
-## Phase 5 – Go-Live & Monitoring
+## Phase 4 – Go-Live & Monitoring (offen)
 
 - [ ] n8n Schedule aktivieren (Mo + Do 07:00)
-- [ ] 3 Test-Läufe beobachten: Trefferanzahl, Score-Verteilung, Fehlerrate
+- [ ] 3 Test-Läufe beobachten: Trefferanzahl, Score-Verteilung, Fehlerrate, `stale`-Anteil
 - [ ] Query-Templates & Threshold feintunen
 - [ ] Error-Handling: n8n Error-Workflow → E-Mail/Telegram wenn Lauf fehlschlägt
-- [ ] Logging: `fest_runs` im Admin anzeigen (letzter Lauf: wann, wie viele gefunden)
+- [ ] Logging: letzte n8n-Läufe (`runId`) im Admin sichtbar prüfen
 - [ ] Kosten-Check: Bleibt alles im Free Tier? (Tavily ~120 Requests/Monat, LLM ~500–800k Tokens/Monat)
-- [ ] Backup/Doku: Env-Variablen dokumentieren, Produktions-URL setzen
+- [ ] Env-Variablen dokumentieren, Produktions-URL setzen
+
+## Schwester-Feature: Vereins-Radar (undokumentiert)
+
+Neben Fest-Chancen gibt es inzwischen `vereins_radar` (Tabelle, Admin-Seite
+`/admin/vereins-radar`, Ingest `POST /api/admin/vereins-radar/ingest`, Auth
+über `MAURER_API_KEY`). Dafür existiert **keine Doku** analog
+`fest-chances-ingest.md` – kurz nachziehen, sobald der n8n-Workflow dafür
+steht. Bis dahin ist der Ingest-Code selbst die Referenz.
 
 ---
 
@@ -126,4 +103,3 @@
 - [ ] Treffer landen dedupliziert in der DB und sind im Admin sichtbar
 - [ ] Status kann im Admin geändert werden (Bewerbung tracken)
 - [ ] Manueller Admin-Button startet n8n – Schedule läuft automatisch
-

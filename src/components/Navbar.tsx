@@ -69,7 +69,7 @@ export default function Navbar() {
         className={`fixed w-full z-50 transition-all duration-500 ease-in-out ${
           transparent
             ? "bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-[0_1px_12px_rgba(0,0,0,0.08)]"
-            : "bg-base-light/95 backdrop-blur-md border-b border-base-dark"
+            : "bg-base-light/80 backdrop-blur-md border-b border-base-dark/60"
         } ${
           showNavbar ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}

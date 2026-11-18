@@ -8,6 +8,7 @@ import dynamicComponent from "next/dynamic";
 import { getTranslations } from "next-intl/server";
 import EmailReservationCard from "@/components/EmailReservationCard";
 import EventDocuments from "@/components/EventDocuments";
+import EventMapEmbed from "@/components/EventMapEmbed";
 import EventDetailStage from "@/components/event-detail/EventDetailStage";
 import DescriptionRenderer from "@/components/DescriptionRenderer";
 import GalleryGrid from "@/components/GalleryGrid";
@@ -37,6 +38,31 @@ function formatDateRange(start: Date, end: Date | null, locale: string): string 
       : `${start.toLocaleDateString(tag, { day: "2-digit", month: "long" })} – ${full(end)}`;
   }
   return `${full(start)} – ${full(end)}`;
+}
+
+/**
+ * Kurze Google-Maps-Links (maps.app.goo.gl, goo.gl, g.co) werden serverseitig
+ * aufgelöst, damit die eingebettete Karte die echten Koordinaten/Adressen
+ * anzeigen kann (clientseitig blockiert CORS die Auflösung).
+ */
+async function resolveShortMapsUrl(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname;
+    const shortHosts = new Set(["maps.app.goo.gl", "goo.gl", "g.co"]);
+    if (!shortHosts.has(host)) return url;
+    let current = url;
+    for (let i = 0; i < 5; i++) {
+      const res = await fetch(current, { redirect: "manual" });
+      const loc = res.headers.get("location");
+      if (!loc) return current;
+      current = new URL(loc, current).toString();
+      if (!shortHosts.has(new URL(current).hostname)) return current;
+    }
+    return current;
+  } catch {
+    return url;
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string, locale: string }> }) {
@@ -79,6 +105,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const resolvedMapUrl = await resolveShortMapsUrl(event.mapUrl);
+
   const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
   const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
   const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
@@ -102,6 +130,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       "address": {
         "@type": "PostalAddress",
         "addressLocality": location,
+        ...(event.zip ? { "postalCode": event.zip } : {}),
       }
     },
     "organizer": {
@@ -133,7 +162,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-canvas-light p-8 rounded-3xl border border-border-light border-t-4 border-t-accent-green sticky top-32 shadow-sm">
-              <h3 className="font-display font-bold text-xl mb-6 text-base-dark">{t("overview")}</h3>
+              <h3 className="font-subhead text-xl mb-6 text-base-dark">{t("overview")}</h3>
               <ul className="space-y-6">
                 <li>
                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("date")}</span>
@@ -141,7 +170,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </li>
                 <li className="pt-6 border-t border-border-light">
                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("location")}</span>
-                  <span className="font-sans font-bold text-base-dark">{location}</span>
+                  <span className="font-sans font-bold text-base-dark">{location}{event.zip ? ` · ${event.zip}` : ""}</span>
                 </li>
                 <li className="pt-6 border-t border-border-light">
                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("status")}</span>
@@ -152,28 +181,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </ul>
               {location && (
                  <div className="mt-6 pt-6 border-t border-border-light">
-                   <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">Karte</span>
-                   <div className="rounded-2xl overflow-hidden border border-border-light">
-                     <iframe
-                       src={`https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`}
-                       width="100%"
-                       height="200"
-                       style={{ border: 0 }}
-                       loading="lazy"
-                       referrerPolicy="no-referrer-when-downgrade"
-                       title={`Karte: ${location}`}
-                     />
-                   </div>
-                   <a
-                     href={event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-accent-green hover:underline"
-                   >
-                     In Google Maps öffnen
-                   </a>
+                   <EventMapEmbed
+                     mapUrl={event.mapUrl}
+                     embedMapUrl={resolvedMapUrl}
+                     location={location}
+                     zip={event.zip}
+                     title={title}
+                     locale={locale}
+                   />
                  </div>
-               )}
+              )}
                {reservationCta && (
                 <a
                   href="#reservierung"

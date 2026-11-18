@@ -20,8 +20,22 @@ export function renderContract(bodyHtml: string, staff: StaffRow, role: RoleRow 
     eintritt: staff.entryDate ? new Date(staff.entryDate).toLocaleDateString("de-DE") : "",
     heute: new Date().toLocaleDateString("de-DE"),
   };
+  // Conditional blocks: {{#if key}}...{{/if}} (and {{#unless key}}...{{/unless}})
+  // are included only based on whether the corresponding value is truthy/non-zero.
+  const isTruthy = (v: string | undefined) => {
+    if (v === undefined || v === null || v === "") return false;
+    const n = v.replace(",", ".");
+    if (n === "0" || n === "0.0" || n === "0.00") return false;
+    return true;
+  };
+  let result = bodyHtml.replace(/\{\{#if\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/gi, (_, key, content) =>
+    isTruthy(values[key]) ? content : ""
+  );
+  result = result.replace(/\{\{#unless\s+([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/unless\}\}/gi, (_, key, content) =>
+    isTruthy(values[key]) ? "" : content
+  );
   // {{ort}} wird nicht auto-gefüllt: leere Ausfüllzeile für manuelle Eingabe (Ort, Datum).
-  const withOrt = bodyHtml.replace(/\{\{\s*ort\s*\}\}/gi, '<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">&nbsp;</span>');
+  const withOrt = result.replace(/\{\{\s*ort\s*\}\}/gi, '<span style="display:inline-block;border-bottom:1px solid #000;min-width:120px">&nbsp;</span>');
   return withOrt.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => escapeHtml(values[key] ?? ""));
 }
 

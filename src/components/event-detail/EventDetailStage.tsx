@@ -62,7 +62,7 @@ export default function EventDetailStage({ event, dateLabel }: { event: EventRec
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
-              className="font-display font-black text-5xl md:text-7xl xl:text-8xl text-base-dark leading-[0.95] tracking-tight mb-10"
+              className="font-display font-black text-5xl md:text-7xl xl:text-8xl text-base-dark leading-[0.95] tracking-headline mb-10"
             >
               {title}
             </motion.h1>
@@ -73,7 +73,7 @@ export default function EventDetailStage({ event, dateLabel }: { event: EventRec
               transition={{ duration: 0.7, ease: "easeOut", delay: 0.35 }}
               className="flex flex-wrap gap-4 justify-center lg:justify-start"
             >
-              <div className="flex items-center gap-4 bg-white border border-border-light rounded-2xl px-5 py-4 shadow-sm">
+              <div className="flex items-center gap-4 bg-white/80 backdrop-blur-sm border border-border-light rounded-2xl px-5 py-4 shadow-sm">
                 <div className="w-11 h-11 rounded-xl bg-accent-green/10 text-accent-green flex items-center justify-center shrink-0">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -85,7 +85,7 @@ export default function EventDetailStage({ event, dateLabel }: { event: EventRec
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 bg-white border border-border-light rounded-2xl px-5 py-4 shadow-sm">
+              <div className="flex items-center gap-4 bg-white/80 backdrop-blur-sm border border-border-light rounded-2xl px-5 py-4 shadow-sm">
                 <div className="w-11 h-11 rounded-xl bg-accent-green/10 text-accent-green flex items-center justify-center shrink-0">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

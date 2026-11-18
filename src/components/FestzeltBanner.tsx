@@ -51,7 +51,7 @@ export default function FestzeltBanner({ position = "right" }: FestzeltBannerPro
           {/* Banner Background */}
           <polygon points="20,104 220,104 220,460 120,520 20,460" fill="#FFFFFF" />
         {/* Banner Inner Border */}
-        <polygon points="32,116 208,116 208,453 120,506 32,453" fill="none" stroke="#1F5732" strokeWidth="4" />
+        <polygon points="32,116 208,116 208,453 120,506 32,453" fill="none" stroke="#20603C" strokeWidth="4" />
       </svg>
       {/* Content overlay */}
       <div className="absolute top-[20%] left-0 w-full h-[80%] pb-[20%] px-6 flex flex-col items-center justify-center pointer-events-none">

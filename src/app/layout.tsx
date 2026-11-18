@@ -1,14 +1,35 @@
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
+import { Yeseva_One, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { getLocale } from 'next-intl/server';
 
+// Styleguide Kunde: Fließtext + Hauptüberschriften in Aileron (All Capitals, Bold, Laufweite -75),
+// Unterüberschriften in Yeseva One. Aileron ist nicht auf Google Fonts und wird self-hosted
+// (woff2, latin, CC0-Lizenz siehe fonts/LICENSE-aileron.txt).
+const aileron = localFont({
+  src: [
+    { path: "./fonts/aileron-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/aileron-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/aileron-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/aileron-latin-800-normal.woff2", weight: "800", style: "normal" },
+  ],
+  variable: "--font-aileron",
+  display: "swap",
+});
 
-
-
-
-const inter = Inter({
-  variable: "--font-inter",
+const yesevaOne = Yeseva_One({
+  weight: "400",
   subsets: ["latin"],
+  variable: "--font-yeseva",
+  display: "swap",
+});
+
+// Dekorativer Handschrift-Akzent (Polaroid-Unterschriften, kein Bestandteil des
+// Styleguides - bewusst nur für Deko-Elemente). Variable Font, self-hosted via next/font.
+const dancingScript = Dancing_Script({
+  subsets: ["latin"],
+  variable: "--font-dancing",
+  display: "swap",
 });
 
 import type { Metadata } from 'next';
@@ -111,7 +132,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased scroll-smooth`}>
+    <html lang={locale} className={`${aileron.variable} ${yesevaOne.variable} ${dancingScript.variable} h-full antialiased scroll-smooth`}>
       <head>
         <script
           type="application/ld+json"

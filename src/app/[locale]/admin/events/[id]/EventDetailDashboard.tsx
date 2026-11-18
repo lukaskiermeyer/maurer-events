@@ -104,6 +104,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const [file, setFile] = useState<File | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   const [settingsData, setSettingsData] = useState({
@@ -255,6 +256,12 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const removeImage = () => {
+    setFile(null);
+    setFormData({ ...formData, imageUrl: "" });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleEventUpdate = async (e: React.FormEvent) => {
@@ -736,38 +743,30 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                   }}
                   className={`relative w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDraggingImage ? "border-accent-green bg-accent-green/10" : "border-border-light bg-base-light"}`}
                 >
-                  <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                   <p className="text-sm font-bold text-base-dark/60 pointer-events-none">
                     {isDraggingImage ? "Bild hier ablegen…" : "Bild hierher ziehen oder klicken zum Auswählen"}
                   </p>
                 </div>
-              {file && (
+              {(file || formData.imageUrl) && (
                 <div className="mt-2">
-                  <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>
-                  {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-40 rounded-lg border border-border-light" />
+                  <p className="text-xs font-bold text-base-dark/60 mb-1">{file ? "Vorschau (wird beim Speichern hochgeladen):" : "Aktuelles Bild:"}</p>
+                  <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={file ? URL.createObjectURL(file) : formData.imageUrl} alt="Vorschau" className="max-h-40 rounded-lg border border-border-light" />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      aria-label="Bild entfernen"
+                      title="Bild entfernen"
+                      className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              )}
-              {!file && formData.imageUrl && (
-                <div className="mt-2 space-y-2">
-                  <p className="text-xs font-bold text-base-dark/60 mb-1">Aktuelles Bild:</p>
-                  {/* eslint-disable-line @next/next/no-img-element */}<img src={formData.imageUrl} alt="Aktuelles Bild" className="max-h-40 rounded-lg border border-border-light" />
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, imageUrl: "" })}
-                    className="text-xs font-bold text-red-600 hover:underline"
-                  >
-                    Bild entfernen
-                  </button>
-                </div>
-              )}
-              {file && (
-                <button
-                  type="button"
-                  onClick={() => setFile(null)}
-                  className="text-xs font-bold text-red-600 hover:underline"
-                >
-                  Auswahl entfernen
-                </button>
               )}
               </div>
 
@@ -956,7 +955,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
-              <h3 className="text-xl font-display font-bold">Gästeliste ({initialReservations.length})</h3>
+              <h3 className="text-xl font-subhead">Gästeliste ({initialReservations.length})</h3>
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/admin/events/${event.id}/scanner`}
@@ -1188,7 +1187,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         {activeTab === "tables" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h3 className="font-display font-bold text-2xl">Zelt-Generator & Bearbeitung</h3>
+              <h3 className="font-subhead text-2xl">Zelt-Generator & Bearbeitung</h3>
               <div className="grid grid-cols-2 w-full sm:w-auto bg-canvas-light p-1 rounded-lg border border-border-light">
                 <button
                   onClick={() => setTableMode("edit")}
@@ -1251,7 +1250,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
                   {/* Left Sidebar: Unassigned Reservations */}
                   <div className="xl:col-span-1 bg-canvas-light rounded-xl border border-border-light p-4 max-h-72 xl:max-h-none xl:h-[600px] flex flex-col">
-                    <h4 className="font-bold font-display mb-4">Noch zuzuweisen</h4>
+                    <h4 className="font-subhead mb-4">Noch zuzuweisen</h4>
                     <div className="flex-1 overflow-y-auto space-y-3 hide-scrollbar pr-2">
                       {initialReservations.filter((r) => {
                         const rDate = new Date(r.reservation.reservationDate).toISOString().split('T')[0];
@@ -1300,7 +1299,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         {activeTab === "invitations" && (
           <div className="space-y-6 animate-fade-in">
             <div>
-              <h3 className="font-display font-bold text-2xl">Kunden per E-Mail einladen</h3>
+              <h3 className="font-subhead text-2xl">Kunden per E-Mail einladen</h3>
               <p className="text-sm opacity-70 mt-1">
                 Finde Kunden im Umkreis des Event-Standorts und lade sie per E-Mail zum neuen Fest ein.
               </p>
@@ -1454,7 +1453,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (
           <div className="space-y-8 animate-fade-in">
-            <h3 className="font-display font-bold text-2xl">Bildergalerie (Rückblick)</h3>
+            <h3 className="font-subhead text-2xl">Bildergalerie (Rückblick)</h3>
 
             <div className="bg-canvas-light border border-border-light p-6 rounded-2xl">
               <h4 className="font-bold mb-4">Neues Bild hinzufügen</h4>
@@ -1535,7 +1534,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
         {/* WAITLIST TAB */}
         {activeTab === "waitlist" && (
           <div className="space-y-8 animate-fade-in">
-            <h3 className="font-display font-bold text-2xl">Warteliste</h3>
+            <h3 className="font-subhead text-2xl">Warteliste</h3>
             <p className="text-sm opacity-70">Hier siehst du alle Gäste, die auf einen freien Tisch warten. Du kannst sie benachrichtigen, wenn etwas frei wird.</p>
 
             <div className="admin-waitlist bg-canvas-light rounded-2xl border border-border-light overflow-hidden">

@@ -42,6 +42,8 @@ export async function GET(request: Request) {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="Vertrag-${memberName.replace(/\s+/g, "_")}.pdf"`,
       "Cache-Control": "private, no-store",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Content-Security-Policy": "frame-ancestors 'self'",
     },
   });
 }

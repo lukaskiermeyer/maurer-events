@@ -143,7 +143,7 @@ export default function ContactSection() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
 
             <div className="relative z-10">
-              <h3 className="font-display font-bold text-3xl md:text-4xl mb-6">{t("info_title")}</h3>
+              <h3 className="font-subhead text-3xl md:text-4xl mb-6">{t("info_title")}</h3>
               <p className="font-sans text-base-light/80 text-lg mb-12">
                 {t("info_text")}
               </p>
@@ -193,7 +193,7 @@ export default function ContactSection() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
-                <h4 className="font-display font-bold text-4xl text-base-dark mb-4">{t("form_success_title")}</h4>
+                <h4 className="font-subhead text-4xl text-base-dark mb-4">{t("form_success_title")}</h4>
                 <p className="text-base-dark/70 font-sans text-lg mb-12">{t("form_success_desc")}</p>
                 <button
                   type="button"
@@ -269,7 +269,7 @@ export default function ContactSection() {
                     exit={{ opacity: 0, x: direction * -48 }}
                     transition={{ duration: 0.32, ease: "easeOut" }}
                   >
-                    <h3 className="font-display font-bold text-2xl md:text-3xl text-base-dark mb-2">
+                    <h3 className="font-subhead text-2xl md:text-3xl text-base-dark mb-2">
                       {t(STEPS[step].titleKey)}
                     </h3>
                     <p className="font-sans text-base-dark/60 mb-8">{t(STEPS[step].hintKey)}</p>

@@ -139,9 +139,9 @@ export default function FestzeltCeiling({ banners = true }: { banners?: boolean 
               <stop offset="100%" stopColor="#C29B6A" stopOpacity="0.9" />
             </radialGradient>
             <linearGradient id={swagGreenId} x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#1F5732" stopOpacity="0.85" />
-              <stop offset="55%" stopColor="#1F5732" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#1F5732" stopOpacity="0" />
+              <stop offset="0%" stopColor="#20603C" stopOpacity="0.85" />
+              <stop offset="55%" stopColor="#20603C" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#20603C" stopOpacity="0" />
             </linearGradient>
             <linearGradient id={swagBeigeId} x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#F4F0E8" stopOpacity="0.95" />

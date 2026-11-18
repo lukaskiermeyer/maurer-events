@@ -2,7 +2,7 @@
 
 import type { EventRecord, AdminStats } from '@/types/domain';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, deleteEvent, updateEvent, getEventDeletionSummary, restoreEvent, getDeletedEvents } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
@@ -17,6 +17,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
   const [deletedEvents, setDeletedEvents] = useState<EventRecord[]>([]);
@@ -64,6 +65,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         : [...prev.reservableDates, dateStr];
       return { ...prev, reservableDates: dates };
     });
+  };
+
+  const removeImage = () => {
+    setFile(null);
+    setFormData(current => ({ ...current, imageUrl: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetForm = () => {
@@ -128,6 +135,8 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Enter in an input must not skip the remaining steps.
+    if (step < 4) { nextStep(); return; }
     const err = validateStep(4);
     if (err) { toast.showToast(err, "warning"); return; }
     setLoading(true);
@@ -248,7 +257,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
             <div className="flex items-start gap-3 p-5">
               <Link href={`/admin/events/${event.id}`} className="flex-1 min-w-0 block">
                 <div className="min-w-0">
-                  <h3 className="font-bold text-lg font-display group-hover:text-accent-green transition-colors break-words">{event.title}</h3>
+                  <h3 className="text-lg font-subhead group-hover:text-accent-green transition-colors break-words">{event.title}</h3>
                   <p className="text-sm opacity-70 font-sans break-words">
                     {new Date(event.date).toLocaleDateString('de-DE')}
                     {event.endDate && event.endDate !== event.date && ` - ${new Date(event.endDate).toLocaleDateString('de-DE')}`}
@@ -408,6 +417,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                     className={`relative flex-1 min-w-0 border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDraggingImage ? "border-accent-green bg-accent-green/10" : "border-border-light bg-base-light"}`}
                   >
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
@@ -417,11 +427,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                       {isDraggingImage ? "Bild hier ablegen…" : (file ? file.name : "Bild hierher ziehen oder klicken")}
                     </p>
                     <p className="text-xs opacity-50 mt-1 pointer-events-none">Lokal hochladen</p>
-                    {file && (
-                      <button type="button" onClick={() => setFile(null)} className="mt-2 text-xs font-bold text-red-600 hover:underline pointer-events-auto">
-                        Auswahl entfernen
-                      </button>
-                    )}
                   </div>
                   <div className="flex items-center text-sm font-bold opacity-50">ODER</div>
                   <div className="flex-1 min-w-0">
@@ -435,10 +440,24 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                     />
                   </div>
                 </div>
-                {file && (
-                  <div className="mt-2">
-                    <p className="text-xs font-bold text-base-dark/60 mb-1">Vorschau (wird beim Speichern hochgeladen):</p>
-                    {/* eslint-disable-line @next/next/no-img-element */}<img src={URL.createObjectURL(file)} alt="Vorschau" className="max-h-32 rounded-lg border border-border-light" />
+                {(file || formData.imageUrl) && (
+                  <div className="mt-2 relative inline-block">
+                    <p className="text-xs font-bold text-base-dark/60 mb-1">{file ? "Vorschau (wird beim Speichern hochgeladen):" : "Aktuelles Bild:"}</p>
+                    <div className="relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={file ? URL.createObjectURL(file) : formData.imageUrl} alt="Vorschau" className="max-h-32 rounded-lg border border-border-light" />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        aria-label="Bild entfernen"
+                        title="Bild entfernen"
+                        className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

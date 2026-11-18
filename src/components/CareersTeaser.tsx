@@ -96,8 +96,7 @@ export default function CareersTeaser({ content }: { content: CareerContent }) {
             </div>
             <p className="absolute bottom-4 left-0 w-full text-center">
               <span
-                className="text-2xl text-base-dark/80 opacity-90 rotate-[-4deg] inline-block tracking-wide"
-                style={{ fontFamily: "'Dancing Script', 'Caveat', 'Brush Script MT', 'Lucida Handwriting', cursive" }}
+                className="font-script text-2xl text-base-dark/80 opacity-90 rotate-[-4deg] inline-block tracking-wide"
               >
                 {t("caption")}
               </span>

@@ -284,7 +284,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
       {sendDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4">
-            <h3 className="font-display font-bold text-xl">E-Mail an Mitarbeiter senden?</h3>
+            <h3 className="font-subhead text-xl">E-Mail an Mitarbeiter senden?</h3>
             <p className="text-sm text-base-dark/70">Soll der Mitarbeiter über die neue Schichtzuweisung per E-Mail informiert werden?</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={alwaysSend} onChange={e => { setAlwaysSend(e.target.checked); try { localStorage.setItem("staffing_always_send_email", e.target.checked ? "1" : "0"); } catch {} }} /> Immer senden (nicht mehr fragen)</label>
             <div className="flex gap-2 justify-end">

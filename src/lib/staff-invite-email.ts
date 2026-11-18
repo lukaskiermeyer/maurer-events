@@ -1,7 +1,7 @@
 // Design für die Mitarbeiter-Einladungsmail (Maurer Events Branding).
 // Inline-CSS, email-sicher (keine externen Stylesheets).
 
-const GREEN = "#1F5732";
+const GREEN = "#20603C";
 const GOLD = "#CB7913";
 const INK = "#1A1A1A";
 const MUTED = "#5B5B57";

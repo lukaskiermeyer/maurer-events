@@ -13,8 +13,10 @@ Die Datenbank wurde vom Betreiber ausdrücklich als ausschließlich Staging/Test
 bestätigt. Stripe ausschließlich Testmodus, freigegebener Empfänger
 `hello@madebylui.net`, Absender `Maurer Events <noreply@travellui.com>`.
 
-Der frühere Bericht mit 35 behobenen Befunden ist
-[reservation-security-audit.md](reservation-security-audit.md). Diese Abnahme
+Der frühere Bericht mit 35 behobenen Befunden (Sicherheitsprüfung
+Tischreservierungen, Oktober 2026) wurde aus den Dokumenten entfernt; alle
+Befunde sind behoben und über die Tabellen dieser Abnahme zusammengefasst.
+Diese Abnahme
 ergänzt reale Provider-, Deployment-, Datenbank- und Browsernachweise. Eine
 bestandene Codeprüfung allein ist keine Produktionsfreigabe.
 

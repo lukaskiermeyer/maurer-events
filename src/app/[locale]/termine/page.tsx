@@ -59,7 +59,7 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
               </div>
               
               <div className="sm:w-2/3 p-6 sm:p-8 flex flex-col">
-                <h3 className="font-display font-bold text-2xl sm:text-3xl mb-2 text-base-dark">{title}</h3>
+                <h3 className="font-subhead text-2xl sm:text-3xl mb-2 text-base-dark">{title}</h3>
                 {badge && (
                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-4 shadow-md rounded-sm self-start">
                     {badge}

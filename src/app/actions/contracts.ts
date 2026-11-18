@@ -10,6 +10,7 @@ import { requireStaffMember, clientIp } from "@/lib/staff-auth";
 import { sha256 } from "@/lib/secure-fields";
 import { uuid } from "@/lib/reservation-policy";
 import { audit } from "@/lib/audit";
+import { deleteCloudinaryImage } from "@/lib/cloudinary";
 
 export async function signContractText(contractId: string, fullName: string) {
   try {
@@ -79,6 +80,25 @@ export async function verifyContract(contractId: string) {
   const [updated] = await db.update(contracts).set({ status: "verified", updatedAt: new Date() }).where(and(eq(contracts.id, contractId), eq(contracts.status, "signed"))).returning();
   if (!updated) throw new Error("Vertrag nicht gefunden oder noch nicht unterschrieben.");
   await audit("admin", actor.email, "contract.verify", "contract", contractId);
+  revalidatePath("/[locale]/admin/mitarbeiter", "page");
+  return { success: true };
+}
+
+export async function deleteContract(contractId: string) {
+  const actor = await requireAdmin();
+  uuid(contractId);
+  const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId));
+  if (!contract) throw new Error("Vertrag nicht gefunden.");
+  await db.delete(contracts).where(eq(contracts.id, contractId));
+  // Hochgeladene Unterschriftsdatei (Cloudinary) best effort mit löschen.
+  if (contract.signedFileUrl) {
+    try { await deleteCloudinaryImage(contract.signedFileUrl); } catch { /* best effort */ }
+  }
+  await audit("admin", actor.email, "contract.delete", "contract", contractId, {
+    staffId: contract.staffId,
+    status: contract.status,
+    hadSignedFile: Boolean(contract.signedFileUrl),
+  });
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
   return { success: true };
 }

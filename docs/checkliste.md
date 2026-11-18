@@ -1,10 +1,17 @@
 # Checkliste (abhakbar)
 
+Stand: 18.11.2026. Offene Punkte zusätzlich gebündelt in `TODO.md`.
+
 ## Sofortmaßnahmen (Code/Config)
-- [ ] `src/lib/redact.ts` in allen `console.*` nutzen
-- [ ] HSTS + Referrer-Policy `strict-origin` deployen (next.config.mjs)
-- [ ] `staffAuth.ts` Passwort-Reset-Link-Log entfernen
-- [ ] Cloudinary-URLs aus Logs entfernen
+
+Erledigt am 14.11.2026, Beleg: `gesamtzusammenfassung.md` § 1. Redaction
+eingeführt und kritische Logstellen umgestellt (`staffAuth.ts`, `cloudinary.ts`,
+`cron/cleanup/route.ts`); verbleibende `console.*`-Stellen bei Gelegenheit prüfen.
+
+- [x] `src/lib/redact.ts` einführen und in kritischen `console.*`-Stellen nutzen
+- [x] HSTS + Referrer-Policy `strict-origin` deployen (next.config.mjs)
+- [x] `staffAuth.ts` Passwort-Reset-Link-Log entfernen
+- [x] Cloudinary-URLs aus Logs entfernen
 - [ ] Cloudinary-Secret rotieren + Git-History bereinigen
 - [ ] Unsigned Upload Preset deaktivieren/absichern
 - [ ] Event-Dokumente bei Event-Löschung purgen

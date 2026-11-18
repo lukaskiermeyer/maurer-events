@@ -142,9 +142,9 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                 <stop offset="100%" stopColor="#C29B6A" stopOpacity="0.9" />
               </radialGradient>
               <linearGradient id="swag-green" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#1F5732" stopOpacity="0.85" />
-                <stop offset="55%" stopColor="#1F5732" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="#1F5732" stopOpacity="0" />
+                <stop offset="0%" stopColor="#20603C" stopOpacity="0.85" />
+                <stop offset="55%" stopColor="#20603C" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#20603C" stopOpacity="0" />
               </linearGradient>
               <linearGradient id="swag-beige" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" stopColor="#F4F0E8" stopOpacity="0.95" />
@@ -279,7 +279,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="font-display font-black text-3xl md:text-5xl text-base-dark mb-4">{t("empty_title_1")} <span className="text-accent-green">{t("empty_title_2")}</span></h3>
+                  <h3 className="font-subhead text-3xl md:text-5xl text-base-dark mb-4">{t("empty_title_1")} <span className="text-accent-green">{t("empty_title_2")}</span></h3>
                   <p className="font-sans text-base-dark/70 max-w-lg mx-auto text-lg leading-relaxed">
                     {t("empty_text")}
                   </p>
@@ -321,21 +321,17 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                           </div>
 
                           {/* Poster Area */}
-                          <div className="shrink-0 overflow-hidden">
-                            {event.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
+                          {event.imageUrl && (
+                            <div className="shrink-0 overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={event.imageUrl} alt={title} className="h-auto w-auto max-h-[480px] max-w-full object-contain group-hover:scale-105 transition-transform duration-700" />
-                            ) : (
-                              <div className="w-48 aspect-video flex items-center justify-center text-sm font-bold opacity-30 uppercase tracking-widest text-base-dark">
-                                Kein Plakat
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
 
                           {/* Content Area */}
                           <div className="w-full md:flex-1 p-5 md:p-8 flex flex-col justify-between">
                             <div>
-                              <h3 className="font-display font-bold text-2xl md:text-4xl mb-3 text-base-dark group-hover:text-accent-green transition-colors leading-tight tracking-tight">{title}</h3>
+                              <h3 className="font-subhead text-2xl md:text-4xl mb-3 text-base-dark group-hover:text-accent-green transition-colors leading-tight">{title}</h3>
                               {badge && (
                                   <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
                                     {badge}
@@ -347,10 +343,10 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                {location}
+                                {location}{event.zip ? ` · ${event.zip}` : ""}
                                </div>
                                <a
-                                 href={event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                                 href={event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location, event.zip].filter(Boolean).join(" "))}`}
                                  target="_blank"
                                  rel="noopener noreferrer"
                                  className="relative z-20 pointer-events-auto inline-flex items-center gap-1.5 text-xs font-bold text-accent-green hover:underline mt-1"

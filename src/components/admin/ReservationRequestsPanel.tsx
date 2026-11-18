@@ -64,7 +64,7 @@ function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord
     <article className="bg-white border border-border-light rounded-2xl p-5 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div className="min-w-0">
-          <h3 className="font-display font-bold text-xl break-words">{request.guestName}</h3>
+          <h3 className="font-subhead text-xl break-words">{request.guestName}</h3>
           {request.groupLabel && <p className="text-sm font-bold text-accent-green break-words">{request.groupLabel}</p>}
           <p className="text-sm text-base-dark/60 break-all">{request.email}{request.phone ? ` · ${request.phone}` : ""}</p>
         </div>
