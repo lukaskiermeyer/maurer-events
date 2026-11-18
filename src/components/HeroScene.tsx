@@ -26,6 +26,7 @@ export default function HeroScene() {
                     sizes="100vw"
                     priority
                     fetchPriority="high"
+                    draggable={false}
                     className="object-cover object-[center_32%]"
                 />
             </div>
@@ -39,6 +40,7 @@ export default function HeroScene() {
                     fill
                     sizes="100vw"
                     priority
+                    draggable={false}
                     onLoad={() => setTentReady(true)}
                 />
                 {tentReady && <HeroLights lights={tentLights} />}
@@ -54,6 +56,7 @@ export default function HeroScene() {
                     alt=""
                     fill
                     sizes="100vw"
+                    draggable={false}
                     onLoad={() => setGateReady(true)}
                 />
                 {gateReady && <HeroLights lights={gateGarlandLights} />}

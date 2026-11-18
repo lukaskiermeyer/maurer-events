@@ -15,7 +15,7 @@ export default function HeroPubSign() {
                 animate={reduced ? undefined : { rotate: [-2.2, 2.2, -2.2] }}
                 transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
             >
-                <Image src="/PubSchild.svg" alt="" fill sizes="(max-aspect-ratio: 1/1) 84vw, 60vh" />
+                <Image src="/PubSchild.svg" alt="" fill draggable={false} sizes="(max-aspect-ratio: 1/1) 84vw, 60vh" />
             </motion.div>
         </div>
     );

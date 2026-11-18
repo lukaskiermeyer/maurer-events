@@ -11,7 +11,7 @@ export default function HeroSection() {
     return (
         <section
             id="start"
-            className="relative h-[100vh] min-h-[640px] w-full overflow-hidden bg-[#03497e] border-b-4 border-black"
+            className="relative h-[100vh] min-h-[640px] w-full overflow-hidden bg-[#03497e] border-b-4 border-black select-none"
         >
             <HeroScene />
 
@@ -21,7 +21,7 @@ export default function HeroSection() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35, duration: 0.6 }}
-                className="absolute inset-x-0 bottom-6 z-40 flex flex-row items-center justify-center gap-3 px-3 md:bottom-7 md:gap-4"
+                className="absolute inset-x-0 bottom-6 z-40 flex flex-row items-center justify-center gap-3 px-3 md:bottom-7 md:gap-4 select-text"
             >
                 <Link
                     href="/#contact"
