@@ -16,7 +16,7 @@ export function renderContract(bodyHtml: string, staff: StaffRow, role: RoleRow 
     telefon: staff.phone || "",
     rolle: role?.name || "",
     stundensatz: (staff.hourlyRateCents / 100).toFixed(2).replace(".", ","),
-    gewinnbeteiligung: (staff.profitSharePercent ?? role?.profitSharePercent ?? 0).toString().replace(".", ","),
+    gewinnbeteiligung: (role?.profitSharePercent ?? staff.profitSharePercent ?? 0).toString().replace(".", ","),
     eintritt: staff.entryDate ? new Date(staff.entryDate).toLocaleDateString("de-DE") : "",
     heute: new Date().toLocaleDateString("de-DE"),
   };
@@ -58,13 +58,23 @@ export async function ensureContractForStaff(staffId: string) {
     eq(contracts.templateId, template.id),
     eq(contracts.templateVersion, template.version),
   ));
-  // Bestehende Verträge mit noch nicht verarbeiteten Conditional-Markern ({{#if ...}})
-  // neu rendern, damit Stundensatz/Umsatzbeteiligung korrekt ein-/ausgeblendet werden.
-  if (existing && /\{\{#/.test(existing.bodyHtml)) {
-    await db.delete(contracts).where(eq(contracts.id, existing.id));
-  } else if (existing) {
+  // Bestehende Verträge neu rendern, wenn sich die Daten geändert haben (z. B. Rollen-Update)
+  // und der Vertrag noch nicht unterschrieben ist (pending).
+  if (existing && existing.status === "pending") {
+    const freshBody = renderContract(template.bodyHtml, member, role || null);
+    if (freshBody !== existing.bodyHtml) {
+      await db.update(contracts).set({ bodyHtml: freshBody, updatedAt: new Date() }).where(eq(contracts.id, existing.id));
+      existing.bodyHtml = freshBody;
+    }
+    // auch Marker-Check (alte Verträge)
+    if (/\{\{#/.test(existing.bodyHtml)) {
+      const freshBody2 = renderContract(template.bodyHtml, member, role || null);
+      await db.update(contracts).set({ bodyHtml: freshBody2, updatedAt: new Date() }).where(eq(contracts.id, existing.id));
+      existing.bodyHtml = freshBody2;
+    }
     return existing;
   }
+  if (existing) return existing;
   try {
     const [created] = await db.insert(contracts).values({
       staffId,

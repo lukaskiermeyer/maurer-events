@@ -100,6 +100,8 @@ export async function createRole(data: { key: string; name: string; description?
 export async function updateRole(roleId: string, data: Partial<{ name: string; description: string | null; hourlyRateCents: number; profitSharePercent: number | null; requiredDocuments: string[]; requiresHandwrittenSignature: boolean; active: boolean }>) {
   const actor = await requireAdmin();
   uuid(roleId);
+  const [currentRole] = await db.select().from(staffRoles).where(eq(staffRoles.id, roleId));
+  if (!currentRole) throw new BookingError("Rolle nicht gefunden.", 404);
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (data.name !== undefined) patch.name = text(data.name, "Rollenname", 100, true);
   if (data.description !== undefined) patch.description = text(data.description, "Beschreibung", 500);
@@ -116,6 +118,23 @@ export async function updateRole(roleId: string, data: Partial<{ name: string; d
     }
   }
   if (data.active !== undefined) patch.active = data.active === true;
+  // Rollen-Änderungen an zugehörige Mitarbeiter propagieren (nur wenn nicht individuell überschrieben):
+  // Mitarbeiter, deren Wert dem alten Rollenwert entspricht, übernehmen den neuen Wert.
+  if (data.hourlyRateCents !== undefined && data.hourlyRateCents !== currentRole.hourlyRateCents) {
+    await db.update(staff).set({ hourlyRateCents: data.hourlyRateCents, updatedAt: new Date() })
+      .where(and(eq(staff.roleId, roleId), eq(staff.hourlyRateCents, currentRole.hourlyRateCents)));
+  }
+  if (data.profitSharePercent !== undefined && data.profitSharePercent !== currentRole.profitSharePercent) {
+    const newPct = data.profitSharePercent === null ? null : data.profitSharePercent;
+    const oldPct = currentRole.profitSharePercent;
+    if (oldPct === null) {
+      await db.update(staff).set({ profitSharePercent: newPct, updatedAt: new Date() })
+        .where(and(eq(staff.roleId, roleId), sql`${staff.profitSharePercent} IS NULL`));
+    } else {
+      await db.update(staff).set({ profitSharePercent: newPct, updatedAt: new Date() })
+        .where(and(eq(staff.roleId, roleId), eq(staff.profitSharePercent, oldPct)));
+    }
+  }
   const [updated] = await db.update(staffRoles).set(patch).where(eq(staffRoles.id, roleId)).returning();
   if (!updated) throw new BookingError("Rolle nicht gefunden.", 404);
   await audit("admin", actor.email, "staff_role.update", "staff_role", roleId);
