@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from 'next';
 
 import { getTranslations } from "next-intl/server";
+import { DATE_TAG } from "@/lib/localize";
 
 export const revalidate = 60;
 
@@ -74,7 +75,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ eventId:
             {title}
           </h1>
           <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-wider text-base-dark/50 mb-6">
-            <span>{new Date(event.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE')}</span>
+            <span>{new Date(event.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE')}</span>
             <span>•</span>
             <span>{location}</span>
           </div>

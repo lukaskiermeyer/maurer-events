@@ -466,6 +466,20 @@
   color: var(--color-accent-green-deep);
 }
 
+/* Footer: weicher vertikaler Fade vom Marken-Gruen zum tiefen Gruen der
+   Basisleiste statt harter Kante. Der obere Bereich bleibt solide, damit
+   Logo/Navigation/Kontakt auf ruhigem Grund stehen; der Fade liegt im
+   unteren Drittel und laeuft in der (transparenten) Legal-Leiste aus. */
+.footer-fade {
+  background-color: var(--color-accent-green);
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-accent-green) 0%,
+    var(--color-accent-green) 70%,
+    var(--color-accent-green-deep) 100%
+  );
+}
+
 /* Branding: Der grüne Schriftteil in Caps-Überschriften (h1/h2 per
    text-transform sowie eigenständige Caps-Elemente) wird kursiv gesetzt. */
 h1 .text-accent-green,

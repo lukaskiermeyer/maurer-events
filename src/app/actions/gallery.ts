@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { galleries, events } from "@/db/schema";
-import { eq, sql, and, isNull } from "drizzle-orm";
+import { eq, sql, and, isNull, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 
@@ -69,4 +69,60 @@ export async function getGalleryAlbums() {
     coverImage: album.eventImageUrl || album.fallbackImageUrl,
     imageCount: Number(album.imageCount)
   }));
+}
+
+// Kuratierte "Best of"-Fotos fuer die Startseite (ueber alle Galerien), in Reihenfolge.
+export async function getFavoriteGalleryImages(limit = 8) {
+  return await db.select({ gallery: galleries, event: events })
+    .from(galleries)
+    .leftJoin(events, eq(galleries.eventId, events.id))
+    .where(and(eq(galleries.isFavorite, true), isNull(events.deletedAt)))
+    .orderBy(asc(galleries.favoriteOrder), asc(galleries.createdAt))
+    .limit(limit);
+}
+
+export async function setGalleryFavorite(imageId: string, favorite: boolean) {
+  await requireAdmin();
+  if (favorite) {
+    const [{ maxOrder }] = await db
+      .select({ maxOrder: sql<number>`coalesce(max(${galleries.favoriteOrder}), 0)` })
+      .from(galleries)
+      .where(eq(galleries.isFavorite, true));
+    await db.update(galleries)
+      .set({ isFavorite: true, favoriteOrder: Number(maxOrder) + 1 })
+      .where(eq(galleries.id, imageId));
+  } else {
+    await db.update(galleries).set({ isFavorite: false }).where(eq(galleries.id, imageId));
+  }
+  revalidatePath("/", "page");
+  revalidatePath("/galerie", "page");
+  revalidatePath("/admin", "page");
+}
+
+// Reihenfolge der Favoriten: tauscht den Platz mit dem Nachbarn in Pfeilrichtung.
+export async function moveGalleryFavorite(imageId: string, direction: -1 | 1) {
+  await requireAdmin();
+  const favorites = await db.select().from(galleries)
+    .where(eq(galleries.isFavorite, true))
+    .orderBy(asc(galleries.favoriteOrder));
+  const idx = favorites.findIndex(f => f.id === imageId);
+  const swapIdx = idx + direction;
+  if (idx < 0 || swapIdx < 0 || swapIdx >= favorites.length) return;
+  const a = favorites[idx];
+  const b = favorites[swapIdx];
+  await db.update(galleries).set({ favoriteOrder: b.favoriteOrder }).where(eq(galleries.id, a.id));
+  await db.update(galleries).set({ favoriteOrder: a.favoriteOrder }).where(eq(galleries.id, b.id));
+  revalidatePath("/", "page");
+  revalidatePath("/admin", "page");
+}
+
+// Bild in einem Favoriten-Slot austauschen: URL/PublicId ersetzen, Favorit + Reihenfolge bleiben.
+export async function replaceGalleryImage(imageId: string, imageUrl: string, publicId?: string | null) {
+  await requireAdmin();
+  await db.update(galleries)
+    .set({ imageUrl, publicId: publicId ?? null })
+    .where(eq(galleries.id, imageId));
+  revalidatePath("/", "page");
+  revalidatePath("/galerie", "page");
+  revalidatePath("/admin", "page");
 }

@@ -5,6 +5,7 @@ import { Turnstile } from "@marsidev/react-turnstile";
 import { Link } from "@/i18n/routing";
 import type { EventRecord } from "@/types/domain";
 import { reservationMailto } from "@/lib/reservation-mode";
+import { ui, DATE_TAG } from "@/lib/localize";
 import { submitReservationRequest } from "@/app/actions/reservationRequests";
 
 const EMPTY_FORM = {
@@ -44,23 +45,18 @@ export default function EmailReservationCard({ event, locale }: { event: EventRe
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = previous; };
   }, [open]);
 
-  const copy = locale === "en"
-    ? {
-        eyebrow: "Reservation",
-        title: "Reserve by email",
-        text: event.reservationNote || "Send us a short message with your club, the number of people and the desired tables. We will get back to you with the details.",
-        button: "Request a table",
-        hint: "No online payment, no booking fee.",
-        fallback: "Or write us directly:",
-      }
-    : {
-        eyebrow: "Reservierung",
-        title: "Reservierung per E-Mail",
-        text: event.reservationNote || "Schreib uns kurz mit Verein, Personenzahl und gewünschter Tischanzahl. Wir melden uns mit den Details bei dir.",
-        button: "Tisch anfragen",
-        hint: "Keine Online-Zahlung, keine Buchungsgebühr.",
-        fallback: "Oder direkt schreiben:",
-      };
+  const copy = {
+    eyebrow: ui(locale, { de: "Reservierung", en: "Reservation", bar: "Reservierung" }),
+    title: ui(locale, { de: "Reservierung per E-Mail", en: "Reserve by email", bar: "Reservierung per E-Mail" }),
+    text: event.reservationNote || ui(locale, {
+      de: "Schreib uns kurz mit Verein, Personenzahl und gewünschter Tischanzahl. Wir melden uns mit den Details bei dir.",
+      en: "Send us a short message with your club, the number of people and the desired tables. We will get back to you with the details.",
+      bar: "Schreib uns kurz mit Verein, Personenzahl und gwünschta Tischanzahl. Mia meldn uns mit de Details bei dir.",
+    }),
+    button: ui(locale, { de: "Tisch anfragen", en: "Request a table", bar: "Tisch anfrogn" }),
+    hint: ui(locale, { de: "Keine Online-Zahlung, keine Buchungsgebühr.", en: "No online payment, no booking fee.", bar: "Koa Online-Zahlung, koa Buchungsgebühr." }),
+    fallback: ui(locale, { de: "Oder direkt schreiben:", en: "Or write us directly:", bar: "Oder direkt schreibn:" }),
+  };
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm(current => ({ ...current, [key]: value }));
@@ -220,7 +216,7 @@ export default function EmailReservationCard({ event, locale }: { event: EventRe
                     <label htmlFor="request-date" className="block text-sm font-bold mb-1">Datum *</label>
                     <select id="request-date" required value={form.date} onChange={e => update("date", e.target.value)} className="w-full border border-border-light rounded-xl p-3 bg-base-light focus:outline-none focus:border-accent-green">
                       {dates.map(date => (
-                        <option key={date} value={date}>{new Date(`${date}T12:00:00Z`).toLocaleDateString(locale === "en" ? "en-GB" : "de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}</option>
+                        <option key={date} value={date}>{new Date(`${date}T12:00:00Z`).toLocaleDateString(DATE_TAG[locale] ?? "de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}</option>
                       ))}
                     </select>
                   </div>

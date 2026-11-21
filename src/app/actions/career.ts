@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { Resend } from 'resend';
 
 import { requireAdmin } from '@/lib/auth';
-import { parseCareerContent, validateCareerContent } from '@/lib/career';
+import { parseCareerContent, validateCareerContent, fillCareerTranslations } from '@/lib/career';
 import { emailFrom } from '@/lib/email';
 import { renderEmail } from '@/lib/email-template';
 import { escapeHtml } from '@/lib/escape';
@@ -35,7 +35,7 @@ export async function getCareerContent(): Promise<CareerContent> {
 
 export async function updateCareerContent(input: unknown) {
   await requireAdmin();
-  const content = validateCareerContent(input);
+  const content = await fillCareerTranslations(validateCareerContent(input));
   const value = JSON.stringify(content);
   await db.transaction(async tx => {
     await lockLayout(tx, true);

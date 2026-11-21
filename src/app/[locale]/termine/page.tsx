@@ -3,6 +3,7 @@ import { getEvents } from "@/app/actions/events";
 import { Link } from "@/i18n/routing";
 import FestzeltCeiling from "@/components/FestzeltCeiling";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
+import { localized, ui, MONTHS } from "@/lib/localize";
 
 export const metadata = {
   title: "Alle Termine & Events | MAURER EVENTS",
@@ -24,12 +25,14 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
 
       <div className="max-w-3xl mb-16 relative z-10">
         <h1 className="font-display font-black text-5xl md:text-7xl mb-6 text-base-dark">
-          {locale === "en" ? "Our" : "Unsere"} <span className="text-accent-green">{locale === "en" ? "Events" : "Termine"}</span>
+          {ui(locale, { de: "Unsere", en: "Our", bar: "Unsere" })} <span className="text-accent-green">{ui(locale, { de: "Termine", en: "Events", bar: "Termin" })}</span>
         </h1>
         <p className="font-sans text-xl text-base-dark/70">
-          {locale === "en" 
-            ? "Here you can find an overview of all upcoming events. Come by, celebrate with us, and experience modern Bavarian hospitality."
-            : "Hier findest du eine Übersicht aller anstehenden Veranstaltungen. Komm vorbei, feiere mit uns und erlebe moderne bayerische Gastfreundschaft."}
+          {ui(locale, {
+            de: "Hier findest du eine Übersicht aller anstehenden Veranstaltungen. Komm vorbei, feiere mit uns und erlebe moderne bayerische Gastfreundschaft.",
+            en: "Here you can find an overview of all upcoming events. Come by, celebrate with us, and experience modern Bavarian hospitality.",
+            bar: "Do findest du a Übersicht über olle anstehenden Veranstaltungen. Komm vorbei, feier mit uns und erleb moderne bayerische Gastfreundschaft.",
+          })}
         </p>
       </div>
 
@@ -37,14 +40,12 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
         {upcomingEvents.map((event) => {
           const dateObj = new Date(event.date);
           const day = dateObj.getDate().toString().padStart(2, '0');
-          const monthNamesDe = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
-          const monthNamesEn = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-          const month = locale === 'en' ? monthNamesEn[dateObj.getMonth()] : monthNamesDe[dateObj.getMonth()];
+          const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
           const year = dateObj.getFullYear();
 
-          const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-          const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-          const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+          const title = localized(event, "title", locale);
+          const description = localized(event, "description", locale);
+          const location = localized(event, "location", locale);
           const badge = reservationBadge(resolveReservationMode(event), locale);
 
           return (

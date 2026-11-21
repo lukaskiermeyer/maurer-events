@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
@@ -10,9 +10,15 @@ export type PartnerLogo = { name: string; src: string };
 // Platzhalter, solange keine Logos in public/partners/ liegen.
 const PLACEHOLDER_COUNT = 6;
 
-function PartnerCircle({ logo, placeholderLabel }: { logo?: PartnerLogo; placeholderLabel: string }) {
+function PartnerCircle({ logo, placeholderLabel, index, reduced }: { logo?: PartnerLogo; placeholderLabel: string; index: number; reduced: boolean }) {
   return (
-    <div className="shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-full bg-white border border-border-light shadow-sm flex items-center justify-center overflow-hidden">
+    <motion.div
+      initial={reduced ? false : { opacity: 0, scale: 0.7, y: 24 }}
+      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.08, ease: "easeOut" }}
+      className="shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-full bg-white border border-border-light shadow-sm flex items-center justify-center overflow-hidden"
+    >
       {logo ? (
         <Image
           src={logo.src}
@@ -30,12 +36,13 @@ function PartnerCircle({ logo, placeholderLabel }: { logo?: PartnerLogo; placeho
           <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-tight">{placeholderLabel}</span>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
 export default function PartnersSection({ logos }: { logos: PartnerLogo[] }) {
   const t = useTranslations("Partners");
+  const reduced = useReducedMotion() ?? false;
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
 
@@ -63,12 +70,12 @@ export default function PartnersSection({ logos }: { logos: PartnerLogo[] }) {
       <div className="space-y-6 md:space-y-8" aria-label={t("title_2")}>
         <motion.div style={{ x: xLeft }} className="flex justify-center gap-6 md:gap-10 px-6">
           {rowA.map((logo, index) => (
-            <PartnerCircle key={logo?.src ?? `a-${index}`} logo={logo} placeholderLabel={t("placeholder")} />
+            <PartnerCircle key={logo?.src ?? `a-${index}`} logo={logo} placeholderLabel={t("placeholder")} index={index * 2} reduced={reduced} />
           ))}
         </motion.div>
         <motion.div style={{ x: xRight }} className="flex justify-center gap-6 md:gap-10 px-6">
           {rowB.map((logo, index) => (
-            <PartnerCircle key={logo?.src ?? `b-${index}`} logo={logo} placeholderLabel={t("placeholder")} />
+            <PartnerCircle key={logo?.src ?? `b-${index}`} logo={logo} placeholderLabel={t("placeholder")} index={index * 2 + 1} reduced={reduced} />
           ))}
         </motion.div>
       </div>

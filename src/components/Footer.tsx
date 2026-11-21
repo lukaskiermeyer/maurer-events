@@ -14,7 +14,7 @@ export default function Footer() {
   if (pathname.includes("/admin")) return null;
 
   return (
-    <footer className="bg-accent-green text-white">
+    <footer className="footer-fade text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-16 md:py-24">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8">
           
@@ -65,7 +65,7 @@ export default function Footer() {
         </div>
       </div>
         
-      <div className="bg-accent-green-deep">
+      <div>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-2 flex flex-col md:flex-row justify-between items-center md:items-center gap-2 md:gap-4">
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left text-xs text-white/70 font-sans font-medium">
             <p>&copy; {new Date().getFullYear()} {t("rights")}</p>

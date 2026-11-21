@@ -10,6 +10,52 @@
     "event_anfragen": "Event Anfragen",
     "change_language": "Sprache wechseln"
   },
+  "UeberUns": {
+    "meta_title": "Über uns – Festwirt & Team",
+    "eyebrow": "Das Team hinter dem Fest",
+    "headline": "Stimmen aus dem Team",
+    "subline": "Zitate & positives Feedback – direkt aus dem Festzelt.",
+    "photo_caption": "Deine Uniform, wenn du dabei bist",
+    "prev": "Vorherige Stimme",
+    "next": "Nächste Stimme",
+    "voices": [
+      {
+        "name": "Sepp",
+        "role": "Ausschank",
+        "quote": "Ich zapfe schneller, als die Gäste Durst bekommen können – und genau so soll es sein.",
+        "spruch": "Ein Bier ohne Schaum ist wie ein Fest ohne Blasmusik.",
+        "image": "https://i.pravatar.cc/600?u=sepp"
+      },
+      {
+        "name": "Lena",
+        "role": "Service",
+        "quote": "Tablett voll, Herz voll: Wenn die Gäste lachen, ist mein Abend perfekt.",
+        "spruch": "Ich trag acht Maß auf einmal – nur die Verantwortung nicht.",
+        "image": "https://i.pravatar.cc/600?u=lena"
+      },
+      {
+        "name": "Michi",
+        "role": "Zeltaufbau",
+        "quote": "Vom leeren Feld zum Festzelt in zwei Tagen – das ist unser kleines Wunder.",
+        "spruch": "Ich stell nicht nur Zelte auf, ich stell Laune auf.",
+        "image": "https://i.pravatar.cc/600?u=michi"
+      },
+      {
+        "name": "Anna",
+        "role": "Küche",
+        "quote": "Wenn der Schweinsbraten duftet, vergessen die Gäste kurz das Handy.",
+        "spruch": "Liebe geht durch den Magen – bei uns durch die ganze Festhalle.",
+        "image": "https://i.pravatar.cc/600?u=anna"
+      },
+      {
+        "name": "Resi",
+        "role": "Theke & Kaffee",
+        "quote": "Nach dem Fest ist vor dem Fest – und dazwischen gibt es bei mir Kuchen.",
+        "spruch": "Kaffee schwarz, Tracht bunt, Laune gold.",
+        "image": "https://i.pravatar.cc/600?u=resi"
+      }
+    ]
+  },
   "Hero": {
     "badge": "Est. 2025 · Modernes Festwesen",
     "title_1": "Tradition",
@@ -27,7 +73,7 @@
     "cta": "Jetzt Event anfragen",
     "p1": "Ich bin Florian Maurer – für viele einfach \"da Maurerwirt\". Mit Wurzeln in der Metzgerei Halbauer habe ich früh gelernt, was Qualität und echte Gastfreundschaft bedeuten. Heute bringe ich diese Tradition in die moderne Eventwelt.",
     "p2": "Ob zünftiges Volksfest, elegantes Firmenjubiläum oder das ganz persönliche Vereinsfest – wir verbinden bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
-    "quote": "\"Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.\"",
+    "quote": "„Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.“",
     "p3": "Lass uns gemeinsam ein Event auf die Beine stellen, das deinen Gästen noch lange in bester Erinnerung bleibt.",
     "placeholder_img": "Platzhalter: Foto Florian Maurer",
     "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting"
@@ -43,7 +89,7 @@
       },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
-        "description": "Programm für die Großen und die Kleinen – vom 50. bis zum 150. Vereinsjubiläum."
+        "description": "Programm für die Großen und die Kleinen – für 5- bis 150-jährige Vereinsjubiläen."
       }
     }
   },
@@ -77,7 +123,7 @@
   "Contact": {
     "title": "Lass uns reden!",
     "subtitle": "Erzähl uns von deinen Plänen und wir machen ein Fest daraus.",
-    "location": "Standort",
+    "location": "Adresse",
     "email": "E-Mail",
     "phone": "Telefon",
     "instagram": "Instagram",
@@ -106,7 +152,7 @@
     "heading_accent": "Anfrage",
     "heading_subtitle": "Lass uns gemeinsam Großes planen.",
     "info_title": "Wir freuen uns auf deine Anfrage",
-    "info_text": "„Du suchst noch einen Festwirt für deine Veranstaltung? Oder brauchst Unterstützung bei der Planung deines Events? Schick uns hier ganz unverbindlich deine Anfrage. Lass uns gemeinsam Großes planen und echte, unvergessliche Erlebnisse schaffen.\"",
+    "info_text": "Du suchst noch einen Festwirt für deine Veranstaltung? Oder brauchst Unterstützung bei der Planung deines Events? Schick uns hier ganz unverbindlich deine Anfrage. Lass uns gemeinsam Großes planen und echte, unvergessliche Erlebnisse schaffen.",
     "step_of": "Schritt {step} von {total}",
     "steps_anlass": "Anlass",
     "steps_kontakt": "Kontakt",
@@ -213,8 +259,6 @@
     "cta_positions": "Alle Stellen ansehen",
     "cta_apply": "Initiativ bewerben",
     "empty_hint": "Aktuell sind keine Stellen ausgeschrieben – Initiativbewerbungen sind jederzeit willkommen.",
-    "caption": "Deine Uniform, wenn du dabei bist",
-    "quote": "„Ob für die Zubereitung unserer Schmankerl, im Ausschank oder hinter den Kulissen: Für reibungslose Abläufe braucht es ein Team, das Zusammenhalt schätzt und sich gegenseitig unterstützt\"",
     "cta_row": "Jetzt bewerben",
     "team_photo_alt": "Unser Team beim Fest",
     "team_photo_placeholder": "Gruppenfoto folgt"
@@ -231,15 +275,15 @@
     "subtitle": "Stimmen aus Festzelt, Verein und Zusammenarbeit.",
     "items": [
       {
-        "quote": "„Vom ersten Gespräch bis zur letzten Maß: alles aus einer Hand und absolut verlässlich.",
+        "quote": "„Vom ersten Gespräch bis zur letzten Maß: alles aus einer Hand und absolut verlässlich.“",
         "role": "Vereinsvorstand, Landkreis Eichstätt"
       },
       {
-        "quote": "„Unser Firmenfest hatte endlich wieder echte Festzelt-Atmosphäre – unsere Gäste reden heute noch davon.",
+        "quote": "„Unser Firmenfest hatte endlich wieder echte Festzelt-Atmosphäre – unsere Gäste reden heute noch davon.“",
         "role": "Geschäftsführung, Firmenkunde"
       },
       {
-        "quote": "„Musik, Stimmung, Organisation: Da passt einfach alles. Nächstes Jahr wieder!",
+        "quote": "„Musik, Stimmung, Organisation: Da passt einfach alles. Nächstes Jahr wieder!“",
         "role": "Volksfest-Stammgast"
       }
     ]
@@ -273,6 +317,17 @@
     ],
     "partners_title": "Unsere Erzeuger & Partner",
     "partners_text": "Logos und Namen unserer regionalen Partner folgen in Kürze – Partnerschaftsanfragen willkommen.",
+    "signature": "– Florian, da Maurerwirt",
+    "recipe_title": "Rezept für ein gutes Fest",
+    "recipe_items": [
+      "Eine große Portion Herzblut",
+      "Regionale Zutaten, frisch vom Erzeuger",
+      "Ein Schuss Blasmusik",
+      "Viel Platz für Freunde & Familie",
+      "Eine Prise Wahnsinn",
+      "Unendlich viele schöne Momente"
+    ],
+    "recipe_note": "Alles vermengen, mit Liebe servieren – fertig ist euer Fest.",
     "cta": "Event anfragen"
   }
 }

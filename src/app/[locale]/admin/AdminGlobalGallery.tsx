@@ -5,7 +5,7 @@ import type { EventRecord, GalleryWithEvent } from '@/types/domain';
 import { useState } from "react";
 import Image from "next/image";
 import { uploadImage } from "@/lib/client-image-upload";
-import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
+import { addGalleryImage, removeGalleryImage, setGalleryFavorite, moveGalleryFavorite, replaceGalleryImage } from "@/app/actions/gallery";
 import DropZone from "@/components/ui/DropZone";
 import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
@@ -70,9 +70,58 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
   }, {} as Record<string, { event: EventRecord; images: GalleryWithEvent[] }>);
   
   const albumList = Object.values(groupedAlbums);
+  const favorites = initialGallery
+    .filter(i => i.gallery.isFavorite)
+    .sort((a, b) => a.gallery.favoriteOrder - b.gallery.favoriteOrder);
+
+  const handleReplace = async (imageId: string, file: File) => {
+    setIsUpdating(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadImage(fd);
+      if (res.success) {
+        await replaceGalleryImage(imageId, res.url);
+        window.location.reload();
+      } else {
+        toast.showToast("Upload fehlgeschlagen: " + res.error, "error");
+      }
+    } catch {
+      toast.showToast("Fehler beim Ersetzen.", "error");
+    }
+    setIsUpdating(false);
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
+
+      <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+          <h4 className="font-subhead text-xl">Startseiten-Favoriten ({favorites.length}/8)</h4>
+          <span className="text-xs font-bold opacity-60">Reihenfolge = Anzeige auf der Startseite · unten Bilder mit Stern markieren</span>
+        </div>
+        {favorites.length === 0 ? (
+          <p className="text-sm opacity-60">Noch keine Favoriten. Markiere unten Bilder mit dem Stern, um sie hier aufzunehmen.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            {favorites.map((fav, i) => (
+              <div key={fav.gallery.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light bg-base-light group">
+                <Image src={fav.gallery.imageUrl} alt="" fill sizes="12vw" className="object-cover" />
+                <span className="absolute top-1 left-1 bg-accent-green text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow">{i + 1}</span>
+                <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-black/55 p-1 text-sm">
+                  <button onClick={async () => { await moveGalleryFavorite(fav.gallery.id, -1); window.location.reload(); }} disabled={i === 0} className="text-white disabled:opacity-30" aria-label="Nach vorne" title="Nach vorne">↑</button>
+                  <button onClick={async () => { await moveGalleryFavorite(fav.gallery.id, 1); window.location.reload(); }} disabled={i === favorites.length - 1} className="text-white disabled:opacity-30" aria-label="Nach hinten" title="Nach hinten">↓</button>
+                  <label className="text-white cursor-pointer" title="Bild ersetzen">
+                    ⇄
+                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleReplace(fav.gallery.id, f); }} />
+                  </label>
+                  <button onClick={async () => { await setGalleryFavorite(fav.gallery.id, false); window.location.reload(); }} className="text-red-300" aria-label="Aus Favoriten entfernen" title="Aus Favoriten entfernen">×</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       
       <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm">
         <h4 className="mb-4 font-subhead text-xl">Neues Bild zur Galerie hinzufügen</h4>
@@ -149,6 +198,21 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
                       className="object-cover group-hover:scale-105 transition-transform" 
                     />
                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    <button
+                      onClick={async () => {
+                        if (!img.gallery.isFavorite && favorites.length >= 8) {
+                          toast.showToast("Maximal 8 Favoriten für die Startseite.", "warning");
+                          return;
+                        }
+                        await setGalleryFavorite(img.gallery.id, !img.gallery.isFavorite);
+                        window.location.reload();
+                      }}
+                      className={`admin-image-action absolute top-2 left-2 w-11 h-11 rounded-full transition-opacity flex items-center justify-center font-bold shadow-md z-10 ${img.gallery.isFavorite ? "bg-accent-gold text-white" : "bg-white/90 text-base-dark"}`}
+                      title={img.gallery.isFavorite ? "Aus Favoriten entfernen" : "Als Startseiten-Favorit markieren"}
+                      aria-label={img.gallery.isFavorite ? "Aus Favoriten entfernen" : "Als Startseiten-Favorit markieren"}
+                    >
+                      ★
+                    </button>
                     <button 
                       onClick={async () => {
                         if (await dialog.confirm({ title: "Bild löschen", message: "Bild wirklich löschen?", danger: true, confirmLabel: "Löschen" })) {

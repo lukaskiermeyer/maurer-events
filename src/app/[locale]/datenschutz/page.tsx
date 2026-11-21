@@ -5,6 +5,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 async function getNotice(params: Props['params']) {
   const { locale } = await params;
+  // Rechtstexte bleiben bewusst DE/EN (kein Dialekt-Rechtstext); Bar faellt auf DE zurueck.
   return privacyNotices[locale === 'en' ? 'en' : 'de'];
 }
 

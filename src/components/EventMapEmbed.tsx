@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/i18n/routing";
 import { parseCoordsFromText } from "@/lib/geo";
+import { ui } from "@/lib/localize";
 
 const MAPS_CONSENT_KEY = "me-maps-consent";
 
@@ -84,21 +85,19 @@ export default function EventMapEmbed({
   const embedQuery = (embedMapUrl ? extractMapsQuery(embedMapUrl) : null) || (mapUrl ? extractMapsQuery(mapUrl) : null) || fallbackQuery;
   const embedSrc = `https://www.google.com/maps?q=${encodeURIComponent(embedQuery)}&output=embed&hl=${locale === "en" ? "en" : "de"}`;
 
-  const text = locale === "en"
-    ? {
-        consent: "Loading the map transfers data (including your IP address) to Google.",
-        button: "Load map",
-        revoke: "Revoke map consent",
-      }
-    : {
-        consent: "Beim Laden der Karte werden Daten (u. a. Ihre IP-Adresse) an Google übertragen.",
-        button: "Karte laden",
-        revoke: "Zustimmung widerrufen",
-      };
+  const text = {
+    consent: ui(locale, {
+      de: "Beim Laden der Karte werden Daten (u. a. Ihre IP-Adresse) an Google übertragen.",
+      en: "Loading the map transfers data (including your IP address) to Google.",
+      bar: "Beim Ladn der Karte werdn Daten (u. a. Eure IP-Adress) an Google übertrogn.",
+    }),
+    button: ui(locale, { de: "Karte laden", en: "Load map", bar: "Karte ladn" }),
+    revoke: ui(locale, { de: "Zustimmung widerrufen", en: "Revoke map consent", bar: "Zustimmung widerrufn" }),
+  };
 
   return (
     <div>
-      <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">Karte</span>
+      <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">{ui(locale, { de: "Karte", en: "Map", bar: "Karte" })}</span>
       <div className="rounded-2xl overflow-hidden border border-border-light">
         {consented ? (
           <iframe
@@ -121,7 +120,7 @@ export default function EventMapEmbed({
             <p className="text-xs text-base-dark/70 leading-relaxed">
               {text.consent}{" "}
               <Link href="/datenschutz" target="_blank" className="text-accent-green underline underline-offset-2 font-bold">
-                {locale === "en" ? "Privacy policy" : "Datenschutzerklärung"}
+                {ui(locale, { de: "Datenschutzerklärung", en: "Privacy policy", bar: "Datenschutzerklärung" })}
               </Link>
             </p>
             <button

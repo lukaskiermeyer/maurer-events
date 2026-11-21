@@ -33,7 +33,7 @@ const Icons = [
       <line x1="14" y1="12" x2="14" y2="18" />
     </svg>
   ),
-  // Hände/Herz (Zusammenhalt)
+  // Herz (Zusammenhalt)
   (props: SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -41,14 +41,20 @@ const Icons = [
   ),
 ];
 
+const COASTER_TILT = ["-rotate-3", "rotate-2", "-rotate-2", "rotate-3"];
+
+// "Unser Anspruch" als Wirtshaus-Tisch: persoenlicher Brief im Hero, die Werte
+// als gestempelte Bierdeckel auf Holz, dazu ein handgeschriebenes Fest-Rezept.
 export default function IdentitySection() {
   const t = useTranslations("Identity");
   const values = t.raw("values") as Value[];
+  const recipeItems = t.raw("recipe_items") as string[];
 
   return (
     <>
-      <section className="pt-32 md:pt-40 pb-20 md:pb-28 bg-base-light relative overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16">
+      {/* Hero wie ein persoenlicher Brief auf Papier */}
+      <section className="pt-32 md:pt-40 pb-16 md:pb-24 bg-canvas-light relative overflow-hidden">
+        <div className="max-w-[900px] mx-auto px-4 sm:px-8 text-center relative">
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -62,57 +68,100 @@ export default function IdentitySection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="font-display font-bold text-5xl md:text-7xl leading-[1.05] text-base-dark mb-10"
+            className="font-script text-6xl md:text-8xl text-accent-green leading-tight mb-8 -rotate-2"
           >
-            {t("title_1")} <br />
-            <span className="text-accent-green">{t("title_2")}</span>
+            {t("title_2")}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="font-subhead text-2xl md:text-4xl leading-snug text-base-dark/80 max-w-4xl"
+            className="font-subhead text-xl md:text-2xl leading-relaxed text-base-dark/80"
           >
             {t("intro")}
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="font-script text-3xl md:text-4xl text-base-dark/70 mt-8 rotate-[-1deg]"
+          >
+            {t("signature")}
+            <svg className="inline-block w-7 h-7 ml-2 text-accent-wood align-middle" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+            </svg>
           </motion.p>
         </div>
       </section>
 
-      <section className="py-20 md:py-28 bg-canvas-light">
+      {/* Werte als Bierdeckel auf dem Holztisch */}
+      <section className="py-20 md:py-28 bg-wood relative overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8 items-center">
             {values.map((value, index) => {
               const Icon = Icons[index % Icons.length];
               return (
                 <motion.div
                   key={value.title}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 40, rotate: 0 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, delay: (index % 2) * 0.12 }}
-                  className="bg-white rounded-3xl border border-border-light shadow-sm p-8 md:p-10 flex gap-6"
+                  transition={{ duration: 0.6, delay: (index % 4) * 0.12 }}
+                  className={`relative aspect-square rounded-full bg-base-light shadow-2xl flex items-center justify-center p-8 md:p-6 transition-transform duration-500 hover:rotate-0 hover:scale-105 ${COASTER_TILT[index % 4]}`}
                 >
-                  <span className="shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-accent-green/10 text-accent-green flex items-center justify-center">
-                    <Icon className="w-7 h-7 md:w-8 md:h-8" />
-                  </span>
-                  <div>
-                    <h2 className="font-display font-bold text-xl md:text-2xl text-base-dark mb-3">{value.title}</h2>
-                    <p className="font-sans text-base md:text-lg text-base-dark/70 leading-relaxed">{value.text}</p>
+                  {/* Bierdeckel-Print: doppelter Ring wie ein Aufdruck */}
+                  <div className="absolute inset-3 rounded-full border-2 border-dashed border-accent-green/40 pointer-events-none" />
+                  <div className="absolute inset-5 rounded-full border border-accent-green/20 pointer-events-none" />
+                  <div className="relative text-center flex flex-col items-center gap-3">
+                    <span className="w-12 h-12 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center">
+                      <Icon className="w-6 h-6" />
+                    </span>
+                    <h2 className="font-display font-bold text-lg md:text-xl text-base-dark leading-tight">{value.title}</h2>
+                    <p className="font-sans text-xs md:text-sm text-base-dark/70 leading-snug">{value.text}</p>
                   </div>
                 </motion.div>
               );
             })}
           </div>
 
+          {/* Handgeschriebenes Fest-Rezept auf geklebtem Papier */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="relative max-w-2xl mx-auto mt-16 md:mt-24 bg-base-light shadow-2xl p-8 md:p-12 rotate-[-1.5deg]"
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-[#E5DCC5]/80 backdrop-blur-sm rotate-[2deg] shadow-sm" />
+            <h2 className="font-script text-4xl md:text-5xl text-accent-green mb-6 text-center -rotate-1">{t("recipe_title")}</h2>
+            <ul className="space-y-3 max-w-md mx-auto">
+              {recipeItems.map((item) => (
+                <li key={item} className="flex items-start gap-3 font-subhead text-lg md:text-xl text-base-dark/80">
+                  <svg className="w-5 h-5 mt-1 shrink-0 text-accent-wood" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="font-script text-2xl md:text-3xl text-base-dark/70 text-center mt-8 rotate-[1deg]">{t("recipe_note")}</p>
+          </motion.div>
+
+          {/* Partner als handschriftliche Notiz */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-12 md:mt-16 rounded-3xl border border-border-light bg-white/60 p-8 md:p-12 text-center"
+            className="relative max-w-xl mx-auto mt-12 bg-base-light/95 shadow-xl p-6 md:p-8 rotate-[1deg] text-center"
           >
-            <h2 className="font-display font-bold text-2xl md:text-3xl text-base-dark mb-3">{t("partners_title").split(" ").slice(0, -1).join(" ")}{" "}<span className="text-accent-green italic">{t("partners_title").split(" ").slice(-1)}</span></h2>
-            <p className="font-sans text-base md:text-lg text-base-dark/60 max-w-2xl mx-auto">{t("partners_text")}</p>
+            <div className="absolute -top-3 left-8 w-20 h-5 bg-[#E5DCC5]/80 backdrop-blur-sm rotate-[-3deg] shadow-sm" />
+            <h2 className="font-display font-bold text-xl md:text-2xl text-base-dark mb-2">
+              {t("partners_title").split(" ").slice(0, -1).join(" ")}{" "}
+              <span className="text-accent-green italic">{t("partners_title").split(" ").slice(-1)}</span>
+            </h2>
+            <p className="font-sans text-sm md:text-base text-base-dark/60">{t("partners_text")}</p>
           </motion.div>
         </div>
       </section>
@@ -121,7 +170,7 @@ export default function IdentitySection() {
         <div className="max-w-[900px] mx-auto px-4 sm:px-8 lg:px-16">
           <Link
             href="/#contact"
-            className="inline-flex items-center gap-3 bg-white text-base-dark px-10 py-5 rounded-full font-display font-bold uppercase tracking-wide text-sm md:text-base shadow-lg hover:bg-accent-green/80 hover:text-white transition-colors"
+            className="inline-flex items-center gap-3 bg-white text-base-dark px-10 py-5 rounded-full font-display font-bold uppercase tracking-wide text-sm md:text-base shadow-lg hover:bg-accent-green-deep hover:text-white transition-colors"
           >
             {t("cta")}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

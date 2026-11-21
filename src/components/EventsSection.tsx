@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
+import { localized, ui, MONTHS } from "@/lib/localize";
 import DocumentViewer from "./DocumentViewer";
 
 const AWNING_CLIP_PATH = (() => {
@@ -116,7 +117,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
   const [documentView, setDocumentView] = useState<{ documents: EventDocument[]; title: string } | null>(null);
 
   return (
-      <section id="events" className="relative w-full bg-base-light py-24 md:py-32 overflow-hidden -mt-[2px] z-10">
+      <section id="events" className="relative w-full bg-base-light pt-24 md:pt-32 pb-16 md:pb-20 overflow-hidden -mt-[2px] z-10">
 
         {/* 3D Tent Background Elements */}
         {/* SVG ClipPath Definition for Scallops */}
@@ -283,12 +284,12 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                   const day = dateObj.getDate().toString().padStart(2, '0');
                   const monthNamesDe = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
                   const monthNamesEn = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-                  const month = locale === 'en' ? monthNamesEn[dateObj.getMonth()] : monthNamesDe[dateObj.getMonth()];
+                  const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
                   const year = dateObj.getFullYear();
 
-                  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-                  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-                  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+                  const title = localized(event, "title", locale);
+                  const description = localized(event, "description", locale);
+                  const location = localized(event, "location", locale);
                   const badge = reservationBadge(resolveReservationMode(event), locale);
                   const docs = (documentsByEvent[event.id] || []).filter(document => document.isPublic);
                   const menus = docs.filter(document => document.kind === "menu");
@@ -307,8 +308,8 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                         <div className="relative z-10 pointer-events-none flex flex-col md:flex-row">
                           
                           {/* Black Date Stripe */}
-                          <div className="w-full md:w-24 bg-base-dark text-white flex md:flex-col items-center justify-center gap-2 md:gap-1 px-4 py-3 md:py-6 shrink-0 border-t-4 border-accent-green md:border-t-0 md:border-l-4">
-                            <span className="font-display font-black text-3xl md:text-4xl leading-none text-accent-green">{day}.</span>
+                          <div className="w-full md:w-24 bg-accent-green-deep text-white flex md:flex-col items-center justify-center gap-2 md:gap-1 px-4 py-3 md:py-6 shrink-0 border-t-4 border-accent-wood md:border-t-0 md:border-l-4">
+                            <span className="font-display font-black text-3xl md:text-4xl leading-none text-accent-wood">{day}.</span>
                             <span className="font-display font-bold text-xs md:text-sm uppercase tracking-widest text-white">{month}</span>
                             <span className="font-display text-xs md:text-sm text-white/60">{year}</span>
                           </div>
@@ -326,7 +327,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                             <div>
                               <h3 className="font-subhead text-2xl md:text-4xl mb-3 text-base-dark group-hover:text-accent-green transition-colors leading-tight">{title}</h3>
                               {badge && (
-                                  <span className="inline-block bg-base-dark text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
+                                  <span className="inline-block bg-accent-green-deep text-white font-bold text-xs uppercase tracking-widest px-3 py-1 mb-3 shadow-md rounded">
                                     {badge}
                                   </span>
                               )}
@@ -356,12 +357,12 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                                 <div className="relative z-20 pointer-events-auto flex flex-wrap gap-2">
                                   {menus.length > 0 && (
                                     <button type="button" onClick={() => setDocumentView({ documents: menus, title })} className="inline-flex items-center gap-2 bg-canvas-light border border-border-light text-base-dark px-3 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:border-accent-green transition-colors">
-                                      {locale === "en" ? "Menu" : "Speisekarte"}
+                                      {ui(locale, { de: "Speisekarte", en: "Menu", bar: "Speiskartn" })}
                                     </button>
                                   )}
                                   {programs.length > 0 && (
                                     <button type="button" onClick={() => setDocumentView({ documents: programs, title })} className="inline-flex items-center gap-2 bg-canvas-light border border-border-light text-base-dark px-3 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:border-accent-green transition-colors">
-                                      {locale === "en" ? "Program" : "Programm"}
+                                      {ui(locale, { de: "Programm", en: "Program", bar: "Programm" })}
                                     </button>
                                   )}
                                 </div>

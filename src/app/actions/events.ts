@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { events, eventSettings } from "@/db/schema";
 import { eq, asc, and, isNull, isNotNull, desc, count, inArray, gte } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_noStore as noStore, unstable_cache } from "next/cache";
-import { translateContent } from "@/lib/translate";
+import { translateFields } from "@/lib/translate";
 import { requireAdmin } from "@/lib/auth";
 import { assertEventUpdate, validateEventUpdate } from '@/lib/event-policy';
 import { lockEvent, lockLayout } from '@/lib/reservation-db';
@@ -49,11 +49,11 @@ export async function createEvent(data: {
     minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption)
   });
   if (data.maxCapacity > 0 && data.walkInReserve > data.maxCapacity) throw new Error('Walk-in-Reserve überschreitet die Kapazität.');
-  const [titleEn, locationEn, descriptionEn] = await Promise.all([
-    translateContent(data.title),
-    translateContent(data.location),
-    translateContent(data.description)
-  ]);
+  const translated = await translateFields({
+    title: data.title,
+    location: data.location,
+    description: data.description,
+  });
 
   let createdId: string | undefined;
   await db.transaction(async tx => {
@@ -81,9 +81,12 @@ export async function createEvent(data: {
     publishTablesAt: data.publishTablesAt,
     type: data.type || 'event',
     isPublished: data.isPublished ?? true,
-    titleEn,
-    locationEn,
-    descriptionEn
+    titleEn: translated.en.title,
+    locationEn: translated.en.location,
+    descriptionEn: translated.en.description,
+    titleBar: translated.bar.title,
+    locationBar: translated.bar.location,
+    descriptionBar: translated.bar.description
   }).returning({ id: events.id });
 
   await tx.insert(eventSettings).values({ eventId: newEvent.id });
@@ -114,15 +117,15 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
 
   // If any of the translatable fields changed, re-translate them
   if (data.title !== undefined || data.location !== undefined || data.description !== undefined) {
-    const [titleEn, locationEn, descriptionEn] = await Promise.all([
-      data.title !== undefined ? translateContent(data.title) : undefined,
-      data.location !== undefined ? translateContent(data.location) : undefined,
-      data.description !== undefined ? translateContent(data.description) : undefined,
-    ]);
+    const translated = await translateFields({
+      title: data.title,
+      location: data.location,
+      description: data.description,
+    });
 
-    if (titleEn !== undefined) updates.titleEn = titleEn;
-    if (locationEn !== undefined) updates.locationEn = locationEn;
-    if (descriptionEn !== undefined) updates.descriptionEn = descriptionEn;
+    if (data.title !== undefined) { updates.titleEn = translated.en.title; updates.titleBar = translated.bar.title; }
+    if (data.location !== undefined) { updates.locationEn = translated.en.location; updates.locationBar = translated.bar.location; }
+    if (data.description !== undefined) { updates.descriptionEn = translated.en.description; updates.descriptionBar = translated.bar.description; }
   }
 
   await db.transaction(async tx => {

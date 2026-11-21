@@ -33,6 +33,9 @@ export const events = pgTable('events', {
   titleEn: text('title_en'),
   locationEn: text('location_en'),
   descriptionEn: text('description_en'),
+  titleBar: text('title_bar'),
+  locationBar: text('location_bar'),
+  descriptionBar: text('description_bar'),
   imageUrl: text('image_url'),
   mapUrl: text('map_url'),
   link: text('link'),
@@ -478,6 +481,9 @@ export const galleries = pgTable('galleries', {
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'restrict' }), // optional: null = not linked to a fest
   imageUrl: text('image_url').notNull(),
   publicId: text('public_id'),
+  // Kuratierte "Best of"-Auswahl fuer die Startseite (max 8), mit Reihenfolge.
+  isFavorite: boolean('is_favorite').default(false).notNull(),
+  favoriteOrder: integer('favorite_order').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => {
   return {
@@ -491,6 +497,7 @@ export const eventDocuments = pgTable('event_documents', {
   kind: text('kind').notNull(), // 'menu' | 'program'
   title: text('title').notNull(),
   titleEn: text('title_en'),
+  titleBar: text('title_bar'),
   fileUrl: text('file_url').notNull(),
   previewUrl: text('preview_url'),
   publicId: text('public_id'),

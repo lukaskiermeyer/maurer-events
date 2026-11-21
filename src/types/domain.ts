@@ -28,25 +28,34 @@ export interface CareerPosition {
   id: string;
   title: string;
   titleEn?: string;
+  titleBar?: string;
   badge: string;
   badgeEn?: string;
+  badgeBar?: string;
   employment: string;
   employmentEn?: string;
+  employmentBar?: string;
   description: string;
   descriptionEn?: string;
+  descriptionBar?: string;
   benefits: string[];
   benefitsEn?: string[];
+  benefitsBar?: string[];
 }
 export interface CareerContent {
   headline: string;
   headlineEn?: string;
+  headlineBar?: string;
   intro: string;
   introEn?: string;
+  introBar?: string;
   positions: CareerPosition[];
   closingTitle: string;
   closingTitleEn?: string;
+  closingTitleBar?: string;
   closingText: string;
   closingTextEn?: string;
+  closingTextBar?: string;
 }
 export type AdminStats = Awaited<ReturnType<typeof getAdminStats>>;
 export type ReservationRow = Awaited<ReturnType<typeof getReservationsByEvent>>[number];

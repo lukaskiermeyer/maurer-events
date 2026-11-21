@@ -6,22 +6,21 @@ import { Link } from "@/i18n/routing";
 import type { EventRecord } from "@/types/domain";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 import FestzeltCeiling from "@/components/FestzeltCeiling";
+import { localized, MONTHS } from "@/lib/localize";
 
-const MONTH_NAMES_DE = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
-const MONTH_NAMES_EN = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 export default function EventDetailStage({ event, dateLabel }: { event: EventRecord; dateLabel: string }) {
   const t = useTranslations("EventDetail");
   const locale = useLocale();
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const title = localized(event, "title", locale);
+  const location = localized(event, "location", locale);
   const zip = event.zip;
   const badge = reservationBadge(resolveReservationMode(event), locale);
 
   const dateObj = new Date(event.date);
   const day = dateObj.getDate().toString().padStart(2, "0");
-  const month = locale === "en" ? MONTH_NAMES_EN[dateObj.getMonth()] : MONTH_NAMES_DE[dateObj.getMonth()];
+  const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
   const year = dateObj.getFullYear();
 
   return (

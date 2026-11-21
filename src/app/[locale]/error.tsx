@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { Link } from "@/i18n/routing";
 import { motion } from "framer-motion";
 import { Home, RefreshCw, AlertTriangle } from "lucide-react";
+import { useLocale } from "next-intl";
+import { ui } from "@/lib/localize";
 
 export default function Error({
   error,
@@ -12,6 +14,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useLocale();
   useEffect(() => {
     // Log the error securely to the console/reporting service
     // Der User sieht diese Details nicht auf dem Bildschirm!
@@ -50,7 +53,7 @@ export default function Error({
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-base-dark border border-red-500/20 px-6 py-2 rounded-full rotate-[5deg] shadow-2xl backdrop-blur-md"
           >
             <span className="text-xl font-bold tracking-widest text-red-400 uppercase">
-              Hoppla!
+              {ui(locale, { de: "Hoppla!", en: "Oops!", bar: "Hoppla!" })}
             </span>
           </motion.div>
         </motion.div>
@@ -62,10 +65,10 @@ export default function Error({
           transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
         >
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-6 text-white">
-            Da ist etwas schiefgelaufen.
+            {ui(locale, { de: "Da ist etwas schiefgelaufen.", en: "Something went wrong.", bar: "Do is wos schiefganga." })}
           </h2>
           <p className="text-lg md:text-xl text-white/60 mb-10 max-w-lg mx-auto font-sans">
-            Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut. Wenn der Fehler bestehen bleibt, kontaktiere uns.
+            {ui(locale, { de: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut. Wenn der Fehler bestehen bleibt, kontaktiere uns.", en: "An unexpected error occurred. Please try again. If the problem persists, contact us.", bar: "A unerwarteter Fehler is aufgetreten. Bitte probier's nochmal. Wenn's bleibt, meld di bei uns." })}
           </p>
         </motion.div>
 
@@ -81,7 +84,7 @@ export default function Error({
             className="group relative flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/30 text-red-400 font-bold px-8 py-4 rounded-2xl overflow-hidden transition-transform hover:scale-105 active:scale-95 hover:bg-red-500/20"
           >
             <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
-            <span>Nochmal versuchen</span>
+            <span>{ui(locale, { de: "Nochmal versuchen", en: "Try again", bar: "Nochmoi probiern" })}</span>
           </button>
 
           <Link 
@@ -89,7 +92,7 @@ export default function Error({
             className="group relative flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/10 transition-all hover:scale-105 active:scale-95 backdrop-blur-md"
           >
             <Home className="w-5 h-5" />
-            <span>Zur Startseite</span>
+            <span>{ui(locale, { de: "Zur Startseite", en: "Back to home", bar: "Zur Startseitn" })}</span>
           </Link>
         </motion.div>
       </div>

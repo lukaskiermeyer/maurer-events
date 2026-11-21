@@ -253,6 +253,20 @@
       "when": 1795082000000,
       "tag": "0038_admin_password_totp",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795200000000,
+      "tag": "0039_bavarian_translations",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795300000000,
+      "tag": "0040_gallery_favorites",
+      "breakpoints": true
     }
   ]
 }

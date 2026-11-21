@@ -23,12 +23,22 @@ export const notFoundCopy = {
     privacy: 'Privacy',
     legal: 'Legal notice',
   },
+  bar: {
+    title: 'Seitn ned gfundn',
+    heading: 'Do bist falsch abgebogn.',
+    description: 'De Seitn gibt’s leider ned oda sie is umzogn. Auf der Startseitn und bei unsere Termin geht’s weida.',
+    home: 'Zur Startseitn',
+    events: 'Termin entdeckn',
+    contact: 'Brauchst Huif? Schreib uns.',
+    privacy: 'Datenschutz',
+    legal: 'Impressum',
+  },
 };
 
 export default function NotFoundContent({ locale }: { locale: string }) {
-  const language = locale === 'en' ? 'en' : 'de';
+  const language = locale === 'en' ? 'en' : locale === 'bar' ? 'bar' : 'de';
   const copy = notFoundCopy[language];
-  const prefix = language === 'en' ? '/en' : '';
+  const prefix = language === 'en' ? '/en' : language === 'bar' ? '/bar' : '';
 
   return (
     <section aria-labelledby="not-found-title" className="mx-auto max-w-[1280px] px-4 sm:px-8 lg:px-16 pt-32 pb-16 sm:pb-24">

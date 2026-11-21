@@ -15,33 +15,34 @@ export default function Navbar() {
   const t = useTranslations("Navbar");
 
   const isHome = pathname === "/" || pathname === "/de" || pathname === "/en" || pathname === "/bar";
-  // Mobile: Header schon im Hero sichtbar (transparent), Desktop wie bisher
-  // erst nach 80 % Scroll.
-  // Header immer sichtbar (auch auf großen Bildschirmen / Startseite)
+  // Event-Übersicht und Event-Details haben ebenfalls einen dunklen Hero-Bereich (Festzelt-Decke),
+  // daher dort den Header ebenfalls glass/polymorph (wie im Hero) rendern.
+  const isHeroPage = isHome || /\/termine(\/|$)/.test(pathname);
   const showNavbar = true;
-  // Transparent im Hero (auch auf großen Bildschirmen), nicht bei offenem Menue.
-  const transparent = isHome && isInHero && !isOpen;
+  const transparent = isHeroPage && isInHero && !isOpen;
 
   useEffect(() => {
-    // Wenn wir nicht auf der Startseite sind, zeigen wir die Navbar immer
-    // Need to handle locales in pathname, e.g., /en or /de or /
-    if (!isHome) return;
+    // Wenn wir nicht auf einer Hero-Seite sind, zeigen wir die Navbar immer (solid).
+    if (!isHeroPage) {
+      setIsInHero(false);
+      return;
+    }
 
     const handleScroll = () => {
       // Transparent, solange das Hero noch unter dem Header liegt
-      // (Hero-Unterkante per getBoundingClientRect statt innerHeight -
-      // innerHeight ist auf Mobile dynamisch und springt beim Ein-/Ausblenden
-      // der Browserleiste, dadurch kippte der Wechsel an falscher Stelle
-      // und weisses Logo lag auf hellem Grund).
       const hero = document.getElementById("start");
-      setIsInHero(hero ? hero.getBoundingClientRect().bottom > 96 : window.scrollY < window.innerHeight);
-      // Header bleibt immer sichtbar – Menue bei Scroll nach oben schliessen
+      if (hero) {
+        setIsInHero(hero.getBoundingClientRect().bottom > 96);
+      } else {
+        // Auf Event-Übersicht/Details gibt es kein #start-Element;
+        // glas/polymorph solange der Scroll noch im oberen Bereich liegt.
+        setIsInHero(window.scrollY < 160);
+      }
       if (window.scrollY <= window.innerHeight * 0.8) {
         setIsOpen(false);
       }
     };
 
-    // Initial check
     handleScroll();
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -50,18 +51,18 @@ export default function Navbar() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [isHome]);
+  }, [isHeroPage]);
 
   if (pathname.includes("/admin")) return null;
 
   const navLinks = [
     { name: t("startseite"), href: "/#start" },
-    { name: t("about"), href: "/#about" },
     { name: t("services"), href: "/#services" },
     { name: t("events"), href: "/#events" },
+    { name: t("about"), href: "/ueber-uns" },
     { name: t("identitaet"), href: "/anspruch" },
-    { name: t("karriere"), href: "/karriere" },
     { name: t("contact"), href: "/#contact" },
+    { name: t("karriere"), href: "/karriere" },
   ];
 
   return (
@@ -85,19 +86,35 @@ export default function Navbar() {
 
             {/* Desktop Menu */}
             <div className="hidden lg:flex flex-shrink-0 items-center space-x-5 xl:space-x-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors ${transparent ? "text-white hover:text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]" : "text-base-dark hover:text-accent-green"}`}
-                >
-                  {link.name}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isHashLink = link.href.startsWith("/#");
+                // Auf Unterseiten fuehrt ein client-seitiger Hash-Link nicht zur
+                // Startseite – deshalb dort voller Seitenwechsel (garantiert Scroll).
+                if (isHashLink && !isHome) {
+                  return (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      className={`font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors ${transparent ? "text-white hover:text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]" : "text-base-dark hover:text-accent-green"}`}
+                    >
+                      {link.name}
+                    </a>
+                  );
+                }
+                return (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    className={`font-sans text-xs xl:text-sm font-bold tracking-wide whitespace-nowrap transition-colors ${transparent ? "text-white hover:text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]" : "text-base-dark hover:text-accent-green"}`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
               <LanguageSwitcher glass={transparent} />
               <Link
                 href="/#contact"
-                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-accent-green/80 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-wood text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-accent-wood/80 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
                 {t("event_anfragen")}
               </Link>
@@ -134,23 +151,48 @@ export default function Navbar() {
               className="lg:hidden bg-base-light border-b border-border-light overflow-hidden shadow-xl"
             >
               <div className="px-6 pt-4 pb-8 space-y-4">
-                {navLinks.map((link) => (
+                {navLinks.map((link) => {
+                  const isHashLink = link.href.startsWith("/#");
+                  if (isHashLink && !isHome) {
+                    return (
+                      <a
+                        key={link.name}
+                        href={link.href}
+                        onClick={() => setIsOpen(false)}
+                        className="block py-3 text-base-dark font-sans text-lg font-bold border-b border-border-light/50 hover:text-accent-green"
+                      >
+                        {link.name}
+                      </a>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className="block py-3 text-base-dark font-sans text-lg font-bold border-b border-border-light/50 hover:text-accent-green"
+                    >
+                      {link.name}
+                    </Link>
+                  );
+                })}
+                {isHome ? (
                   <Link
-                    key={link.name}
-                    href={link.href}
+                    href="/#contact"
                     onClick={() => setIsOpen(false)}
-                    className="block py-3 text-base-dark font-sans text-lg font-bold border-b border-border-light/50 hover:text-accent-green"
+                    className="block w-full text-center mt-6 px-6 py-4 bg-accent-wood text-white rounded-xl font-display font-bold shadow-md"
                   >
-                    {link.name}
+                    {t("event_anfragen")}
                   </Link>
-                ))}
-                <Link
-                  href="/#contact"
-                  onClick={() => setIsOpen(false)}
-                  className="block w-full text-center mt-6 px-6 py-4 bg-accent-green text-white rounded-xl font-display font-bold shadow-md"
-                >
-                  {t("event_anfragen")}
-                </Link>
+                ) : (
+                  <a
+                    href="/#contact"
+                    onClick={() => setIsOpen(false)}
+                    className="block w-full text-center mt-6 px-6 py-4 bg-accent-wood text-white rounded-xl font-display font-bold shadow-md"
+                  >
+                    {t("event_anfragen")}
+                  </a>
+                )}
               </div>
             </motion.div>
           )}

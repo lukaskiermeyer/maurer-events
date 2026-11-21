@@ -118,7 +118,7 @@ export default function ContactSection() {
             viewport={{ once: true }}
             className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-light"
           >
-            {t("heading_prefix")} <span className="text-[#EDBE6A] italic">{t("heading_accent")}</span>
+            {t("heading_prefix")} <span className="text-accent-wood italic">{t("heading_accent")}</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -134,7 +134,7 @@ export default function ContactSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 relative z-10">
 
           {/* Contact Info Side */}
-          <div className="lg:col-span-5 bg-accent-green-deep text-base-light rounded-3xl p-10 md:p-14 flex flex-col justify-between shadow-xl relative overflow-hidden">
+          <div className="lg:col-span-5 bg-accent-green-deep text-base-light rounded-3xl p-10 md:p-14 flex flex-col justify-between border-2 border-black shadow-md relative overflow-hidden">
             {/* Soft background shape */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
 

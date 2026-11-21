@@ -6,6 +6,7 @@ import { eventDocuments } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { optimizeImage } from "@/lib/imageOptimizer";
 import { uuid } from "@/lib/reservation-policy";
+import { translateFields } from "@/lib/translate";
 
 export const runtime = "nodejs";
 
@@ -92,10 +93,13 @@ export async function POST(request: Request) {
       sizeBytes = optimized.size;
     }
 
+    const translatedTitle = await translateFields({ title });
     const [document] = await db.insert(eventDocuments).values({
       eventId,
       kind,
       title,
+      titleEn: translatedTitle.en.title,
+      titleBar: translatedTitle.bar.title,
       fileUrl,
       previewUrl,
       publicId,

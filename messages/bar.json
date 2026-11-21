@@ -10,6 +10,52 @@
     "event_anfragen": "Event ofrogn",
     "change_language": "Sprach wechseln"
   },
+  "UeberUns": {
+    "meta_title": "Über uns – Festwirt & Team",
+    "eyebrow": "As Team hinterm Fest",
+    "headline": "Stimmen aus dem Team",
+    "subline": "Zitat & positives Feedback – direkt ausm Festzelt.",
+    "photo_caption": "Deine Uniform, wenn du dabei bist",
+    "prev": "Vorherige Stimm",
+    "next": "Nächste Stimm",
+    "voices": [
+      {
+        "name": "Sepp",
+        "role": "Ausschank",
+        "quote": "I zapf schneller, als d'Gäst Durst kriagn kenna – und genau so soi's sei.",
+        "spruch": "A Bier ohne Schaum is wie a Fest ohne Blasmusik.",
+        "image": "https://i.pravatar.cc/600?u=sepp"
+      },
+      {
+        "name": "Lena",
+        "role": "Service",
+        "quote": "Tablett voi, Herz voi: wenn d'Gäst lacha, is mei Abend perfekt.",
+        "spruch": "I trag acht Maß auf oamoi – nur d'Verantwortung ned.",
+        "image": "https://i.pravatar.cc/600?u=lena"
+      },
+      {
+        "name": "Michi",
+        "role": "Zeltaufbau",
+        "quote": "Vom leern Feld zum Festzelt in zwoa Dog – des is unsa kloans Wunder.",
+        "spruch": "I stell ned nur Zelt auf, i stell Laune auf.",
+        "image": "https://i.pravatar.cc/600?u=michi"
+      },
+      {
+        "name": "Anna",
+        "role": "Kuchl",
+        "quote": "Wenn da Schweinsbratn duftet, vergessn d'Gäst kurz as Handy.",
+        "spruch": "Liabe geht durch den Magn – bei uns durch de ganze Festhalln.",
+        "image": "https://i.pravatar.cc/600?u=anna"
+      },
+      {
+        "name": "Resi",
+        "role": "Theke & Kaffee",
+        "quote": "Nach dem Fest is vor dem Fest – und dazwischn gibt's bei mir Kuachn.",
+        "spruch": "Kaffee schwarz, Tracht bunt, Laune goldn.",
+        "image": "https://i.pravatar.cc/600?u=resi"
+      }
+    ]
+  },
   "Hero": {
     "badge": "Est. 2025 · Moderns Festwesn",
     "title_1": "Tradition",
@@ -27,7 +73,7 @@
     "cta": "Jetz Event ofrogn",
     "p1": "I bin da Florian Maurer – fia vui einfach \"da Maurerwirt\". Mit Wurzln in da Metzgerei Halbauer hob i friah glernt, wos Qualität und echte Gastfreundschaft bedeitt. Heit bring i de Tradition in de moderne Eventwelt.",
     "p2": "Ob zünftigs Voiksfest, elegants Firmenjubiläum oder des ganz persönliche Vereinsfest – mir verbindn bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
-    "quote": "\"A guads Festl plant se ned vo alloa, aber es soi se so ofühln.\"",
+    "quote": "„A guads Festl plant se ned vo alloa, aber es soi se so ofühln.“",
     "p3": "Lass uns gmeinsam a Event auf d'Boana stelln, des wo deine Gäst no lang in bester Erinnerung bleibt.",
     "placeholder_img": "Platzhoita: Foto Florian Maurer",
     "placeholder_desc": "(Da Maurerwirt) in Ledahosn, moderns Setting"
@@ -43,7 +89,7 @@
       },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
-        "description": "Programm fia de Großen und de Kloana – vom 50. bis zum 150. Vereinsjubiläum."
+        "description": "Programm fia de Großen und de Kloana – fia 5- bis 150-jährige Vereinsjubiläen."
       }
     }
   },
@@ -77,7 +123,7 @@
   "Contact": {
     "title": "Lass uns redn!",
     "subtitle": "Erzähj uns vo deine Pläne und mir machan a Fest draus.",
-    "location": "Standort",
+    "location": "Adress",
     "email": "E-Mail",
     "phone": "Telefon",
     "instagram": "Instagram",
@@ -106,7 +152,7 @@
     "heading_accent": "Anfrage",
     "heading_subtitle": "Lass uns gmeinsam Großes planen.",
     "info_title": "Mir gfrein uns auf dei Anfrage",
-    "info_text": "„Du suachst no an Festwirt fia deine Veranstaltung? Oder brauchst Unterstützung bei da Planung vo deim Event? Schick uns do ganz unverbindlich deine Anfrage. Lass uns gmeinsam Großes planen und echte, unvergessliche Erlebnisse schaffn.\"",
+    "info_text": "Du suachst no an Festwirt fia deine Veranstaltung? Oder brauchst Unterstützung bei da Planung vo deim Event? Schick uns do ganz unverbindlich deine Anfrage. Lass uns gmeinsam Großes planen und echte, unvergessliche Erlebnisse schaffn.",
     "step_of": "Schritt {step} vo {total}",
     "steps_anlass": "Onlass",
     "steps_kontakt": "Kontakt",
@@ -213,8 +259,6 @@
     "cta_positions": "Olle Stejn oschaugn",
     "cta_apply": "Initiativ bewerm",
     "empty_hint": "Aktuell san koane Stejn ausgeschriebn – Initiativbewerbungen san jederzeit willkommen.",
-    "caption": "Dei Uniform, wennst dabei bist",
-    "quote": "„Ob fia d'Zubereitung vo unsere Schmankerl, im Ausschank oda hinter de Kulissen: Fia an reibungslosn Ablauf braucht's a Team, des auf Zammanhoit wert legt und se gengseitig unterstitzt\"",
     "cta_row": "Jetz bewerm",
     "team_photo_alt": "Unsa Team beim Fest",
     "team_photo_placeholder": "Gruppenfoto kimmt boid"
@@ -231,15 +275,15 @@
     "subtitle": "Stimmen ausm Festzelt, Verein und da Zammanorbat.",
     "items": [
       {
-        "quote": "„Vom erstn Gespräch bis zur letztn Maß: ois aus oana Hand und absolut verlässli.",
+        "quote": "„Vom erstn Gespräch bis zur letztn Maß: ois aus oana Hand und absolut verlässli.“",
         "role": "Vereinsvorstand, Landkreis Eichstätt"
       },
       {
-        "quote": "„Unsa Firmenfest hod endlich wieda echte Festzelt-Atmosphäre ghobt – unsare Gäst redn heit no davo.",
+        "quote": "„Unsa Firmenfest hod endlich wieda echte Festzelt-Atmosphäre ghobt – unsare Gäst redn heit no davo.“",
         "role": "Gschäftsführung, Firmenkunde"
       },
       {
-        "quote": "„Musik, Stimmung, Organisation: Do passt einfach ois. Nächsts Joar wieda!",
+        "quote": "„Musik, Stimmung, Organisation: Do passt einfach ois. Nächsts Joar wieda!“",
         "role": "Voiksfest-Stammgast"
       }
     ]
@@ -273,6 +317,17 @@
     ],
     "partners_title": "Unsare Erzeuger & Partna",
     "partners_text": "Logos und Nam unsara regionalen Partna foign in Kürze – Partnerschaftsanfragen willkommen.",
+    "signature": "– Florian, da Maurerwirt",
+    "recipe_title": "Rezept für a guads Fest",
+    "recipe_items": [
+      "A große Portion Herzbluat",
+      "Regionale Zutaten, frisch vom Erzeuger",
+      "A Schuss Blasmusik",
+      "Vui Platz für Freind & Familie",
+      "A Prise Wahnsinn",
+      "Unendlich vui scheene Momente"
+    ],
+    "recipe_note": "Ois vermengn, mit Liabe servian – fertig is euer Fest.",
     "cta": "Event ofrogn"
   }
 }

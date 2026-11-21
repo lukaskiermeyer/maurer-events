@@ -31,9 +31,6 @@ export default function CareersTeaser({ content, children }: { content: CareerCo
             {content.intro}
           </p>
 
-          <blockquote className="border-l-4 border-accent-green pl-5 mb-8 max-w-xl">
-            <p className="font-subhead text-lg md:text-xl text-base-dark/80 leading-snug">{t("quote")}</p>
-          </blockquote>
 
           {positions.length > 0 ? (
             <ul className="mb-10 divide-y divide-base-dark/10 border-y border-base-dark/10">
@@ -89,13 +86,7 @@ export default function CareersTeaser({ content, children }: { content: CareerCo
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-canvas-light">
               {children}
             </div>
-            <p className="absolute bottom-4 left-0 w-full text-center">
-              <span
-                className="font-script text-2xl text-base-dark/80 opacity-90 rotate-[-4deg] inline-block tracking-wide"
-              >
-                {t("caption")}
-              </span>
-            </p>
+
           </div>
         </motion.div>
 

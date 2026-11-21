@@ -10,6 +10,52 @@
     "event_anfragen": "Inquire Event",
     "change_language": "Change language"
   },
+  "UeberUns": {
+    "meta_title": "About us – Host & Team",
+    "eyebrow": "The team behind the festival",
+    "headline": "Voices from the team",
+    "subline": "Quotes & positive feedback – straight from the festival tent.",
+    "photo_caption": "Your uniform, once you're part of it",
+    "prev": "Previous voice",
+    "next": "Next voice",
+    "voices": [
+      {
+        "name": "Sepp",
+        "role": "Tap",
+        "quote": "I pour faster than guests can get thirsty – and that's exactly how it should be.",
+        "spruch": "A beer without foam is like a festival without brass music.",
+        "image": "https://i.pravatar.cc/600?u=sepp"
+      },
+      {
+        "name": "Lena",
+        "role": "Service",
+        "quote": "Tray full, heart full: when the guests laugh, my evening is perfect.",
+        "spruch": "I carry eight steins at once – just not the responsibility.",
+        "image": "https://i.pravatar.cc/600?u=lena"
+      },
+      {
+        "name": "Michi",
+        "role": "Tent setup",
+        "quote": "From empty field to festival tent in two days – that's our little miracle.",
+        "spruch": "I don't just put up tents, I put up good mood.",
+        "image": "https://i.pravatar.cc/600?u=michi"
+      },
+      {
+        "name": "Anna",
+        "role": "Kitchen",
+        "quote": "When the roast pork smells, guests forget their phones for a moment.",
+        "spruch": "Love goes through the stomach – with us through the whole hall.",
+        "image": "https://i.pravatar.cc/600?u=anna"
+      },
+      {
+        "name": "Resi",
+        "role": "Bar & coffee",
+        "quote": "After the festival is before the festival – and in between there's cake at my place.",
+        "spruch": "Coffee black, costume colourful, mood golden.",
+        "image": "https://i.pravatar.cc/600?u=resi"
+      }
+    ]
+  },
   "Hero": {
     "badge": "Est. 2025 · Modern Festivities",
     "title_1": "Tradition",
@@ -27,7 +73,7 @@
     "cta": "Inquire an event now",
     "p1": "I am Florian Maurer – known to many simply as \"Maurerwirt\". With roots in the Halbauer butchery, I learned early on what quality and genuine hospitality mean. Today, I bring this tradition into the modern event world.",
     "p2": "Whether it's a traditional folk festival, an elegant company anniversary, or a very personal club party – we combine Bavarian warmth with precise planning and professional equipment.",
-    "quote": "\"A good party doesn't plan itself, but it should feel like it does.\"",
+    "quote": "“A good party doesn't plan itself, but it should feel like it does.”",
     "p3": "Let's work together to create an event that your guests will remember fondly for a long time.",
     "placeholder_img": "Placeholder: Photo of Florian Maurer",
     "placeholder_desc": "(Maurerwirt) in Lederhosen, modern setting"
@@ -43,7 +89,7 @@
       },
       "vereinsfest": {
         "title": "Club Anniversary",
-        "description": "A programme for the big ones and the little ones – from the 50th to the 150th club anniversary."
+        "description": "A programme for the big ones and the little ones – for club anniversaries from the 5th to the 150th."
       }
     }
   },
@@ -77,7 +123,7 @@
   "Contact": {
     "title": "Let's Talk!",
     "subtitle": "Tell us about your plans and we'll turn them into a celebration.",
-    "location": "Location",
+    "location": "Address",
     "email": "Email",
     "phone": "Phone",
     "instagram": "Instagram",
@@ -106,7 +152,7 @@
     "heading_accent": "enquiry",
     "heading_subtitle": "Let's plan something great together.",
     "info_title": "We look forward to your inquiry",
-    "info_text": "“Still looking for a festival host for your event? Or need support planning it? Send us your non-binding inquiry right here. Let's plan something great together and create genuine, unforgettable experiences.”",
+    "info_text": "Still looking for a festival host for your event? Or need support planning it? Send us your non-binding inquiry right here. Let's plan something great together and create genuine, unforgettable experiences.",
     "step_of": "Step {step} of {total}",
     "steps_anlass": "Occasion",
     "steps_kontakt": "Contact",
@@ -213,8 +259,6 @@
     "cta_positions": "View all positions",
     "cta_apply": "Apply spontaneously",
     "empty_hint": "No open positions right now – spontaneous applications are always welcome.",
-    "caption": "Your uniform when you join the team",
-    "quote": "“Whether preparing our delicacies, pouring drinks or working behind the scenes: smooth operations need a team that values solidarity and supports each other”",
     "cta_row": "Apply now",
     "team_photo_alt": "Our team at the festival",
     "team_photo_placeholder": "Group photo coming soon"
@@ -231,15 +275,15 @@
     "subtitle": "Voices from the tent, from clubs and from our collaborations.",
     "items": [
       {
-        "quote": "“From the first meeting to the last measure: everything from a single source and absolutely reliable.",
+        "quote": "“From the first meeting to the last measure: everything from a single source and absolutely reliable.”",
         "role": "Club chairman, Eichstätt district"
       },
       {
-        "quote": "“Our company party finally had real festival tent atmosphere again – our guests still talk about it.",
+        "quote": "“Our company party finally had real festival tent atmosphere again – our guests still talk about it.”",
         "role": "Management, corporate client"
       },
       {
-        "quote": "“Music, atmosphere, organisation: everything simply fits. Again next year!",
+        "quote": "“Music, atmosphere, organisation: everything simply fits. Again next year!”",
         "role": "Folk festival regular"
       }
     ]
@@ -273,6 +317,17 @@
     ],
     "partners_title": "Our producers & partners",
     "partners_text": "Logos and names of our regional partners will follow shortly – partnership inquiries welcome.",
+    "signature": "– Florian, your festival host",
+    "recipe_title": "Recipe for a great festival",
+    "recipe_items": [
+      "A big portion of heart & soul",
+      "Regional ingredients, fresh from the producer",
+      "A splash of brass music",
+      "Plenty of room for friends & family",
+      "A pinch of madness",
+      "Countless beautiful moments"
+    ],
+    "recipe_note": "Mix everything, serve with love – your festival is ready.",
     "cta": "Inquire event"
   }
 }

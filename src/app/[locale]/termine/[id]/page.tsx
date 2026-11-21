@@ -14,6 +14,7 @@ import DescriptionRenderer from "@/components/DescriptionRenderer";
 import GalleryGrid from "@/components/GalleryGrid";
 import { getPublicEventDocuments } from "@/app/actions/eventDocuments";
 import { reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
+import { localized, DATE_TAG } from "@/lib/localize";
 
 export const revalidate = 60;
 
@@ -24,7 +25,7 @@ const ReservationSection = dynamicComponent(() => import("@/components/Reservati
 const GALLERY_TEASER_COUNT = 8;
 
 function formatDateRange(start: Date, end: Date | null, locale: string): string {
-  const tag = locale === "en" ? "en-US" : "de-DE";
+  const tag = DATE_TAG[locale] ?? "de-DE";
   const full = (date: Date) => date.toLocaleDateString(tag, { day: "2-digit", month: "long", year: "numeric" });
   if (!end || end.getTime() === start.getTime()) return full(start);
   if (end.getFullYear() === start.getFullYear() && end.getMonth() === start.getMonth()) {
@@ -70,8 +71,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const event = await getEventById(id);
   if (!event) return { title: "Event nicht gefunden" };
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
+  const title = localized(event, "title", locale);
+  const description = localized(event, "description", locale);
 
   return {
     title: `${title} | MAURER EVENTS`,
@@ -107,9 +108,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const resolvedMapUrl = await resolveShortMapsUrl(event.mapUrl);
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const title = localized(event, "title", locale);
+  const description = localized(event, "description", locale);
+  const location = localized(event, "location", locale);
   const reservationMode = resolveReservationMode(event);
   const statusLabel = reservationStatusLabel(reservationMode, locale);
   const dateLabel = formatDateRange(new Date(event.date), event.endDate ? new Date(event.endDate) : null, locale);

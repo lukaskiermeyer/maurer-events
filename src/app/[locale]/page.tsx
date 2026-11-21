@@ -10,7 +10,7 @@ import PartnersSection, { type PartnerLogo } from "@/components/PartnersSection"
 import TestimonialsSection from "@/components/TestimonialsSection";
 import TeamPhoto from "@/components/TeamPhoto";
 import { getEvents } from "@/app/actions/events";
-import { getGalleryAlbums } from "@/app/actions/gallery";
+import { getGalleryAlbums, getFavoriteGalleryImages } from "@/app/actions/gallery";
 import { getPublicEventDocumentsForEvents } from "@/app/actions/eventDocuments";
 import { getCareerContent } from "@/app/actions/career";
 import { localizeCareerContent } from "@/lib/career";
@@ -54,9 +54,10 @@ export default async function Home({ params, searchParams }: {
     const sessionQuery = typeof query.session_id === 'string' ? `?${new URLSearchParams({ session_id: query.session_id })}` : '';
     redirect({ href: `/reservierung/erfolgreich${sessionQuery}`, locale });
   }
-  const [events, galleryAlbums, documentsByEvent, careerRaw] = await Promise.all([
+  const [events, galleryAlbums, galleryFavorites, documentsByEvent, careerRaw] = await Promise.all([
     getEvents(),
     getGalleryAlbums(),
+    getFavoriteGalleryImages(8),
     getPublicEventDocumentsForEvents(),
     getCareerContent()
   ]);
@@ -71,7 +72,7 @@ export default async function Home({ params, searchParams }: {
       <PartnersSection logos={partnerLogos} />
       <ServicesSection />
       <TestimonialsSection />
-      <GallerySection albums={galleryAlbums} sneakPeek={true} />
+      <GallerySection albums={galleryAlbums} sneakPeek={true} favorites={galleryFavorites} />
       <ContactSection />
       <CareersTeaser content={careerContent}>
         <TeamPhoto className="absolute inset-0" />
