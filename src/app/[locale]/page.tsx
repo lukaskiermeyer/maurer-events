@@ -1,8 +1,14 @@
+import fs from "fs";
+import path from "path";
+
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import ServicesSection from "@/components/ServicesSection";
 import EventsSection from "@/components/EventsSection";
 import ContactSection from "@/components/ContactSection";
+import PartnersSection, { type PartnerLogo } from "@/components/PartnersSection";
+import TestimonialsSection from "@/components/TestimonialsSection";
+import TeamPhoto from "@/components/TeamPhoto";
 import { getEvents } from "@/app/actions/events";
 import { getGalleryAlbums } from "@/app/actions/gallery";
 import { getPublicEventDocumentsForEvents } from "@/app/actions/eventDocuments";
@@ -16,6 +22,25 @@ import { redirect, routing } from '@/i18n/routing';
 
 
 export const revalidate = 60;
+
+// Partnerlogos werden ohne Code-Änderung aufgenommen: jede Bilddatei in
+// public/partners/ erscheint als Kreis in der Partner-Sektion.
+function readPartnerLogos(): PartnerLogo[] {
+  try {
+    const dir = path.join(process.cwd(), "public", "partners");
+    if (!fs.existsSync(dir)) return [];
+    return fs
+      .readdirSync(dir)
+      .filter(file => /\.(png|jpe?g|svg|webp)$/i.test(file))
+      .sort()
+      .map(file => ({
+        name: file.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
+        src: `/partners/${file}`,
+      }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function Home({ params, searchParams }: {
   params: Promise<{ locale: string }>;
@@ -36,16 +61,21 @@ export default async function Home({ params, searchParams }: {
     getCareerContent()
   ]);
   const careerContent = localizeCareerContent(careerRaw, locale);
+  const partnerLogos = readPartnerLogos();
 
   return (
     <>
       <HeroSection />
       <EventsSection initialEvents={events} documentsByEvent={documentsByEvent} />
         <AboutSection />
+      <PartnersSection logos={partnerLogos} />
       <ServicesSection />
+      <TestimonialsSection />
       <GallerySection albums={galleryAlbums} sneakPeek={true} />
-      <CareersTeaser content={careerContent} />
       <ContactSection />
+      <CareersTeaser content={careerContent}>
+        <TeamPhoto className="absolute inset-0" />
+      </CareersTeaser>
     </>
   );
 }

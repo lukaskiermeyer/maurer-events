@@ -6,6 +6,7 @@ import type { SVGProps } from 'react';
 import { motion, Variants } from "framer-motion";
 import { services } from "@/data/services";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 // Ultra-minimalist traditional SVGs (Thin line art)
 const Icons = {
@@ -69,7 +70,7 @@ export default function ServicesSection() {
   const t = useTranslations("Services");
 
   return (
-    <section id="services" className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden border-t-4 border-base-dark">
+    <section id="services" className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden">
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10">
 
@@ -82,7 +83,8 @@ export default function ServicesSection() {
               viewport={{ once: true }}
               className="font-display font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] break-words mb-4 text-base-light"
             >
-              {t("title")}
+              {t("title").split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="text-[#EDBE6A] italic">{t("title").split(" ").slice(-1)}</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -93,6 +95,7 @@ export default function ServicesSection() {
             >
               {t("subtitle")}
             </motion.p>
+
           </div>
 
           {/* Männchen rechts von der Überschrift, als eigene Spalte im Flex-Header */}
@@ -103,7 +106,7 @@ export default function ServicesSection() {
             transition={{ duration: 1.2, ease: "easeOut" }}
             className="shrink-0 w-20 sm:w-40 lg:w-56 pointer-events-none"
           >
-            <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} sizes="200px" className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
+            <Image src="/Icon_MaurerGrün.svg" alt="Festwirt Icon" width={160} height={160} sizes="200px" className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
           </motion.div>
         </div>
 
@@ -138,6 +141,24 @@ export default function ServicesSection() {
               </motion.div>
             );
           })}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="mt-10 sm:mt-14 flex justify-center"
+        >
+          <Link
+            href="/#contact"
+            className="inline-flex items-center gap-3 bg-white text-base-dark px-8 py-4 rounded-full font-display font-bold uppercase tracking-wide text-sm shadow-lg hover:bg-accent-green/80 hover:text-white transition-colors"
+          >
+            {t("cta")}
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </Link>
         </motion.div>
       </div>
     </section>

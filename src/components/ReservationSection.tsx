@@ -290,7 +290,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            {t('title_1_alt')} <span className="text-accent-green">{t('title_2_alt')}</span>
+            {t('title_1_alt')} <span className="text-accent-green italic">{t('title_2_alt')}</span>
           </motion.h2>
         </div>
 
@@ -418,7 +418,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}
-                    className="ml-auto px-10 py-4 bg-accent-green text-white hover:bg-base-dark transition-colors rounded-xl font-black uppercase tracking-widest disabled:opacity-30 flex items-center gap-2"
+                    className="ml-auto px-10 py-4 bg-accent-green text-white hover:bg-accent-green/80 transition-colors rounded-xl font-black uppercase tracking-widest disabled:opacity-30 flex items-center gap-2"
                   >
                     Weiter
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -429,7 +429,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                   <button
                     onClick={handleCheckout}
                     disabled={!canProceed() || isCheckingOut}
-                    className="ml-auto px-10 py-4 bg-accent-green text-white hover:bg-base-dark transition-colors rounded-xl font-black uppercase tracking-widest disabled:opacity-30"
+                    className="ml-auto px-10 py-4 bg-accent-green text-white hover:bg-accent-green/80 transition-colors rounded-xl font-black uppercase tracking-widest disabled:opacity-30"
                   >
                     {isCheckingOut ? t('submitting') : t('submit_btn')}
                   </button>

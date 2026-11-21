@@ -232,6 +232,27 @@
       "when": 1795000000000,
       "tag": "0035_admin_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795076648414,
+      "tag": "0036_staff_house_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795079000000,
+      "tag": "0037_work_certificate_doc",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795082000000,
+      "tag": "0038_admin_password_totp",
+      "breakpoints": true
     }
   ]
 }

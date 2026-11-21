@@ -117,7 +117,7 @@ export default async function TablePlanPage({
         <section className="bg-white border border-border-light rounded-2xl p-4 sm:p-6 print:border-0 print:rounded-none print:p-0">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <Image src="/Logo.png" alt="Maurer Events" width={162} height={48} className="h-8 w-auto object-contain" />
+              <Image src="/LogoFinalGrün_MaurerEvents.svg" alt="Maurer Events" width={162} height={76} className="h-8 w-auto object-contain" />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-wood">Tischplan</p>
                 <p className="font-display font-bold text-lg text-base-dark truncate">{event.title}</p>

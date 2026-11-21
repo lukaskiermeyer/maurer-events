@@ -3,6 +3,7 @@
 import { usePathname } from "@/i18n/routing";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import StickyRequestButton from "@/components/StickyRequestButton";
 
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />
+      <StickyRequestButton />
     </>
   );
 }

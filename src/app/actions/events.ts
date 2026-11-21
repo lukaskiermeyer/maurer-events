@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { events, eventSettings } from "@/db/schema";
-import { eq, asc, and, isNull, isNotNull, desc, count } from "drizzle-orm";
+import { eq, asc, and, isNull, isNotNull, desc, count, inArray, gte } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_noStore as noStore, unstable_cache } from "next/cache";
 import { translateContent } from "@/lib/translate";
 import { requireAdmin } from "@/lib/auth";
@@ -212,7 +212,7 @@ export async function getAdminStats() {
   await requireAdmin();
   noStore();
   const { sql, sum, count, desc } = await import("drizzle-orm");
-  const { reservations, tables, waitlists } = await import("@/db/schema");
+  const { reservations, tables, waitlists, staff, staffAssignments, staffDocuments, contracts, eventStaffRequirements } = await import("@/db/schema");
   const allEvents = await db.select().from(events).where(isNull(events.deletedAt)).orderBy(asc(events.date));
 
   const waitlistAgg = await db.select({ count: count() }).from(waitlists);
@@ -244,6 +244,42 @@ export async function getAdminStats() {
   const unassignedPaidCount = statsAgg[0]?.unassignedPaidCount || 0;
   const pendingCount = statsAgg[0]?.pendingCount || 0;
   const totalReservations = statsAgg[0]?.totalReservations || 0;
+
+  // Offene E-Mail-Reservierungsanfragen (manueller Flow)
+  const openRequestsAgg = await db.select({ count: count() }).from(reservations).where(eq(reservations.status, 'requested'));
+  const openRequestsCount = openRequestsAgg[0]?.count || 0;
+
+  // Mitarbeiter, die noch nicht aktiv/freigegeben sind
+  const pendingStaffAgg = await db.select({ count: count() }).from(staff).where(inArray(staff.status, ['invited', 'onboarding', 'ready']));
+  const pendingStaffCount = pendingStaffAgg[0]?.count || 0;
+
+  // Dokumente, die noch geprüft werden müssen
+  const pendingDocsAgg = await db.select({ count: count() }).from(staffDocuments).where(eq(staffDocuments.status, 'pending'));
+  const pendingDocumentsCount = pendingDocsAgg[0]?.count || 0;
+
+  // Verträge, die noch geprüft/unterschrieben werden müssen
+  const pendingContractsAgg = await db.select({ count: count() }).from(contracts).where(inArray(contracts.status, ['pending', 'signed']));
+  const pendingContractsCount = pendingContractsAgg[0]?.count || 0;
+
+  // Selbst-Eintragungen von Mitarbeitern, die noch bestätigt werden müssen
+  const selfSignupsAgg = await db.select({ count: count() }).from(staffAssignments).where(and(eq(staffAssignments.source, 'self'), eq(staffAssignments.status, 'requested')));
+  const selfSignupsPendingCount = selfSignupsAgg[0]?.count || 0;
+
+  // Personallücken über kommende Feste
+  const upcomingStaffEvents = allEvents.filter(e => e.type === 'event' && e.date >= new Date());
+  let staffGapsCount = 0;
+  let staffedEventsWithGaps = 0;
+  for (const event of upcomingStaffEvents.slice(0, 20)) {
+    const [requirements, assignments] = await Promise.all([
+      db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.eventId, event.id)),
+      db.select().from(staffAssignments).where(eq(staffAssignments.eventId, event.id)),
+    ]);
+    const totalRequired = requirements.reduce((s, r) => s + r.requiredCount, 0);
+    const filled = assignments.filter(a => a.status !== 'declined').length;
+    const gaps = Math.max(0, totalRequired - Math.min(totalRequired, filled));
+    staffGapsCount += gaps;
+    if (gaps > 0) staffedEventsWithGaps += 1;
+  }
 
   const futureEvents = allEvents.filter(e => e.type === 'event' && e.date >= new Date());
   const nextEvent = futureEvents.length > 0 ? futureEvents[0] : null;
@@ -287,7 +323,14 @@ export async function getAdminStats() {
     pendingCount,
     unassignedPaidCount,
     nextEventStats,
-    recentReservations
+    recentReservations,
+    openRequestsCount,
+    pendingStaffCount,
+    pendingDocumentsCount,
+    pendingContractsCount,
+    selfSignupsPendingCount,
+    staffGapsCount,
+    staffedEventsWithGaps
   };
 }
 

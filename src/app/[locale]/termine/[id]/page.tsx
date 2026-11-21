@@ -194,7 +194,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                {reservationCta && (
                 <a
                   href="#reservierung"
-                  className="mt-8 flex items-center justify-center gap-2 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors shadow-sm"
+                  className="mt-8 flex items-center justify-center gap-2 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-accent-green/80 transition-colors shadow-sm"
                 >
                   {reservationCta}
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

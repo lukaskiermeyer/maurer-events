@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { EventDocument } from "@/types/domain";
 import { deleteEventDocument } from "@/app/actions/eventDocuments";
 import DropZone from "@/components/ui/DropZone";
+import { useDialog } from "@/components/ui/Dialog";
 
 function kindLabel(kind: string) {
   return kind === "program" ? "Programm" : "Speisekarte";
@@ -23,6 +24,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error" | "warning"; text: string } | null>(null);
+  const dialog = useDialog();
 
 
   const upload = async (event: React.FormEvent) => {
@@ -57,7 +59,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
   };
 
   const remove = async (document: EventDocument) => {
-    if (!confirm(`„${document.title}“ wirklich löschen?`)) return;
+    if (!await dialog.confirm({ title: "Dokument löschen", message: `„${document.title}“ wirklich löschen?`, danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true);
     try {
       await deleteEventDocument(document.id);

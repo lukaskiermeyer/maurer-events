@@ -4,7 +4,6 @@ import type { EventDocument, EventRecord } from '@/types/domain';
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
-import FestzeltBanner from "./FestzeltBanner";
 import { useTranslations, useLocale } from "next-intl";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 import DocumentViewer from "./DocumentViewer";
@@ -190,12 +189,6 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-light/60 to-base-light"></div>
         </div>
 
-        {/* Banners (hanging inside the tent) */}
-        <div className="absolute top-0 left-0 w-full h-[400px] md:h-[600px] z-10 pointer-events-none">
-          <FestzeltBanner position="left" />
-          <FestzeltBanner position="right" />
-        </div>
-
         {/* Dach-Struktur (Giebel & Markise) */}
         <div className="absolute top-0 left-0 w-full h-[150px] md:h-[250px] z-20 pointer-events-none drop-shadow-2xl">
           {/* Konstantes grünes Dach (Giebel oben, füllt die oberen Ecken aus) */}
@@ -229,7 +222,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
           </svg>
         </div>
 
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 mt-[248px] md:mt-[368px] lg:mt-[488px] relative z-30">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 mt-[40px] md:mt-[60px] lg:mt-[100px] relative z-30">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-20 gap-6">
             <div>
               <motion.h2
@@ -239,7 +232,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                   transition={{ duration: 0.7, ease: "easeOut", delay: 0.35 }}
                   className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-dark"
               >
-                {t("title_1_alt") || "Unsere"} <span className="text-accent-green">{t("title_2_alt") || "Volksfeste"}</span>
+                {t("title_1_alt") || "Unsere"} <span className="text-accent-green italic">{t("title_2_alt") || "Volksfeste"}</span>
               </motion.h2>
               <motion.p
                   initial={{ opacity: 0, x: -20 }}
@@ -373,7 +366,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                                   )}
                                 </div>
                               ) : <span />}
-                              <span className="inline-flex items-center gap-2 bg-accent-green text-white px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest group-hover:bg-base-dark transition-colors shadow-sm">
+                              <span className="inline-flex items-center gap-2 bg-accent-green text-white px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest group-hover:bg-accent-green/80 transition-colors shadow-sm">
                                 {t("details_btn")}
                                 <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />

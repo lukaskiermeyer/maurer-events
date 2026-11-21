@@ -128,7 +128,7 @@ export default function EventMapEmbed({
               type="button"
               onClick={accept}
               disabled={!mounted}
-              className="bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-base-dark transition-colors disabled:opacity-50"
+              className="bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-accent-green/80 transition-colors disabled:opacity-50"
             >
               {text.button}
             </button>

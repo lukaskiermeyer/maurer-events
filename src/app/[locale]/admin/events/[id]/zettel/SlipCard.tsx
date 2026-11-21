@@ -44,7 +44,7 @@ export default function SlipCard({
       style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
     >
       <div className={`bg-accent-green text-white flex items-center justify-between gap-2 ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
-        <Image src="/Logo.png" alt="Maurer Events" width={162} height={48} className={`${compact ? "h-5" : "h-7"} w-auto object-contain brightness-0 invert`} />
+        <Image src="/LogoFinalGrün_MaurerEvents.svg" alt="Maurer Events" width={162} height={76} className={`${compact ? "h-5" : "h-7"} w-auto object-contain brightness-0 invert`} />
         <span className={`${compact ? "text-[7px]" : "text-[9px]"} font-bold uppercase tracking-[0.18em]`}>Reserviert</span>
       </div>
 

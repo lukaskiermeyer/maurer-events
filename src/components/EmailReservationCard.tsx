@@ -123,13 +123,13 @@ export default function EmailReservationCard({ event, locale }: { event: EventRe
           <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-accent-green/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent-wood mb-3">{copy.eyebrow}</p>
-            <h2 className="font-display font-bold text-3xl md:text-5xl text-base-dark mb-4">{copy.title}</h2>
+            <h2 className="font-display font-bold text-3xl md:text-5xl text-base-dark mb-4">{copy.title.split(" ").slice(0, -1).join(" ")}{" "}<span className="text-accent-green italic">{copy.title.split(" ").slice(-1)}</span></h2>
             <p className="font-sans text-base md:text-lg text-base-dark/70 leading-relaxed mb-8">{copy.text}</p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <button
                 type="button"
                 onClick={() => { setSent(false); setError(""); setWarning(""); setOpen(true); }}
-                className="inline-flex items-center justify-center gap-3 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-3 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-accent-green/80 transition-colors shadow-sm"
               >
                 {copy.button}
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -189,7 +189,7 @@ export default function EmailReservationCard({ event, locale }: { event: EventRe
                 </div>
                 {warning && <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">{warning}</p>}
                 <div className="flex flex-wrap gap-3">
-                  <button type="button" onClick={() => setOpen(false)} className="bg-accent-green text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-base-dark transition-colors">
+                  <button type="button" onClick={() => setOpen(false)} className="bg-accent-green text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-accent-green/80 transition-colors">
                     Schließen
                   </button>
                   <button type="button" onClick={() => { setSent(false); setForm({ ...EMPTY_FORM, date: dates[0] || "" }); }} className="bg-canvas-light text-base-dark px-6 py-3 rounded-full font-bold text-sm hover:bg-border-light transition-colors">
@@ -260,7 +260,7 @@ export default function EmailReservationCard({ event, locale }: { event: EventRe
                 {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
                 {warning && <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">{warning}</p>}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
-                  <button type="submit" disabled={submitting || !turnstileToken} className="bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors disabled:opacity-50">
+                  <button type="submit" disabled={submitting || !turnstileToken} className="bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-accent-green/80 transition-colors disabled:opacity-50">
                     {submitting ? "Wird gesendet…" : "Anfrage senden"}
                   </button>
                   <span className="text-xs text-base-dark/50">* Pflichtfeld. Keine Online-Zahlung.</span>

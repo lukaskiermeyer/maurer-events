@@ -1,6 +1,7 @@
 import React from "react";
 import { getEvents } from "@/app/actions/events";
 import { Link } from "@/i18n/routing";
+import FestzeltCeiling from "@/components/FestzeltCeiling";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 
 export const metadata = {
@@ -12,8 +13,11 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
   const { locale } = await params;
   const upcomingEvents = await getEvents();
   return (
-    <div className="py-32 px-4 sm:px-8 lg:px-16 max-w-[1600px] mx-auto min-h-screen bg-base-light relative overflow-hidden">
-      
+    <div className="min-h-screen bg-base-light relative overflow-hidden">
+      {/* Zeltdecke mit hängenden Bannern wie in den Event-Details */}
+      <FestzeltCeiling />
+      <div className="pt-[280px] md:pt-[400px] lg:pt-[480px] pb-32 px-4 sm:px-8 lg:px-16 max-w-[1600px] mx-auto relative">
+
       {/* Subtle Background Elements */}
       <div className="absolute top-0 right-0 w-1/3 h-full bg-accent-green/5 blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-1/4 h-1/2 bg-accent-green/5 blur-3xl pointer-events-none"></div>
@@ -86,6 +90,7 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
             </Link>
           );
         })}
+      </div>
       </div>
     </div>
   );

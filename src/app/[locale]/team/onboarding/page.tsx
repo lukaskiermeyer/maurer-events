@@ -14,6 +14,7 @@ export default async function OnboardingPage() {
     phone: member.phone || "",
     birthDate: member.birthDate ? new Date(member.birthDate).toISOString().slice(0, 10) : "",
     street: member.street || "",
+    houseNumber: member.houseNumber || "",
     zip: member.zip || "",
     city: member.city || "",
     employmentType: member.employmentType,

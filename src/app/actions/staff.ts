@@ -14,6 +14,7 @@ import { bicField, ibanField, taxIdField } from "@/lib/bank-details";
 import { emailFrom } from "@/lib/email";
 import { ensureContractForStaff } from "@/lib/contracts";
 import { ensureMinijobDocument } from "@/lib/document-forms";
+import { missingRequiredDocsForStaff } from "@/lib/staff-required-docs";
 import { staffInviteHtml, staffInviteSubject, staffInviteText } from "@/lib/staff-invite-email";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 
@@ -109,6 +110,10 @@ export async function updateRole(roleId: string, data: Partial<{ name: string; d
   if (data.profitSharePercent !== undefined) patch.profitSharePercent = data.profitSharePercent === null ? null : (typeof data.profitSharePercent === "number" && Number.isFinite(data.profitSharePercent) && data.profitSharePercent >= 0 && data.profitSharePercent <= 100 ? data.profitSharePercent : null);
   if (data.requiredDocuments !== undefined) patch.requiredDocuments = data.requiredDocuments.slice(0, 20).map(value => String(value).slice(0, 50));
   if (data.requiresHandwrittenSignature !== undefined) patch.requiresHandwrittenSignature = data.requiresHandwrittenSignature === true;
+  if (data.requiresHandwrittenSignature !== undefined) {
+    const newMode = data.requiresHandwrittenSignature === true ? "handwritten" : "text";
+    await db.update(contracts).set({ signatureMode: newMode, updatedAt: new Date() }).where(and(eq(contracts.roleId, roleId), eq(contracts.status, "pending")));
+  }
   let deactivationWarning: string | undefined;
   if (data.active !== undefined && data.active === false) {
     const [staffCount] = await db.select({ n: sql<number>`count(*)::int` }).from(staff).where(eq(staff.roleId, roleId));
@@ -295,7 +300,7 @@ export async function anonymizeStaffForErasure(staffId: string) {
   await db.update(staff).set({
     email: `anonymized-${member.id}@deleted.invalid`,
     firstName: "Anonymisiert", lastName: "Anonymisiert",
-    phone: null, birthDate: null, street: null, zip: null, city: null,
+    phone: null, birthDate: null, street: null, houseNumber: null, zip: null, city: null,
     passwordHash: null, taxIdEnc: null, taxClass: null, childAllowances: 0,
     socialSecurityEnc: null, healthInsurance: null, ibanEnc: null, bic: null,
     hourlyRateCents: 0, monthlySalaryCents: 0, privacyVersion: null, privacyAcceptedAt: null,
@@ -369,7 +374,7 @@ export async function deleteRoleHardDev(roleId: string) {
 }
 
 export async function saveMyOnboarding(data: {
-  firstName: string; lastName: string; phone?: string; birthDate?: string; street?: string; zip?: string; city?: string;
+  firstName: string; lastName: string; phone?: string; birthDate?: string; street?: string; houseNumber?: string; zip?: string; city?: string;
   employmentType?: string; taxId?: string; taxClass?: string; childAllowances?: number; socialSecurity?: string;
   healthInsurance?: string; iban?: string; bic?: string; entryDate?: string; privacyVersion?: string;
 }) {
@@ -387,6 +392,7 @@ export async function saveMyOnboarding(data: {
     phone: text(data.phone, "Telefon", 50),
     birthDate: date(data.birthDate, "Geburtsdatum"),
     street: text(data.street, "Straße", 150),
+    houseNumber: text(data.houseNumber, "Hausnummer", 20),
     zip: text(data.zip, "PLZ", 20),
     city: text(data.city, "Ort", 100),
     employmentType,
@@ -415,13 +421,14 @@ export async function saveMyOnboarding(data: {
   return { success: true, staff: updated, contract, document, documentWarning };
 }
 
-export async function updateMyProfile(data: { firstName?: string; lastName?: string; phone?: string | null; street?: string | null; zip?: string | null; city?: string | null; iban?: string | null; bic?: string | null; taxClass?: string | null; healthInsurance?: string | null }) {
+export async function updateMyProfile(data: { firstName?: string; lastName?: string; phone?: string | null; street?: string | null; houseNumber?: string | null; zip?: string | null; city?: string | null; iban?: string | null; bic?: string | null; taxClass?: string | null; healthInsurance?: string | null }) {
   const member = await requireStaffMember();
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (data.firstName !== undefined) patch.firstName = text(data.firstName, "Vorname", 100, true);
   if (data.lastName !== undefined) patch.lastName = text(data.lastName, "Nachname", 100, true);
   if (data.phone !== undefined) patch.phone = text(data.phone, "Telefon", 50);
   if (data.street !== undefined) patch.street = text(data.street, "Straße", 150);
+  if (data.houseNumber !== undefined) patch.houseNumber = text(data.houseNumber, "Hausnummer", 20);
   if (data.zip !== undefined) patch.zip = text(data.zip, "PLZ", 20);
   if (data.city !== undefined) patch.city = text(data.city, "Ort", 100);
   if (data.taxClass !== undefined) patch.taxClass = text(data.taxClass, "Steuerklasse", 10);
@@ -447,7 +454,8 @@ export async function getMyContract() {
   const member = await requireStaffMember(true);
   const contract = await ensureContractForStaff(member.id);
   const [role] = member.roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
-  return { member, role: role || null, contract };
+  const missingDocs = await missingRequiredDocsForStaff(member.id, role?.requiredDocuments ?? []);
+  return { member, role: role || null, contract, missingDocs };
 }
 
 export async function verifyStaffDocument(documentId: string, status: "verified" | "rejected") {
@@ -467,17 +475,18 @@ export async function getContractTemplates() {
     .orderBy(desc(contractTemplates.createdAt));
 }
 
-export async function saveContractTemplate(data: { roleId: string; name: string; bodyHtml: string; signatureMode: "text" | "handwritten"; status: "draft" | "reviewed" | "active" }) {
+export async function saveContractTemplate(data: { roleId: string; name: string; bodyHtml: string; signatureMode?: "text" | "handwritten"; status: "draft" | "reviewed" | "active" }) {
   const actor = await requireAdmin();
   const roleId = uuid(data.roleId, "Rolle");
   const name = text(data.name, "Vertragsname", 150, true)!;
   if (typeof data.bodyHtml !== "string" || data.bodyHtml.length < 20 || data.bodyHtml.length > 100000) throw new BookingError("Vertragstext ist ungültig.");
-  if (data.signatureMode !== "text" && data.signatureMode !== "handwritten") throw new BookingError("Ungültige Unterschriftsart.");
   if (!["draft", "reviewed", "active"].includes(data.status)) throw new BookingError("Ungültiger Status.");
+  const [role] = await db.select().from(staffRoles).where(eq(staffRoles.id, roleId));
+  const signatureMode = role?.requiresHandwrittenSignature ? "handwritten" : "text";
   const [latest] = await db.select({ version: contractTemplates.version }).from(contractTemplates)
     .where(eq(contractTemplates.roleId, roleId)).orderBy(desc(contractTemplates.version)).limit(1);
   const [created] = await db.insert(contractTemplates).values({
-    roleId, name, bodyHtml: data.bodyHtml, signatureMode: data.signatureMode,
+    roleId, name, bodyHtml: data.bodyHtml, signatureMode,
     status: data.status, version: (latest?.version || 0) + 1, createdBy: actor.email,
   }).returning();
   if (data.status === "active") {

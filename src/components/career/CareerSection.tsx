@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Turnstile } from '@marsidev/react-turnstile';
+import { useTranslations } from "next-intl";
 
 import { submitApplication } from "@/app/actions/career";
 import DropZone from "@/components/ui/DropZone";
@@ -24,7 +25,8 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export default function CareerSection({ content }: { content: CareerContent }) {
+export default function CareerSection({ content, children }: { content: CareerContent; children?: React.ReactNode }) {
+  const t = useTranslations("CareersTeaser");
   const [position, setPosition] = useState('Initiativbewerbung');
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>('idle');
@@ -115,6 +117,15 @@ export default function CareerSection({ content }: { content: CareerContent }) {
           {content.headline}
         </h1>
         <p className="text-lg max-w-2xl mx-auto opacity-80">{content.intro}</p>
+
+        <div className="mt-12 grid lg:grid-cols-2 gap-10 items-center text-left">
+          <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-lg border border-border-light bg-white">
+            {children}
+          </div>
+          <blockquote className="border-l-4 border-accent-green pl-6">
+            <p className="font-subhead text-xl md:text-2xl leading-snug text-base-dark/80">{t("quote")}</p>
+          </blockquote>
+        </div>
       </section>
 
       {content.positions.length > 0 && (
@@ -224,7 +235,7 @@ export default function CareerSection({ content }: { content: CareerContent }) {
           <button
             type="submit"
             disabled={status === 'submitting' || !turnstileToken}
-            className="w-full bg-accent-green text-white font-bold px-8 py-4 rounded-xl hover:bg-base-dark transition-colors disabled:opacity-40 min-h-12"
+            className="w-full bg-accent-green text-white font-bold px-8 py-4 rounded-xl hover:bg-accent-green/80 transition-colors disabled:opacity-40 min-h-12"
           >
             {status === 'submitting' ? 'Wird gesendet…' : 'Bewerbung absenden'}
           </button>

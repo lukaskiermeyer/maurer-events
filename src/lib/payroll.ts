@@ -36,7 +36,7 @@ export function payrollRow(member: StaffRecord, role: StaffRole | null) {
     member.firstName,
     member.lastName,
     date(member.birthDate),
-    member.street || "",
+    [member.street, member.houseNumber].filter(Boolean).join(" ") || "",
     member.zip || "",
     member.city || "",
     date(member.entryDate),

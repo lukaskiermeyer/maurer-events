@@ -9,6 +9,8 @@ import { deleteEvent, createEvent, convertEventToGallery, toggleFeaturedGallery,
 import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
 import { uploadImage } from "@/lib/client-image-upload";
 import DropZone from "@/components/ui/DropZone";
+import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 
 export default function AdminGalleryTab({ 
   galleries,
@@ -25,6 +27,8 @@ export default function AdminGalleryTab({
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   
   const router = useRouter();
+  const toast = useToast();
+  const dialog = useDialog();
 
   // Optimistic UI state for instant star toggling
   const [featuredState, setFeaturedState] = useState<Record<string, boolean>>({});
@@ -48,7 +52,7 @@ export default function AdminGalleryTab({
   const handleImageUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploadFiles.length === 0 && !uploadUrl) {
-      alert("Bitte wähle ein Bild aus oder gib eine URL ein.");
+      toast.showToast("Bitte wähle ein Bild aus oder gib eine URL ein.", "warning");
       return;
     }
     setIsUploadingImages(true);
@@ -62,7 +66,7 @@ export default function AdminGalleryTab({
           if (uploadRes.success) {
             await addGalleryImage(targetId, uploadRes.url);
           } else {
-            alert("Fehler beim Bildupload: " + uploadRes.error);
+            toast.showToast("Fehler beim Bildupload: " + uploadRes.error, "error");
             setIsUploadingImages(false);
             return;
           }
@@ -74,7 +78,7 @@ export default function AdminGalleryTab({
       setUploadUrl("");
       window.location.reload();
     } catch {
-      alert("Fehler beim Hochladen.");
+      toast.showToast("Fehler beim Hochladen.", "error");
     }
     setIsUploadingImages(false);
   };
@@ -95,16 +99,16 @@ export default function AdminGalleryTab({
       if (summary.waitlists > 0) parts.push(`${summary.waitlists} Wartelisteneintrag/-einträge`);
       const detail = parts.length ? `\nVerknüpft: ${parts.join(", ")}.` : "";
       const msg = `Album wirklich löschen?${detail}\n\nEs wird zuerst nur als gelöscht markiert und kann innerhalb von 7 Tagen wiederhergestellt werden. Danach wird es endgültig gelöscht.`;
-      if (!confirm(msg)) return;
+      if (!await dialog.confirm({ title: "Album löschen", message: msg, danger: true, confirmLabel: "Löschen" })) return;
       await deleteEvent(id);
       window.location.reload();
     } catch (err) {
-      alert("Fehler beim Löschen: " + (err instanceof Error ? err.message : ""));
+      toast.showToast("Fehler beim Löschen: " + (err instanceof Error ? err.message : ""), "error");
     }
   };
 
   const handleConvert = async (event: EventRecord) => {
-    if(confirm(`Möchtest du das Event "${event.title}" wirklich in ein Galerie-Album umwandeln?`)) {
+    if (await dialog.confirm({ title: "In Galerie umwandeln", message: `Möchtest du das Event "${event.title}" wirklich in ein Galerie-Album umwandeln?`, confirmLabel: "Umwandeln" })) {
       setLoading(true);
       try {
         // Create a new gallery event with the same data, or just update the existing one?
@@ -115,7 +119,7 @@ export default function AdminGalleryTab({
         await convertEventToGallery(event.id);
         window.location.reload();
       } catch {
-        alert("Fehler bei der Umwandlung.");
+        toast.showToast("Fehler bei der Umwandlung.", "error");
       }
       setLoading(false);
     }
@@ -125,7 +129,7 @@ export default function AdminGalleryTab({
     e.preventDefault();
     if (createStep === 1) {
       if (!formData.title.trim() || !formData.date || !formData.location.trim() || !formData.description.trim()) {
-        alert("Bitte alle Pflichtfelder ausfüllen.");
+        toast.showToast("Bitte alle Pflichtfelder ausfüllen.", "warning");
         return;
       }
       setCreateStep(2);
@@ -142,7 +146,7 @@ export default function AdminGalleryTab({
         if (uploadRes.success) {
           finalImageUrl = uploadRes.url;
         } else {
-          alert("Fehler beim Bildupload: " + uploadRes.error);
+          toast.showToast("Fehler beim Bildupload: " + uploadRes.error, "error");
           setLoading(false);
           return;
         }
@@ -166,7 +170,7 @@ export default function AdminGalleryTab({
           if (uploadRes.success) {
             await addGalleryImage(newId, uploadRes.url);
           } else {
-            alert("Fehler beim Bildupload: " + uploadRes.error);
+            toast.showToast("Fehler beim Bildupload: " + uploadRes.error, "error");
           }
         }
       }
@@ -180,7 +184,7 @@ export default function AdminGalleryTab({
       setShowCreateForm(false);
       window.location.reload();
     } catch {
-      alert("Fehler beim Speichern.");
+      toast.showToast("Fehler beim Speichern.", "error");
     }
     setLoading(false);
   };
@@ -356,7 +360,7 @@ export default function AdminGalleryTab({
                   <Image src={img.gallery.imageUrl} alt="Gallery image" fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-105 transition-transform" />
                   <button
                     onClick={async () => {
-                      if (confirm("Bild wirklich löschen?")) {
+                      if (await dialog.confirm({ title: "Bild löschen", message: "Bild wirklich löschen?", danger: true, confirmLabel: "Löschen" })) {
                         setIsUploadingImages(true);
                         await removeGalleryImage(img.gallery.id);
                         window.location.reload();

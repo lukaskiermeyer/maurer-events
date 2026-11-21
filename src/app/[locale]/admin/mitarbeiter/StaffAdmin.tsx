@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { Link } from "@/i18n/routing";
@@ -8,11 +8,14 @@ import { Pencil, Eye, Mail, Power, PowerOff, Trash2 } from "lucide-react";import
 import type { documentFormTemplates } from "@/db/schema";
 import { createRole, createStaff, deleteContractTemplate, deleteRoleHardDev, deleteStaffHardDev, resendStaffInvite, saveContractTemplate, updateRole, updateStaffAdmin } from "@/app/actions/staff";
 import { deleteDocumentTemplate, saveDocumentTemplate } from "@/app/actions/document-templates";
+import { DEFAULT_CONTRACT_HTML, wrapContractPaper } from "@/lib/contract-paper";
+import { useDialog } from "@/components/ui/Dialog";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <div className="h-40 bg-canvas-light animate-pulse rounded-lg flex items-center justify-center opacity-50 text-sm">Lade Editor …</div>,
 });
+const RQ = ReactQuill as any;
 
 type StaffRow = { member: StaffRecord; role: StaffRole | null };
 type TemplateRow = { template: ContractTemplate; role: StaffRole | null };
@@ -24,20 +27,6 @@ const SAMPLE_MINIJOB = `<h1>Minijob-Formular</h1>
 <h2>Angaben zum Beschäftigungsverhältnis</h2>
 <p>Rolle: {{rolle}}<br/>Eintritt: {{eintritt}}<br/>Stundensatz: {{stundensatz}} €<br/>Steuer-ID: {{steuerId}}<br/>Steuerklasse: {{steuerklasse}}<br/>Kinderfreibeträge: {{kinderfreibetraege}}<br/>Sozialversicherungsnummer: {{sozialversicherungsnummer}}<br/>Krankenkasse: {{krankenkasse}}<br/>IBAN: {{iban}} · BIC: {{bic}}</p>
 <p>Bestätigt am {{heute}}</p>
-<p>Unterschrift Arbeitnehmer: ____________________</p>`;
-
-const SAMPLE_CONTRACT = `<h2>Arbeitsvertrag</h2>
-<p>Zwischen Maurer Events und {{name}}, {{adresse}}, wird folgender Vertrag geschlossen.</p>
-<p>Rolle: {{rolle}}<br/>{{#if stundensatz}}Stundensatz: {{stundensatz}} €<br/>{{/if}}{{#if gewinnbeteiligung}}Umsatzbeteiligung: {{gewinnbeteiligung}} %<br/>{{/if}}Eintritt: {{eintritt}}</p>
-<h3>§ 1 Tätigkeit</h3>
-<p>Die beschriebene Tätigkeit wird nach Weisung des Festwirts ausgeübt.</p>
-<h3>§ 2 Vergütung</h3>
-{{#if stundensatz}}<p>Die Vergütung erfolgt auf Basis der geleisteten Stunden ({{stundensatz}} €/Std.).</p>{{/if}}
-{{#if gewinnbeteiligung}}<p>Zusätzlich erhält die Person eine Umsatzbeteiligung in Höhe von {{gewinnbeteiligung}} %.</p>{{/if}}
-<h3>§ 3 Datenschutz</h3>
-<p>Die Verarbeitung der personenbezogenen Daten erfolgt zum Zweck der Beschäftigung.</p>
-<p>Ort, Datum: {{ort}}, {{heute}}</p>
-<p>Unterschrift Arbeitgeber: ____________________</p>
 <p>Unterschrift Arbeitnehmer: ____________________</p>`;
 
 const DOC_OPTIONS = ["Ausweis", "Gesundheitszeugnis", "Steuerkarte", "Minijob-Formular", "Führerschein", "Arbeitszeugnis"];
@@ -161,12 +150,15 @@ function Help({ children }: { children: React.ReactNode }) {
 
 export default function StaffAdmin({ initialStaff, initialRoles, initialTemplates, initialDocumentTemplates }: { initialStaff: StaffRow[]; initialRoles: StaffRole[]; initialTemplates: TemplateRow[]; initialDocumentTemplates: DocumentTemplate[] }) {
   const [tab, setTab] = useState<TabKey>("team");
+  const quillRef = useRef<any>(null);
+  const isHighlighting = useRef(false);
+  const [editorKey, setEditorKey] = useState(0);
   const [staffForm, setStaffForm] = useState({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" });
   const [keyTouched, setKeyTouched] = useState(false);
   const [roleForm, setRoleForm] = useState({ key: "", name: "", hourlyRateEuro: "", profitSharePercent: "", requiredDocuments: [] as string[], requiresHandwrittenSignature: false });
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [isEditingStaff, setIsEditingStaff] = useState(false);
-  const [templateForm, setTemplateForm] = useState({ roleId: initialRoles[0]?.id || "", name: "Arbeitsvertrag", bodyHtml: SAMPLE_CONTRACT, signatureMode: "text" as "text" | "handwritten", status: "active" as "draft" | "reviewed" | "active" });
+  const [templateForm, setTemplateForm] = useState({ roleId: initialRoles[0]?.id || "", name: "Arbeitsvertrag", bodyHtml: DEFAULT_CONTRACT_HTML, signatureMode: "text" as "text" | "handwritten", status: "active" as "draft" | "reviewed" | "active" });
   const [contractStep, setContractStep] = useState(1);
   const [contractViewMode, setContractViewMode] = useState<"editor" | "live">("editor");
   const [previewExample, setPreviewExample] = useState({ name: "Max Mustermann", rate: "15,00" });
@@ -177,6 +169,42 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
+  const dialog = useDialog();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { Quill } = await import("react-quill-new") as any;
+      const quill = quillRef.current?.getEditor?.();
+      if (cancelled || !quill) return;
+      if (!Quill.imports?.["formats/variable"]) {
+        const Inline = Quill.import("blots/inline");
+        class VariableBlot extends Inline {}
+        VariableBlot.blotName = "variable";
+        VariableBlot.tagName = "span";
+        VariableBlot.className = "ql-variable";
+        Quill.register(VariableBlot);
+      }
+      const apply = () => {
+        if (isHighlighting.current) return;
+        isHighlighting.current = true;
+        const text = quill.getText();
+        quill.formatText(0, text.length, "variable", false);
+        const regex = /\{\{[^}]+\}\}/g;
+        let m;
+        while ((m = regex.exec(text)) !== null) {
+          quill.formatText(m.index, m[0].length, "variable", true);
+        }
+        isHighlighting.current = false;
+      };
+      quill.on("text-change", (_delta: any, _old: any, source: string) => {
+        if (source === "api" && isHighlighting.current) return;
+        setTimeout(apply, 0);
+      });
+      apply();
+    })();
+    return () => { cancelled = true; };
+  }, [editorKey]);
 
   const gotoTab = (key: TabKey) => { setTab(key); setMessage(""); };
 
@@ -290,7 +318,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
 
   const toggleRoleActive = async (role: StaffRole) => {
     const nextActive = !role.active;
-    if (!nextActive && !confirm(`Rolle „${role.name}" wirklich deaktivieren? Sie kann danach nicht für neue Mitarbeiter gewählt werden, bleibt aber in der Liste.`)) return;
+    if (!nextActive && !await dialog.confirm({ title: "Rolle deaktivieren", message: `Rolle „${role.name}" wirklich deaktivieren? Sie kann danach nicht für neue Mitarbeiter gewählt werden, bleibt aber in der Liste.`, danger: true, confirmLabel: "Deaktivieren" })) return;
     setBusy(true); setMessage("");
     try {
       const result = await updateRole(role.id, { active: nextActive });
@@ -330,7 +358,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
     const label = next === "inactive"
       ? `${name} wirklich inaktiv setzen? Die Person wird sofort abgemeldet und kann sich nicht mehr anmelden. Daten bleiben erhalten.`
       : `${name} wirklich wieder aktivieren?`;
-    if (!confirm(label)) return;
+    if (!await dialog.confirm({ title: next === "inactive" ? "Mitarbeiter inaktiv setzen" : "Mitarbeiter aktivieren", message: label, danger: next === "inactive", confirmLabel: next === "inactive" ? "Inaktiv setzen" : "Aktivieren" })) return;
     setBusy(true); setMessage("");
     try {
       await updateStaffAdmin(memberId, { status: next });
@@ -354,7 +382,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   const isDev = process.env.NODE_ENV === "development";
 
   const devDeleteStaff = async (staffId: string, name: string) => {
-    if (!confirm(`DEV ONLY: ${name} ENDGÜLTIG löschen (Testmüll)? Verträge, Dokumente & Co. verschwinden sofort – ohne Aufbewahrungs-Check. Nur für Tests!`)) return;
+    if (!await dialog.confirm({ title: "DEV: Hard Delete", message: `DEV ONLY: ${name} ENDGÜLTIG löschen (Testmüll)? Verträge, Dokumente & Co. verschwinden sofort – ohne Aufbewahrungs-Check. Nur für Tests!`, danger: true, confirmLabel: "Endgültig löschen" })) return;
     setBusy(true); setMessage("");
     try {
       await deleteStaffHardDev(staffId);
@@ -365,7 +393,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   };
 
   const devDeleteRole = async (roleId: string, name: string) => {
-    if (!confirm(`DEV ONLY: Rolle „${name}" ENDGÜLTIG löschen (Testmüll)? Mitarbeiter mit dieser Rolle verlieren die Zuordnung (wird leer). Nur für Tests!`)) return;
+    if (!await dialog.confirm({ title: "DEV: Rolle löschen", message: `DEV ONLY: Rolle „${name}" ENDGÜLTIG löschen (Testmüll)? Mitarbeiter mit dieser Rolle verlieren die Zuordnung (wird leer). Nur für Tests!`, danger: true, confirmLabel: "Endgültig löschen" })) return;
     setBusy(true); setMessage("");
     try {
       await deleteRoleHardDev(roleId);
@@ -379,7 +407,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
     event.preventDefault();
     setBusy(true); setMessage("");
     try {
-      await saveContractTemplate(templateForm);
+      await saveContractTemplate({ ...templateForm, bodyHtml: templateForm.bodyHtml.replace(/<span class="ql-variable">(.*?)<\/span>/g, "$1") });
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Vertragsvorlage konnte nicht angelegt werden.");
@@ -390,7 +418,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
     const label = status === "active"
       ? `Aktive Vorlage „${name}“ löschen? Neue Mitarbeiter mit dieser Rolle erhalten dann keinen Vertrag mehr, bis du wieder eine aktive Vorlage anlegst. Bereits erstellte Verträge bleiben erhalten. Das kann nicht rückgängig gemacht werden.`
       : `Vorlage „${name}“ löschen? Bereits erstellte Verträge bleiben erhalten. Das kann nicht rückgängig gemacht werden.`;
-    if (!confirm(label)) return;
+    if (!await dialog.confirm({ title: "Vorlage löschen", message: label, danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true); setMessage("");
     try {
       await deleteContractTemplate(templateId);
@@ -413,7 +441,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   };
 
   const removeMinijob = async () => {
-    if (!minijobForm.id || !confirm("Minijob-Formular wirklich löschen?")) return;
+    if (!minijobForm.id || !await dialog.confirm({ title: "Minijob-Formular löschen", message: "Minijob-Formular wirklich löschen?", danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true); setMessage("");
     try {
       await deleteDocumentTemplate(minijobForm.id);
@@ -712,8 +740,12 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 );
               })}
             </div>
-            <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-              <input type="checkbox" checked={roleForm.requiresHandwrittenSignature} onChange={event => setRoleForm({ ...roleForm, requiresHandwrittenSignature: event.target.checked })} className="w-5 h-5 accent-accent-green shrink-0" /> Handschriftliche Unterschrift
+            <label className="flex items-start gap-2 text-sm font-bold cursor-pointer">
+              <input type="checkbox" checked={roleForm.requiresHandwrittenSignature} onChange={event => setRoleForm({ ...roleForm, requiresHandwrittenSignature: event.target.checked })} className="w-5 h-5 mt-0.5 accent-accent-green shrink-0" />
+              <span>
+                Handschriftliche Unterschrift (verpflichtend)
+                <span className="block text-xs font-normal text-base-dark/60 mt-1">Wenn angekreuzt: Mitarbeiter muss den Vertrag ausdrucken, handschriftlich unterschreiben und als Scan/Foto hochladen (keine digitale Unterschrift möglich). Wenn nicht angekreuzt (Standard): digitale Unterschrift am Bildschirm; zusätzlich kann optional handschriftlich unterschrieben werden.</span>
+              </span>
             </label>
             <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50 hover:bg-accent-green/90 transition-colors">{busy ? "Wird gespeichert …" : editingRoleId ? "Änderungen speichern" : "Rolle anlegen"}</button>
             {editingRoleId && <button type="button" onClick={cancelEditRole} className="w-full border border-border-light py-2.5 rounded-xl font-bold text-sm hover:bg-canvas-light">Abbrechen</button>}
@@ -733,7 +765,13 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                    <div key={role.id} className={`rounded-xl border p-3 ${tpl ? "border-accent-green/40 bg-accent-green/5" : "border-amber-200 bg-amber-50"}`}>
                      <div className="font-bold text-sm">{role.name}</div>
                      {tpl ? (
-                       <div className="text-xs text-accent-green mt-1">OK {tpl.template.name} (v{tpl.template.version})</div>
+                       <>
+                         <div className="text-xs text-accent-green mt-1">OK {tpl.template.name} (v{tpl.template.version})</div>
+                         <div className="flex gap-2 mt-2">
+                           <button type="button" onClick={() => { loadExistingTemplate(tpl.template.id); setContractViewMode("live"); }} className="text-xs font-bold text-accent-green underline">Bearbeiten</button>
+                           <button type="button" disabled={busy} onClick={() => deleteTemplate(tpl.template.id, tpl.template.name, tpl.template.status)} className="text-xs font-bold text-red-600 underline disabled:opacity-50">Löschen</button>
+                         </div>
+                       </>
                      ) : (
                        <div className="text-xs text-amber-800 mt-1">Kein aktiver Vertrag</div>
                      )}
@@ -743,61 +781,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
              </div>
            </div>
            <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-6">
-          <div className="order-1 lg:order-2 bg-white border border-border-light rounded-2xl overflow-hidden shadow-sm">
-            <h2 className="font-display font-bold text-xl p-5 border-b border-border-light">Vertragsvorlagen ({initialTemplates.length})</h2>
-            {initialTemplates.length === 0 ? (
-              <p className="p-6 text-base-dark/60">Noch keine Vorlagen. Neue Teammitglieder erhalten automatisch ihren Vertrag, sobald du eine Vorlage anlegst.</p>
-            ) : (
-              <>
-              <div className="hidden md:block overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Vorlage</th><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Version</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Unterschrift</th><th className="px-4 py-3">Aktionen</th></tr></thead>
-                <tbody>{initialTemplates.map(({ template, role }) => {
-                  const status = TEMPLATE_STATUS_META[template.status] || TEMPLATE_STATUS_META.draft;
-                  return (
-                    <tr key={template.id} className="border-t border-border-light">
-                      <td className="px-4 py-3 font-bold">{template.name}</td>
-                      <td className="px-4 py-3">{role?.name || "—"}</td>
-                      <td className="px-4 py-3">v{template.version}</td>
-                      <td className="px-4 py-3"><span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span></td>
-                      <td className="px-4 py-3">{template.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <button type="button" onClick={() => { loadExistingTemplate(template.id); setContractViewMode("live"); }} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-xs font-bold text-accent-green hover:border-accent-green hover:bg-accent-green/5 transition-colors" title="Live View ansehen">👁 Ansehen</button>
-                          <button type="button" disabled={busy} onClick={() => deleteTemplate(template.id, template.name, template.status)} className="inline-flex items-center gap-1 min-h-[44px] sm:min-h-9 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors" title="Vorlage löschen">
-                            <Trash2 size={13} /> Löschen
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}</tbody>
-              </table></div>
-
-              <div className="md:hidden divide-y divide-border-light">
-                {initialTemplates.map(({ template, role }) => {
-                  const status = TEMPLATE_STATUS_META[template.status] || TEMPLATE_STATUS_META.draft;
-                  return (
-                    <div key={template.id} className="p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-bold leading-tight">{template.name}</p>
-                          <p className="text-xs text-base-dark/50">{role?.name || "—"} · v{template.version} · {template.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</p>
-                        </div>
-                        <span className={`shrink-0 inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>{status.label}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => { loadExistingTemplate(template.id); setContractViewMode("live"); }} className={`${mBtn} border-accent-green/40 bg-white text-accent-green hover:bg-accent-green/5`}>👁 Ansehen</button>
-                        <button type="button" disabled={busy} onClick={() => deleteTemplate(template.id, template.name, template.status)} className={`${mBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100`}><Trash2 size={14} /> Löschen</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              </>
-            )}
-          </div>
-
-          <form onSubmit={createTemplate} className="order-2 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
+                    <form onSubmit={createTemplate} className="order-2 lg:order-1 lg:col-span-2 bg-white border border-border-light rounded-2xl p-6 space-y-4 shadow-sm">
             <h2 className="font-display font-bold text-xl">Neuer Vertrag – in 3 Schritten</h2>
             <p className="text-sm text-base-dark/60">Du musst nichts Technisches eingeben. Folge einfach den Schritten.</p>
             {initialTemplates.length > 0 && (
@@ -839,18 +823,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                   </div>
                   <input required placeholder="Name der Vorlage, z. B. Arbeitsvertrag" value={templateForm.name} onChange={event => setTemplateForm({ ...templateForm, name: event.target.value })} className={`${inputCls} mt-3`} />
                 </fieldset>
-                <fieldset>
-                  <legend className="text-sm font-bold mb-2">2. Wie soll unterschrieben werden?</legend>
-                  {([
-                    { value: "text" as const, title: "Einfach mit einem Klick", desc: "Empfohlen – die Person bestätigt direkt am Bildschirm. Schnell und ohne Drucker." },
-                    { value: "handwritten" as const, title: "Ausdrucken & einscannen", desc: "Nur wenn es sein muss – die Person druckt, unterschreibt von Hand und lädt den Scan hoch." },
-                  ]).map(option => (
-                    <label key={option.value} className={`flex gap-3 items-start rounded-xl border p-3 mb-2 cursor-pointer ${templateForm.signatureMode === option.value ? "border-accent-green bg-accent-green/5" : "border-border-light"}`}>
-                      <input type="radio" name="signatureMode" checked={templateForm.signatureMode === option.value} onChange={() => setTemplateForm({ ...templateForm, signatureMode: option.value })} className="mt-1 accent-accent-green" />
-                      <span><span className="block text-sm font-bold">{option.title}</span><span className="block text-xs text-base-dark/60 mt-1">{option.desc}</span></span>
-                    </label>
-                  ))}
-                </fieldset>
+                <p className="text-sm">Unterschriftsart: <strong>{selectedRoleForPreview?.requiresHandwrittenSignature ? "handschriftlich" : "digital"}</strong> (zentral über die Rolle festgelegt)</p>
                 <button type="button" disabled={!templateForm.roleId || !templateForm.name.trim()} onClick={() => setContractStep(2)} className="md:col-span-2 w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">Weiter zu Schritt 2 →</button>
               </div>
             )}
@@ -863,17 +836,17 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 </div>
                 {contractViewMode === "editor" ? (
                   <div className="bg-white rounded-lg overflow-hidden border border-border-light">
-                    <ReactQuill theme="snow" value={templateForm.bodyHtml} onChange={(content) => setTemplateForm({ ...templateForm, bodyHtml: content })} className="min-h-[180px]" />
+                    <style>{`.ql-editor .ql-variable { color: #16a34a; font-weight: 700; }`}</style>
+                   <RQ key={editorKey} ref={quillRef as any} theme="snow" defaultValue={templateForm.bodyHtml} onChange={(content) => setTemplateForm(prev => ({ ...prev, bodyHtml: content }))} className="min-h-[180px]" />
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="text-xs font-bold space-y-1">Beispiel-Name<input value={previewExample.name} onChange={event => setPreviewExample({ ...previewExample, name: event.target.value })} className={`${inputCls} mt-1`} /></label>
                     </div>
                     <div className="rounded-xl bg-slate-100 p-3">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · {selectedRoleName} · {templateForm.signatureMode === "handwritten" ? "Handschriftlich" : "Digital"}</p>
-                      <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-80 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: previewHtml }} />
-                      {templateForm.signatureMode === "text" ? (
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · {selectedRoleName} · {selectedRoleForPreview?.requiresHandwrittenSignature ? "Handschriftlich" : "Digital"}</p>
+                      <div className="contract-paper bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base max-h-80 overflow-auto" dangerouslySetInnerHTML={{ __html: wrapContractPaper(previewHtml) }} />
+                      {!selectedRoleForPreview?.requiresHandwrittenSignature ? (
                         <div className="mt-3 bg-white rounded-lg border border-border-light p-3 text-sm space-y-2">
                           <label className="flex gap-2 items-center"><input type="checkbox" readOnly checked={false} className="w-5 h-5 accent-accent-green" /> Ich habe den Vertrag gelesen und akzeptiere ihn</label>
                           <p className="text-xs text-base-dark/50">Name: <strong>{previewExample.name || "Max Mustermann"}</strong> · Button: &ldquo;Digital unterschreiben&rdquo;</p>
@@ -904,7 +877,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
             {contractStep === 3 && (
               <div className="space-y-4">
                 <p className="text-sm font-bold">4. So sieht die Person ihren Vertrag (Beispiel)</p>
-                <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-72 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                <div className="contract-paper bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base max-h-72 overflow-auto" dangerouslySetInnerHTML={{ __html: wrapContractPaper(previewHtml) }} />
                 <p className="text-xs text-base-dark/50">Grün markiert = das wird automatisch für jede Person eingetragen (Name, Rolle, Stundensatz …).</p>
                 <label className="flex items-start gap-2 text-sm font-bold cursor-pointer">
                   <input type="checkbox" checked={templateForm.status === "active"} onChange={event => setTemplateForm({ ...templateForm, status: event.target.checked ? "active" : "draft" })} className="w-5 h-5 mt-0.5 accent-accent-green shrink-0" />
@@ -984,7 +957,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                     </div>
                     <div className="rounded-xl bg-slate-100 p-3">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-base-dark/40 mb-2">So sieht es der Mitarbeiter · Minijob-Formular (PDF)</p>
-                      <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-80 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_table]:border [&_td]:border [&_td]:border-border-light [&_td]:p-1" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
+                      <div className="contract-paper bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base max-h-80 overflow-auto" dangerouslySetInnerHTML={{ __html: wrapContractPaper(minijobPreviewHtml) }} />
                       <p className="text-xs text-base-dark/50 mt-3">Das wird als fertiges PDF erstellt. Grün markiert = wird automatisch aus den Daten eingetragen.</p>
                     </div>
                   </div>
@@ -1005,7 +978,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
             {minijobStep === 3 && (
               <div className="space-y-4">
                 <p className="text-sm font-bold">3. So sieht die Person ihr Formular (Beispiel)</p>
-                <div className="bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base leading-relaxed max-h-72 overflow-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2" dangerouslySetInnerHTML={{ __html: minijobPreviewHtml }} />
+                <div className="contract-paper bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 text-sm sm:text-base max-h-72 overflow-auto" dangerouslySetInnerHTML={{ __html: wrapContractPaper(minijobPreviewHtml) }} />
                 <p className="text-xs text-base-dark/50">Grün markiert = das wird automatisch für jede Person eingetragen (Name, Adresse, Steuer-ID, IBAN …).</p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setMinijobStep(2)} className="flex-1 border border-border-light py-3 rounded-xl font-bold">← Zurück</button>

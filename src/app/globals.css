@@ -5,6 +5,9 @@
   --color-base-light: #FAF8F4; /* Styleguide Kunde Nr. 2: Off-White */
   --color-canvas-light: #F4F0E8; /* Festzelt Canvas color */
   --color-accent-green: #20603C; /* Styleguide Kunde Nr. 1 */
+  /* Eine Stufe tieferes Gruen fuer Schrift direkt auf der Holzoptik: das
+     helle accent-green erreicht dort nur 2.4:1, dieses 3.7:1 (AA Grossschrift). */
+  --color-accent-green-deep: #14402A;
   --color-accent-gold: #cb7913;
   --color-accent-wood: #cb7913; /* Warm Holz/Brezel tone */
   --color-border-subtle: #E2DFD8; /* Softer border for light mode */
@@ -17,6 +20,12 @@
 
   /* Styleguide: Aileron All Capitals Bold mit Laufweite -75 (-75/1000 em). */
   --tracking-headline: -0.075em;
+
+  --animate-dialog-in: dialog-in 0.18s ease-out;
+  @keyframes dialog-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
 }
 
 /* Touch controls stay visible; mouse users can reveal them on hover or focus. */
@@ -330,6 +339,140 @@
 }
 .event-prose a:hover { color: var(--color-base-dark); }
 .event-prose strong { color: var(--color-base-dark); font-weight: 700; }
+
+/* Vertrags-Papier: Briefkopf mit Logo, Styleguide-Typografie und Fußzeile,
+   identisch in Admin-Live-View, Mitarbeiter-Portal und Druck.
+   Layout-Markup siehe lib/contract-paper.ts (wrapContractPaper). */
+.contract-paper {
+  color: var(--color-base-dark);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+}
+.contract-paper,
+.contract-paper * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.contract-paper .cp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.contract-paper .cp-logo {
+  height: 60px;
+  width: auto;
+}
+.contract-paper .cp-head-meta {
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: rgba(10, 10, 10, 0.6);
+  text-align: right;
+  margin-left: auto;
+}
+.contract-paper .cp-head-meta strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-headline);
+  font-size: 0.8rem;
+  color: var(--color-accent-green);
+}
+.contract-paper .cp-rule {
+  height: 3px;
+  background: var(--color-accent-green);
+  margin: 0.9rem 0 2rem;
+  position: relative;
+}
+.contract-paper .cp-rule::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 3px;
+  width: 22%;
+  background: var(--color-accent-wood);
+}
+.contract-paper .cp-body h1,
+.contract-paper .cp-body h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-headline);
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: var(--color-base-dark);
+  margin: 0 0 1rem;
+}
+.contract-paper .cp-body h3,
+.contract-paper .cp-body h4 {
+  font-family: var(--font-subhead);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 1.12rem;
+  line-height: 1.35;
+  color: var(--color-accent-green);
+  margin: 1.6rem 0 0.5rem;
+}
+.contract-paper .cp-body p { margin: 0 0 0.65rem; }
+.contract-paper .cp-body ul,
+.contract-paper .cp-body ol { margin: 0 0 0.75rem; padding-left: 1.25rem; }
+.contract-paper .cp-body ul { list-style: disc; }
+.contract-paper .cp-body ol { list-style: decimal; }
+.contract-paper .cp-body li { margin-bottom: 0.3rem; }
+.contract-paper .cp-body li::marker { color: var(--color-accent-green); font-weight: 700; }
+.contract-paper .cp-body strong { font-weight: 700; }
+.contract-paper .cp-foot { margin-top: 2.75rem; }
+.contract-paper .cp-foot-rule {
+  height: 1px;
+  background: var(--color-border-subtle);
+  margin-bottom: 0.6rem;
+}
+.contract-paper .cp-foot p {
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgba(10, 10, 10, 0.55);
+  margin: 0;
+}
+
+/* Holzoptik statt Schwarz (Kundenwunsch): Web-Variante des Illustrator-Exports,
+   erzeugt per `npm run generate:wood-texture`. Sie ist bewusst so weit warm
+   aufgehellt, dass dunkle Schrift darauf WCAG AA erreicht (base-dark 6.2:1,
+   /80 4.8:1) - auf dem Rohholz waeren es in den Astloechern nur 2.1:1.
+   Der Farb-Fallback ist die Durchschnittsfarbe der Textur, damit beim Laden
+   kein schwarzer oder weisser Blitz entsteht. */
+.bg-wood {
+  background-color: #d7a573;
+  background-image: url("/Holzoptik_MaurerEvents.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* Unterhalb lg sind die Sektionen viel hoeher als breit (About bei 768px z.B.
+   1838px hoch). Der Portrait-Schnitt vermeidet dort das Hochskalieren des
+   Querformat-Assets: gemessen max. 1.65x -> 1.02x. Siehe generate:wood-texture. */
+@media (max-width: 1023px) {
+  .bg-wood {
+    background-image: url("/Holzoptik_MaurerEvents-mobile.webp");
+  }
+}
+/* Die Akzentwoerter behalten ihre Klasse, weil die Kursiv-Branding-Regel
+   darunter daran haengt - auf Holz wird nur die Farbe eine Stufe tiefer gesetzt. */
+.bg-wood h1 .text-accent-green,
+.bg-wood h2 .text-accent-green {
+  color: var(--color-accent-green-deep);
+}
+
+/* Branding: Der grüne Schriftteil in Caps-Überschriften (h1/h2 per
+   text-transform sowie eigenständige Caps-Elemente) wird kursiv gesetzt. */
+h1 .text-accent-green,
+h2 .text-accent-green,
+.text-accent-green.uppercase {
+  font-style: italic;
+}
 
 @layer base {
   body {

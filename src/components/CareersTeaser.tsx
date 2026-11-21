@@ -1,17 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import type { CareerContent } from "@/types/domain";
 
-export default function CareersTeaser({ content }: { content: CareerContent }) {
+export default function CareersTeaser({ content, children }: { content: CareerContent; children?: React.ReactNode }) {
   const t = useTranslations("CareersTeaser");
   const positions = content.positions;
 
   return (
-    <section id="karriere-teaser" className="relative bg-accent-green border-t-4 border-base-dark py-20 md:py-28 overflow-hidden">
+    <section id="karriere-teaser" className="relative bg-canvas-light py-20 md:py-28 overflow-hidden">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center relative z-10">
 
         {/* Text */}
@@ -21,24 +20,29 @@ export default function CareersTeaser({ content }: { content: CareerContent }) {
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.7, ease: "easeOut" }}
         >
-          <p className="font-sans text-sm font-bold uppercase tracking-widest text-[#EDBE6A] mb-4">
+          <p className="font-sans text-sm font-bold uppercase tracking-widest text-accent-green mb-4">
             {t("eyebrow")}
           </p>
-          <h2 className="font-display font-bold text-5xl md:text-7xl leading-[1.05] mb-4 text-base-light">
-            {content.headline}
+          <h2 className="font-display font-bold text-5xl md:text-7xl leading-[1.05] mb-4 text-base-dark">
+            {content.headline.split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="text-accent-green italic">{content.headline.split(" ").slice(-1)}</span>
           </h2>
-          <p className="font-sans text-lg text-base-light/75 font-medium max-w-xl mb-8">
+          <p className="font-sans text-lg text-base-dark/70 font-medium max-w-xl mb-6">
             {content.intro}
           </p>
 
+          <blockquote className="border-l-4 border-accent-green pl-5 mb-8 max-w-xl">
+            <p className="font-subhead text-lg md:text-xl text-base-dark/80 leading-snug">{t("quote")}</p>
+          </blockquote>
+
           {positions.length > 0 ? (
-            <ul className="mb-10 divide-y divide-white/20 border-y border-white/20">
+            <ul className="mb-10 divide-y divide-base-dark/10 border-y border-base-dark/10">
               {positions.slice(0, 3).map((job) => (
                 <li key={job.id}>
                   <Link href="/karriere" className="group flex items-center justify-between gap-4 py-4">
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-3">
-                        <span className="font-display font-bold text-lg text-base-light group-hover:text-[#EDBE6A] transition-colors">
+                        <span className="font-display font-bold text-lg text-base-dark group-hover:text-accent-green transition-colors">
                           {job.title}
                         </span>
                         {job.badge && (
@@ -48,51 +52,42 @@ export default function CareersTeaser({ content }: { content: CareerContent }) {
                         )}
                       </span>
                       {job.employment && (
-                        <span className="block text-sm font-bold text-base-light/60 mt-0.5">
+                        <span className="block text-sm font-bold text-base-dark/60 mt-0.5">
                           {job.employment}
                         </span>
                       )}
                     </span>
-                    <svg className="w-5 h-5 shrink-0 text-accent-gold transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <span className="shrink-0 inline-flex items-center gap-2 bg-accent-green text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full group-hover:bg-accent-green/80 transition-colors shadow-sm">
+                      {t("cta_row")}
+                    </span>
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mb-10 font-sans text-base-light/75">
+            <p className="mb-10 font-sans text-base-dark/70">
               {t("empty_hint")}
             </p>
           )}
 
           <div className="flex flex-wrap gap-4">
-            <Link href="/karriere" className="inline-flex items-center gap-3 bg-white text-base-dark px-8 py-4 rounded-full font-display font-bold uppercase tracking-wide hover:bg-base-dark hover:text-white transition-colors text-sm shadow-sm">
+            <Link href="/karriere" className="inline-flex items-center gap-3 bg-accent-green text-white px-8 py-4 rounded-full font-display font-bold uppercase tracking-wide hover:bg-accent-green/80 transition-colors text-sm shadow-md">
               {positions.length > 0 ? t("cta_positions") : t("cta_apply")}
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
             </Link>
           </div>
         </motion.div>
 
-        {/* Arbeitskleidung als Fokus, gerahmt wie ein Polaroid */}
+        {/* Gruppenfoto als Fokus, gerahmt wie ein Polaroid */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
-          className="relative mx-auto w-full max-w-sm"
+          className="relative mx-auto w-full max-w-md"
         >
           <div className="relative bg-white p-3 pb-14 rounded-xl shadow-2xl rotate-[-2deg]">
-            <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
-              <Image
-                src="/Kleidung.svg"
-                alt="Klassische Arbeitskleidung: Schwarzes Oversized-T-Shirt mit Maurer-Logo, grüne Cap und schwarze Schürze"
-                fill
-                sizes="(max-width: 640px) 100vw, 400px"
-                className="object-cover"
-              />
+            <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-canvas-light">
+              {children}
             </div>
             <p className="absolute bottom-4 left-0 w-full text-center">
               <span

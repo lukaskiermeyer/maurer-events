@@ -14,7 +14,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const t = useTranslations("Navbar");
 
-  const isHome = pathname === "/" || pathname === "/de" || pathname === "/en";
+  const isHome = pathname === "/" || pathname === "/de" || pathname === "/en" || pathname === "/bar";
   // Mobile: Header schon im Hero sichtbar (transparent), Desktop wie bisher
   // erst nach 80 % Scroll.
   // Header immer sichtbar (auch auf großen Bildschirmen / Startseite)
@@ -59,6 +59,7 @@ export default function Navbar() {
     { name: t("about"), href: "/#about" },
     { name: t("services"), href: "/#services" },
     { name: t("events"), href: "/#events" },
+    { name: t("identitaet"), href: "/anspruch" },
     { name: t("karriere"), href: "/karriere" },
     { name: t("contact"), href: "/#contact" },
   ];
@@ -78,7 +79,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-24">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/#start" className="flex items-center gap-3 group">
-                <Image src="/Logo.png" alt="Maurer Events Logo" width={324} height={96} className={`h-12 lg:h-10 xl:h-12 w-auto object-contain transition-[filter,transform] duration-500 group-hover:scale-105 ${transparent ? "brightness-0 invert drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]" : ""}`} priority sizes="162px" />
+                <Image src="/LogoFinalGrün_MaurerEvents.svg" alt="Maurer Events Logo" width={299} height={140} className={`h-12 lg:h-10 xl:h-12 w-auto object-contain transition-[filter,transform] duration-500 group-hover:scale-105 ${transparent ? "brightness-0 invert drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]" : ""}`} priority sizes="162px" />
               </Link>
             </div>
 
@@ -96,7 +97,7 @@ export default function Navbar() {
               <LanguageSwitcher glass={transparent} />
               <Link
                 href="/#contact"
-                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-base-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-green text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-accent-green/80 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
                 {t("event_anfragen")}
               </Link>

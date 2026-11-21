@@ -7,8 +7,12 @@ import Image from "next/image";
 import { uploadImage } from "@/lib/client-image-upload";
 import { addGalleryImage, removeGalleryImage } from "@/app/actions/gallery";
 import DropZone from "@/components/ui/DropZone";
+import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 
 export default function AdminGlobalGallery({ events, initialGallery }: { events: EventRecord[], initialGallery: GalleryWithEvent[] }) {
+  const toast = useToast();
+  const dialog = useDialog();
   const [isUpdating, setIsUpdating] = useState(false);
   const [galleryFile, setGalleryFile] = useState<File | null>(null);
   const [galleryUrl, setGalleryUrl] = useState("");
@@ -17,11 +21,11 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
   const handleGalleryUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventId) {
-      alert("Bitte wähle ein Event aus.");
+      toast.showToast("Bitte wähle ein Event aus.", "warning");
       return;
     }
     if (!galleryFile && !galleryUrl) {
-      alert("Bitte wähle ein Bild aus oder gib eine URL ein.");
+      toast.showToast("Bitte wähle ein Bild aus oder gib eine URL ein.", "warning");
       return;
     }
     
@@ -35,7 +39,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
         if (res.success) {
           finalUrl = res.url;
         } else {
-          alert("Upload failed: " + res.error);
+          toast.showToast("Upload fehlgeschlagen: " + res.error, "error");
           setIsUpdating(false);
           return;
         }
@@ -48,7 +52,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
       }
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Hochladen.");
+      toast.showToast("Fehler beim Hochladen.", "error");
     }
     setIsUpdating(false);
   };
@@ -147,7 +151,7 @@ export default function AdminGlobalGallery({ events, initialGallery }: { events:
                     <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     <button 
                       onClick={async () => {
-                        if (confirm("Bild wirklich löschen?")) {
+                        if (await dialog.confirm({ title: "Bild löschen", message: "Bild wirklich löschen?", danger: true, confirmLabel: "Löschen" })) {
                           setIsUpdating(true);
                           await removeGalleryImage(img.gallery.id);
                           window.location.reload();

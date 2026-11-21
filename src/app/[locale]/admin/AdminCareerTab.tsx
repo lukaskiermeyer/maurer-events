@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { updateCareerContent } from "@/app/actions/career";
 import type { CareerContent, CareerPosition } from "@/types/domain";
+import { useDialog } from "@/components/ui/Dialog";
 
 function emptyPosition(): CareerPosition {
   return { id: crypto.randomUUID(), title: "Neue Stelle", badge: "", employment: "", description: "", benefits: [] };
@@ -13,6 +14,7 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
   const [content, setContent] = useState<CareerContent>(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const dialog = useDialog();
 
   const patch = (changes: Partial<CareerContent>) => setContent(current => ({ ...current, ...changes }));
 
@@ -21,8 +23,8 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
 
   const addPosition = () => patch({ positions: [...content.positions, emptyPosition()] });
 
-  const removePosition = (id: string) => {
-    if (!confirm('Diese Stelle wirklich löschen?')) return;
+  const removePosition = async (id: string) => {
+    if (!await dialog.confirm({ title: "Stelle löschen", message: "Diese Stelle wirklich löschen?", danger: true, confirmLabel: "Löschen" })) return;
     patch({ positions: content.positions.filter(position => position.id !== id) });
   };
 

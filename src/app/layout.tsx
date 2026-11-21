@@ -1,5 +1,5 @@
 import localFont from "next/font/local";
-import { Yeseva_One, Dancing_Script } from "next/font/google";
+import { Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { getLocale } from 'next-intl/server';
 
@@ -17,9 +17,10 @@ const aileron = localFont({
   display: "swap",
 });
 
-const yesevaOne = Yeseva_One({
+const yesevaOne = localFont({
+  src: "../../public/fonts/YesevaOne-Regular.ttf",
   weight: "400",
-  subsets: ["latin"],
+  style: "normal",
   variable: "--font-yeseva",
   display: "swap",
 });
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   title: "MAURER EVENTS | Moderne bayerische Gastfreundschaft",
-  description: "Erlebe modernste Events mit bayerischem Herz. Wir organisieren Zeltfeste, Firmenevents und vieles mehr in München, Müchsmünster und Umgebung.",
+  description: "Erlebe modernste Events mit bayerischem Herz. Wir organisieren Zeltfeste, Firmenevents und vieles mehr in Ingolstadt, Eichstätt, München und Umgebung.",
   keywords: ["Events", "München", "Müchsmünster", "Zeltfest", "Bayerisch", "Maurer Events", "Catering", "Gastronomie"],
   authors: [{ name: "Maurer Events" }],
   creator: "Maurer Events",
@@ -108,6 +109,10 @@ const jsonLd = {
     {
       "@type": "City",
       "name": "Ingolstadt"
+    },
+    {
+      "@type": "City",
+      "name": "Eichstätt"
     },
     {
       "@type": "City",

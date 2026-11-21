@@ -33,9 +33,9 @@ const NAV_ITEMS = [
       pathname.startsWith('/admin/festchancen') || pathname.startsWith('/admin/vereins-radar'),
   },
   {
-    href: '/admin/admins',
+    href: '/admin/settings/admins',
     label: 'Admins',
-    isActive: (pathname: string) => pathname.startsWith('/admin/admins'),
+    isActive: (pathname: string) => pathname.startsWith('/admin/settings/admins'),
   },
 ] as const;
 
@@ -68,7 +68,7 @@ export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boo
             href={scannerOnly ? '/admin/scan' : '/admin'}
             className="flex items-center gap-2 min-w-0 font-black text-accent-green shrink-0"
           >
-            <Image src="/maennchen.svg" alt="" width={48} height={40} className="h-10 w-12 object-contain" />
+            <Image src="/Icon_MaurerGrün.svg" alt="" width={48} height={48} className="h-10 w-12 object-contain" />
             <span className="truncate">{scannerOnly ? 'Einlass-Team' : 'Festwirt-Bereich'}</span>
           </Link>
 

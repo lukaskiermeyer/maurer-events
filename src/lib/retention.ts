@@ -63,7 +63,7 @@ export async function runRetentionCleanup(connection = db, now = new Date()) {
       lastName: "Anonymisiert",
       phone: null,
       birthDate: null,
-      street: null,
+      street: null, houseNumber: null,
       zip: null,
       city: null,
       passwordHash: null,

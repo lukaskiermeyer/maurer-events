@@ -3,6 +3,7 @@ import { Metadata } from "next";
 
 import { getCareerContent } from "@/app/actions/career";
 import CareerSection from "@/components/career/CareerSection";
+import TeamPhoto from "@/components/TeamPhoto";
 import { localizeCareerContent } from "@/lib/career";
 
 export const revalidate = 60;
@@ -30,7 +31,9 @@ export default async function KarrierePage({ params }: { params: Promise<{ local
 
   return (
     <main className="min-h-screen bg-base-light pt-24 pb-16">
-      <CareerSection content={content} />
+      <CareerSection content={content}>
+        <TeamPhoto className="absolute inset-0" />
+      </CareerSection>
     </main>
   );
 }

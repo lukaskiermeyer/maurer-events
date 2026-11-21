@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/routing";
 import { getMyContract } from "@/app/actions/staff";
+import { wrapContractPaper } from "@/lib/contract-paper";
 import ContractSign from "./ContractSign";
 import PrintButton from "./PrintButton";
 import OrtInput from "./OrtInput";
@@ -7,7 +8,7 @@ import OrtInput from "./OrtInput";
 export const dynamic = "force-dynamic";
 
 export default async function ContractPage() {
-  const { role, contract } = await getMyContract();
+  const { role, contract, missingDocs } = await getMyContract();
   if (!contract) {
     return (
       <div className="bg-white border border-border-light rounded-2xl p-8 text-center">
@@ -61,10 +62,10 @@ export default async function ContractPage() {
         <p className="text-base-dark/60 mt-1">Status: {contract.status} · Unterschrift: {contract.signatureMode === "handwritten" ? "handschriftlich" : "digital"}</p>
       </div>
 
-      <div className="contract-document bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 max-w-[210mm] mx-auto">
+      <div className="contract-document contract-paper bg-white border border-border-light rounded-2xl shadow-sm p-6 sm:p-10 max-w-[210mm] mx-auto">
         <div
-          className="text-sm sm:text-base leading-relaxed [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_br]:leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: paperHtml }}
+          className="text-sm sm:text-base"
+          dangerouslySetInnerHTML={{ __html: wrapContractPaper(paperHtml) }}
         />
       </div>
 
@@ -82,6 +83,7 @@ export default async function ContractPage() {
         signatureMode={contract.signatureMode as "text" | "handwritten"}
         status={contract.status}
         signedFileUrl={contract.signedFileUrl}
+        missingDocs={missingDocs}
       />
 
       <style>{`

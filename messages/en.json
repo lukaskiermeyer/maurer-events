@@ -5,8 +5,10 @@
     "services": "Services",
     "events": "Events",
     "karriere": "Careers",
+    "identitaet": "Our Claim",
     "contact": "Contact",
-    "event_anfragen": "Inquire Event"
+    "event_anfragen": "Inquire Event",
+    "change_language": "Change language"
   },
   "Hero": {
     "badge": "Est. 2025 · Modern Festivities",
@@ -22,6 +24,7 @@
     "title_2_alt": "Host",
     "title": "Welcome to Maurerwirt!",
     "subtitle": "Bavarian Roots. Modern Celebrations.",
+    "cta": "Inquire an event now",
     "p1": "I am Florian Maurer – known to many simply as \"Maurerwirt\". With roots in the Halbauer butchery, I learned early on what quality and genuine hospitality mean. Today, I bring this tradition into the modern event world.",
     "p2": "Whether it's a traditional folk festival, an elegant company anniversary, or a very personal club party – we combine Bavarian warmth with precise planning and professional equipment.",
     "quote": "\"A good party doesn't plan itself, but it should feel like it does.\"",
@@ -32,14 +35,15 @@
   "Services": {
     "title": "Our Services",
     "subtitle": "Tailored for every occasion",
+    "cta": "Inquire event",
     "items": {
       "volksfest": {
         "title": "Folk Festival",
-        "description": "Large festival tents, traditional music, and the best Bavarian atmosphere."
+        "description": "Full festival tents, traditional and party music – the best Bavarian atmosphere."
       },
       "vereinsfest": {
         "title": "Club Anniversary",
-        "description": "From the 50th to the 150th anniversary – we make your club anniversary one to remember."
+        "description": "A programme for the big ones and the little ones – from the 50th to the 150th club anniversary."
       }
     }
   },
@@ -76,6 +80,9 @@
     "location": "Location",
     "email": "Email",
     "phone": "Phone",
+    "instagram": "Instagram",
+    "locations_label": "Locations & service area",
+    "locations": "Ingolstadt · Eichstätt · Munich",
     "form_title": "Event Inquiry",
     "form_success_title": "Thank you for your inquiry!",
     "form_success_desc": "We will get back to you shortly with an initial concept.",
@@ -98,8 +105,8 @@
     "heading_prefix": "Send us an",
     "heading_accent": "enquiry",
     "heading_subtitle": "Let's plan something great together.",
-    "info_title": "We look forward to hearing from you",
-    "info_text": "Whether it's a traditional beer tent or an elegant corporate event.",
+    "info_title": "We look forward to your inquiry",
+    "info_text": "“Still looking for a festival host for your event? Or need support planning it? Send us your non-binding inquiry right here. Let's plan something great together and create genuine, unforgettable experiences.”",
     "step_of": "Step {step} of {total}",
     "steps_anlass": "Occasion",
     "steps_kontakt": "Contact",
@@ -123,6 +130,8 @@
     "brand_desc": "We plan, you celebrate. Since 2025, we bring Bavarian tradition and professional event expertise together.",
     "links_title": "Links",
     "contact_title": "Contact",
+    "locations_label": "Locations & service area",
+    "locations": "Ingolstadt · Eichstätt · Munich",
     "rights": "Maurer Events. All rights reserved.",
     "impressum": "Imprint",
     "agb": "Terms",
@@ -204,6 +213,66 @@
     "cta_positions": "View all positions",
     "cta_apply": "Apply spontaneously",
     "empty_hint": "No open positions right now – spontaneous applications are always welcome.",
-    "caption": "Your uniform when you join the team"
+    "caption": "Your uniform when you join the team",
+    "quote": "“Whether preparing our delicacies, pouring drinks or working behind the scenes: smooth operations need a team that values solidarity and supports each other”",
+    "cta_row": "Apply now",
+    "team_photo_alt": "Our team at the festival",
+    "team_photo_placeholder": "Group photo coming soon"
+  },
+  "Partners": {
+    "title_1": "Our",
+    "title_2": "Partners",
+    "subtitle": "Strong through strong partnerships in the region.",
+    "placeholder": "Partner logo coming soon"
+  },
+  "Testimonials": {
+    "title_1": "What our",
+    "title_2": "partners & customers say",
+    "subtitle": "Voices from the tent, from clubs and from our collaborations.",
+    "items": [
+      {
+        "quote": "“From the first meeting to the last measure: everything from a single source and absolutely reliable.",
+        "role": "Club chairman, Eichstätt district"
+      },
+      {
+        "quote": "“Our company party finally had real festival tent atmosphere again – our guests still talk about it.",
+        "role": "Management, corporate client"
+      },
+      {
+        "quote": "“Music, atmosphere, organisation: everything simply fits. Again next year!",
+        "role": "Folk festival regular"
+      }
+    ]
+  },
+  "Sticky": {
+    "label": "Inquire event",
+    "aria": "Jump to the inquiry section"
+  },
+  "Identity": {
+    "eyebrow": "Organic · Regional · With heart",
+    "title_1": "Our identity.",
+    "title_2": "Our claim.",
+    "intro": "We don't come from the event industry, we come from the inn parlour and the festival tent. You can feel that in every detail: in our kitchen, our service and our music.",
+    "values": [
+      {
+        "title": "Organic & quality",
+        "text": "What ends up on the table has an origin: preferably organic produce and growers we shake hands with personally."
+      },
+      {
+        "title": "Regionality",
+        "text": "Short routes, real value creation: butchery, brewery and vegetables from Upper Bavaria instead of anonymous wholesale markets."
+      },
+      {
+        "title": "Craft & tradition",
+        "text": "Festival tent culture with roots: from grilled fish to brass music – genuine instead of staged."
+      },
+      {
+        "title": "Solidarity",
+        "text": "Clubs, families, companies: we celebrate with you, not just for you – reliably from the first idea to the last measure."
+      }
+    ],
+    "partners_title": "Our producers & partners",
+    "partners_text": "Logos and names of our regional partners will follow shortly – partnership inquiries welcome.",
+    "cta": "Inquire event"
   }
 }

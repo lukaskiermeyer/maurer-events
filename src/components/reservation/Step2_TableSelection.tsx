@@ -63,7 +63,7 @@ export default function Step2_TableSelection({
           <p className="text-base-dark/70 text-sm mb-6 max-w-sm mx-auto">Für dieses Datum sind leider keine Tische mehr verfügbar. Trage dich in die Warteliste ein, und wir melden uns, falls ein Tisch frei wird.</p>
           <button 
             onClick={() => setIsWaitlistMode(true)}
-            className="bg-accent-green text-white font-bold py-3 px-8 rounded-xl hover:bg-base-dark transition-colors"
+            className="bg-accent-green text-white font-bold py-3 px-8 rounded-xl hover:bg-accent-green/80 transition-colors"
           >
             Auf die Warteliste
           </button>

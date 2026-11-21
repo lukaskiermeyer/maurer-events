@@ -12,7 +12,7 @@ export default function TeamHeader() {
     <header className="border-b border-border-light bg-white">
       <div className="max-w-[1100px] mx-auto min-h-16 px-4 flex items-center justify-between gap-3">
         <Link href="/team" className="flex items-center gap-2 font-black text-accent-green min-w-0">
-          <Image src="/maennchen.svg" alt="" width={48} height={40} className="h-10 w-12 object-contain" />
+          <Image src="/Icon_MaurerGrün.svg" alt="" width={48} height={48} className="h-10 w-12 object-contain" />
           <span className="truncate">Mitarbeiterportal</span>
         </Link>
         {!compact && (

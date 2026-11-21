@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { EventRecord, EventStaffRequirementRecord, StaffAssignmentRecord, StaffAvailabilityRecord, StaffRecord, StaffRole } from "@/types/domain";
-import { autoAssign, confirmAssignment, createManualAssignment, declineAssignment, deleteRequirement, getEmailQuota, saveRequirement } from "@/app/actions/staffing";
+import { autoAssign, confirmAssignment, createManualAssignment, declineAssignment, deleteRequirement, getEmailQuota, saveRequirement, updateRequirement } from "@/app/actions/staffing";
 import { formatEuroCents } from "@/lib/pricing";
 import type { StaffingPlan } from "@/lib/staffing";
+import { useDialog } from "@/components/ui/Dialog";
 
 type Data = {
   event: EventRecord;
@@ -26,7 +27,8 @@ function dateLabel(value: Date | string) {
 export default function StaffingAdmin({ data }: { data: Data }) {
   const router = useRouter();
   const [date, setDate] = useState(day(data.event.date));
-  const [form, setForm] = useState({ roleId: data.roles[0]?.id || "", date: day(data.event.date), startTime: "", requiredCount: 1, note: "" });
+  const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
+  const [form, setForm] = useState({ roleId: data.roles[0]?.id || "", date: day(data.event.date), startTime: "", endTime: "", requiredCount: 1, note: "" });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [plan, setPlan] = useState<StaffingPlan | null>(null);
@@ -35,6 +37,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [alwaysSend, setAlwaysSend] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("staffing_always_send_email") === "1" : false));
   const [quota, setQuota] = useState<{ sentThisMonth: number; sentToday: number; monthlyLimit: number; dailyLimit: number; remainingMonth: number; remainingToday: number } | null>(null);
+  const dialog = useDialog();
   useEffect(() => { getEmailQuota().then(setQuota).catch(() => {}); }, []);
   const roleName = (id: string) => data.roles.find(role => role.id === id)?.name || "—";
   const staffName = (id: string) => {
@@ -42,12 +45,39 @@ export default function StaffingAdmin({ data }: { data: Data }) {
     return person ? `${person.firstName} ${person.lastName}` : "—";
   };
 
-  const addRequirement = async (event: React.FormEvent) => {
+  const resetForm = () => setForm({ roleId: data.roles[0]?.id || "", date: day(data.event.date), startTime: "", endTime: "", requiredCount: 1, note: "" });
+
+  const startEditRequirement = (requirement: EventStaffRequirementRecord) => {
+    setEditingRequirementId(requirement.id);
+    setForm({
+      roleId: requirement.roleId,
+      date: day(requirement.date),
+      startTime: requirement.startTime || "",
+      endTime: requirement.endTime || "",
+      requiredCount: requirement.requiredCount,
+      note: requirement.note || "",
+    });
+    setMessage("");
+  };
+
+  const cancelEditRequirement = () => {
+    setEditingRequirementId(null);
+    resetForm();
+  };
+
+  const saveRequirementForm = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true); setMessage("");
     try {
-      await saveRequirement(data.event.id, form);
-      setMessage("Personalbedarf gespeichert.");
+      if (editingRequirementId) {
+        await updateRequirement(editingRequirementId, form);
+        setMessage("Schicht aktualisiert.");
+        setEditingRequirementId(null);
+      } else {
+        await saveRequirement(data.event.id, form);
+        setMessage("Personalbedarf gespeichert.");
+      }
+      resetForm();
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
@@ -55,7 +85,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
   };
 
   const removeRequirement = async (id: string) => {
-    if (!confirm("Personalbedarf wirklich löschen?")) return;
+    if (!await dialog.confirm({ title: "Personalbedarf löschen", message: "Personalbedarf wirklich löschen?", danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true);
     try { await deleteRequirement(id); router.refresh(); }
     finally { setBusy(false); }
@@ -79,7 +109,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
     finally { setBusy(false); }
   };
   const decline = async (id: string) => {
-    if (!window.confirm("Schicht wirklich ablehnen?")) return;
+    if (!await dialog.confirm({ title: "Schicht ablehnen", message: "Schicht wirklich ablehnen?", danger: true, confirmLabel: "Ablehnen" })) return;
     setBusy(true);
     try { await declineAssignment(id); router.refresh(); }
     finally { setBusy(false); }
@@ -186,17 +216,21 @@ export default function StaffingAdmin({ data }: { data: Data }) {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <form onSubmit={addRequirement} className="bg-white border border-border-light rounded-2xl p-5 space-y-3 h-fit">
-          <h2 className="font-display font-bold text-xl">Personalbedarf</h2>
+        <form onSubmit={saveRequirementForm} className="bg-white border border-border-light rounded-2xl p-5 space-y-3 h-fit">
+          <h2 className="font-display font-bold text-xl">{editingRequirementId ? "Schicht bearbeiten" : "Personalbedarf"}</h2>
           <select required value={form.roleId} onChange={event => setForm({ ...form, roleId: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3">
             <option value="">Rolle wählen</option>
             {data.roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
           </select>
           <input type="date" required value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" />
-          <div className="grid grid-cols-1 gap-3"><input type="time" value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" placeholder="Startzeit (optional)" /></div>
-          <div className="flex items-center gap-3"><span className="text-sm font-bold">Personen</span><input type="number" min={1} value={form.requiredCount} onChange={event => setForm({ ...form, requiredCount: Number(event.target.value) })} className="w-24 bg-base-light border border-border-light rounded-lg p-3" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <input type="time" value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" placeholder="Startzeit (optional)" />
+            <input type="time" value={form.endTime} onChange={event => setForm({ ...form, endTime: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" placeholder="Endzeit (optional)" />
+          </div>
+          <div className="flex items-center gap-3"><span className="text-sm font-bold">Personen (Servicekräfte)</span><input type="number" min={1} value={form.requiredCount} onChange={event => setForm({ ...form, requiredCount: Number(event.target.value) })} className="w-24 bg-base-light border border-border-light rounded-lg p-3" /></div>
           <input placeholder="Notiz (optional)" value={form.note} onChange={event => setForm({ ...form, note: event.target.value })} className="w-full bg-base-light border border-border-light rounded-lg p-3" />
-          <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">Bedarf hinzufügen</button>
+          <button type="submit" disabled={busy} className="w-full bg-accent-green text-white py-3 rounded-xl font-bold disabled:opacity-50">{editingRequirementId ? "Schicht aktualisieren" : "Bedarf hinzufügen"}</button>
+          {editingRequirementId && <button type="button" onClick={cancelEditRequirement} className="w-full border border-border-light py-2.5 rounded-xl font-bold text-sm hover:bg-canvas-light">Abbrechen</button>}
         </form>
 
         <section className="lg:col-span-2 bg-white border border-border-light rounded-2xl overflow-hidden">
@@ -206,7 +240,7 @@ export default function StaffingAdmin({ data }: { data: Data }) {
               <thead className="bg-canvas-light text-left"><tr><th className="px-4 py-3">Rolle</th><th className="px-4 py-3">Schicht</th><th className="px-4 py-3">Benötigt</th><th className="px-4 py-3">Zugewiesen</th><th className="px-4 py-3"></th></tr></thead>
               <tbody>{requirementsForDate.map(requirement => {
                 const assigned = data.assignments.filter(assignment => assignment.roleId === requirement.roleId && day(assignment.date) === day(requirement.date) && (requirement.startTime === null || assignment.startTime === requirement.startTime)).length;
-                return <tr key={requirement.id} className="border-t border-border-light"><td className="px-4 py-3 font-bold">{roleName(requirement.roleId)}</td><td className="px-4 py-3">{requirement.startTime ? (requirement.endTime ? `${requirement.startTime}–${requirement.endTime}` : `ab ${requirement.startTime}`) : "ganztägig"}</td><td className="px-4 py-3">{requirement.requiredCount}</td><td className={`px-4 py-3 font-bold ${assigned < requirement.requiredCount ? "text-amber-700" : "text-accent-green"}`}>{assigned}</td><td className="px-4 py-3 text-right"><button type="button" onClick={() => removeRequirement(requirement.id)} className="text-red-600 font-bold">Löschen</button></td></tr>;
+                return <tr key={requirement.id} className="border-t border-border-light"><td className="px-4 py-3 font-bold">{roleName(requirement.roleId)}</td><td className="px-4 py-3">{requirement.startTime ? (requirement.endTime ? `${requirement.startTime}–${requirement.endTime}` : `ab ${requirement.startTime}`) : "ganztägig"}</td><td className="px-4 py-3">{requirement.requiredCount}</td><td className={`px-4 py-3 font-bold ${assigned < requirement.requiredCount ? "text-amber-700" : "text-accent-green"}`}>{assigned}</td><td className="px-4 py-3 text-right"><div className="flex gap-2 justify-end"><button type="button" onClick={() => startEditRequirement(requirement)} className="text-accent-green font-bold">Bearbeiten</button><button type="button" onClick={() => removeRequirement(requirement.id)} className="text-red-600 font-bold">Löschen</button></div></td></tr>;
               })}</tbody>
             </table></div>
           )}

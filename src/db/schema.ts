@@ -1,10 +1,25 @@
-import { PgSchema, text, timestamp, boolean, uuid, integer, json, jsonb, index, check, unique, uniqueIndex, real } from 'drizzle-orm/pg-core';
+import { PgSchema, text, timestamp, boolean, uuid, integer, json, jsonb, index, check, unique, uniqueIndex, real, customType, bigint, bigserial } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Qualify every table and enum, even when a pooled session has an empty search_path.
 // PgSchema's constructor supports explicit public qualification; pgSchema() rejects it.
 const publicSchema = new PgSchema('public');
 const pgTable = publicSchema.table;
+
+export const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+  toDriver(value: Uint8Array): Buffer {
+    return Buffer.from(value);
+  },
+  fromDriver(value: unknown): Uint8Array {
+    if (value instanceof Buffer) return new Uint8Array(value);
+    if (value instanceof Uint8Array) return value;
+    if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    return new Uint8Array(value as ArrayBuffer);
+  },
+});
 export const reservationStatusEnum = publicSchema.enum('reservation_status', ['pending', 'paid', 'confirmed', 'checked_in', 'cancelled', 'expired', 'refunded', 'disputed', 'payment_review', 'payment_pending', 'requested', 'declined']);
 
 export const events = pgTable('events', {
@@ -142,6 +157,7 @@ export const staff = pgTable('staff', {
   phone: text('phone'),
   birthDate: timestamp('birth_date'),
   street: text('street'),
+  houseNumber: text('house_number'),
   zip: text('zip'),
   city: text('city'),
   roleId: uuid('role_id').references(() => staffRoles.id, { onDelete: 'set null' }),
@@ -210,7 +226,7 @@ export const staffDocuments = pgTable('staff_documents', {
 }, (table) => ({
   staffIdx: index('staff_document_staff_idx').on(table.staffId),
   statusCheck: check('staff_documents_status_check', sql`${table.status} in ('pending', 'verified', 'rejected')`),
-  kindCheck: check('staff_documents_kind_check', sql`${table.kind} in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'driver_license', 'other')`),
+  kindCheck: check('staff_documents_kind_check', sql`${table.kind} in ('id_card', 'health_certificate', 'tax_card', 'minijob_form', 'driver_license', 'work_certificate', 'other')`),
 }));
 
 export const contractTemplates = pgTable('contract_templates', {
@@ -565,10 +581,30 @@ export const scannerAccess = pgTable('scanner_access', {
 export const adminUsers = pgTable('admin_users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull(),
+  emailNormalized: text('email_normalized'),
+  displayName: text('display_name'),
+  role: text('role').default('owner').notNull(),
+  status: text('status').default('pending_enrollment').notNull(),
+  webauthnUserId: text('webauthn_user_id'),
+  enrolledAt: timestamp('enrolled_at'),
   createdBy: text('created_by').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  lastLoginAt: timestamp('last_login_at'),
+  failedAttempts: integer('failed_attempts').default(0).notNull(),
+  lockedUntil: timestamp('locked_until'),
+  removedAt: timestamp('removed_at'),
+  passwordHash: text('password_hash'),
+  passwordSetAt: timestamp('password_set_at'),
+  totpSecretEnc: bytea('totp_secret_enc'),
+  totpEnrolledAt: timestamp('totp_enrolled_at'),
+  totpLastUsedStep: bigint('totp_last_used_step', { mode: 'number' }),
+  failedPasswordAttempts: integer('failed_password_attempts').default(0).notNull(),
+  failedTotpAttempts: integer('failed_totp_attempts').default(0).notNull(),
 }, (table) => ({
   emailUnique: uniqueIndex('admin_users_email_unique').on(sql`lower(trim(${table.email}))`),
+  emailNormalizedUnique: uniqueIndex('admin_users_email_normalized_unique').on(table.emailNormalized),
+  webauthnUserUnique: uniqueIndex('admin_users_webauthn_user_unique').on(table.webauthnUserId),
 }));
 
 // TOTP (RFC 6238) MFA for admin accounts. One row per admin email (incl. env admins).
@@ -590,6 +626,7 @@ export const adminTrustedDevices = pgTable('admin_trusted_devices', {
   email: text('email').notNull(),
   tokenHash: text('token_hash').notNull(),
   fingerprint: text('fingerprint'),
+  sessionHash: text('session_hash'),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastUsedAt: timestamp('last_used_at'),
@@ -858,3 +895,116 @@ export const eventSettings = pgTable('event_settings', {
     slipFreeAfterMinutesCheck: check('event_settings_slip_free_after_minutes_check', sql`${table.slipFreeAfterMinutes} >= 0 and ${table.slipFreeAfterMinutes} <= 720`),
   };
 });
+
+// ---------------------------------------------------------------------------
+// Passkey-first admin auth (admin_users extended above).
+// ---------------------------------------------------------------------------
+
+export const adminCredentials = pgTable('admin_credentials', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'cascade' }).notNull(),
+  credentialId: text('credential_id').notNull(),
+  publicKey: bytea('public_key').notNull(),
+  counter: bigint('counter', { mode: 'number' }).default(0).notNull(),
+  transports: text('transports').array(),
+  deviceType: text('device_type'),
+  backedUp: boolean('backed_up'),
+  aaguid: text('aaguid'),
+  friendlyName: text('friendly_name'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at'),
+  revokedAt: timestamp('revoked_at'),
+  needsReview: boolean('needs_review').default(false).notNull(),
+}, (table) => ({
+  credentialIdUnique: unique('admin_credentials_credential_id_unique').on(table.credentialId),
+  adminIdx: index('admin_credentials_admin_idx').on(table.adminId),
+}));
+
+export const adminPasskeySessions = pgTable('admin_passkey_sessions', {
+  tokenHash: text('token_hash').primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
+  idleExpiresAt: timestamp('idle_expires_at').notNull(),
+  absoluteExpiresAt: timestamp('absolute_expires_at').notNull(),
+  stepUpAt: timestamp('step_up_at'),
+  userAgent: text('user_agent'),
+  ipHash: text('ip_hash'),
+  deviceLabel: text('device_label'),
+  revokedAt: timestamp('revoked_at'),
+  revokeReason: text('revoke_reason'),
+}, (table) => ({
+  adminIdx: index('admin_passkey_sessions_admin_idx').on(table.adminId),
+}));
+
+export const adminEnrollmentTokens = pgTable('admin_enrollment_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'cascade' }).notNull(),
+  tokenHash: text('token_hash').notNull(),
+  pinHash: text('pin_hash'),
+  pinAttempts: integer('pin_attempts').default(0).notNull(),
+  purpose: text('purpose').default('initial').notNull(),
+  pendingTotpEnc: text('pending_totp_enc'),
+  pendingTotpAt: timestamp('pending_totp_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  consumedAt: timestamp('consumed_at'),
+  createdBy: uuid('created_by'),
+  createdVia: text('created_via').default('ui').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  tokenHashUnique: unique('admin_enrollment_tokens_token_hash_unique').on(table.tokenHash),
+  adminIdx: index('admin_enrollment_tokens_admin_idx').on(table.adminId),
+}));
+
+// Zweiter Login-Schritt: single-use Token mit 5 Minuten TTL zwischen Passwort und TOTP.
+export const adminMfaPending = pgTable('admin_mfa_pending', {
+  tokenHash: text('token_hash').primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  consumedAt: timestamp('consumed_at'),
+}, (table) => ({
+  adminIdx: index('admin_mfa_pending_admin_idx').on(table.adminId),
+}));
+
+export const adminRecoveryCodes = pgTable('admin_recovery_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'cascade' }).notNull(),
+  batchId: uuid('batch_id').notNull(),
+  codeHash: text('code_hash').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  consumedAt: timestamp('consumed_at'),
+}, (table) => ({
+  adminIdx: index('admin_recovery_codes_admin_idx').on(table.adminId),
+}));
+
+export const adminChallenges = pgTable('admin_challenges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  challenge: text('challenge').notNull(),
+  type: text('type').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  consumedAt: timestamp('consumed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  browserCookie: text('browser_cookie'),
+}, (table) => ({
+  adminIdx: index('admin_challenges_admin_idx').on(table.adminId),
+}));
+
+export const adminAuditLog = pgTable('admin_audit_log', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  occurredAt: timestamp('occurred_at').defaultNow().notNull(),
+  actorAdminId: uuid('actor_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  subjectAdminId: uuid('subject_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  eventType: text('event_type').notNull(),
+  ipHash: text('ip_hash'),
+  userAgent: text('user_agent'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  prevHash: text('prev_hash'),
+  entryHash: text('entry_hash').notNull(),
+}, (table) => ({
+  occurredIdx: index('admin_audit_log_occurred_idx').on(table.occurredAt),
+  actorIdx: index('admin_audit_log_actor_idx').on(table.actorAdminId),
+  subjectIdx: index('admin_audit_log_subject_idx').on(table.subjectAdminId),
+  eventIdx: index('admin_audit_log_event_idx').on(table.eventType),
+}));

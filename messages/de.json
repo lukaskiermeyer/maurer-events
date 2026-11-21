@@ -5,8 +5,10 @@
     "services": "Dienstleistungen",
     "events": "Veranstaltungen",
     "karriere": "Karriere",
+    "identitaet": "Unser Anspruch",
     "contact": "Kontakt",
-    "event_anfragen": "Event Anfragen"
+    "event_anfragen": "Event Anfragen",
+    "change_language": "Sprache wechseln"
   },
   "Hero": {
     "badge": "Est. 2025 · Modernes Festwesen",
@@ -22,6 +24,7 @@
     "title_2_alt": "Festwirt",
     "title": "Servus beim Maurerwirt!",
     "subtitle": "Bayerische Wurzeln. Moderne Feste.",
+    "cta": "Jetzt Event anfragen",
     "p1": "Ich bin Florian Maurer – für viele einfach \"da Maurerwirt\". Mit Wurzeln in der Metzgerei Halbauer habe ich früh gelernt, was Qualität und echte Gastfreundschaft bedeuten. Heute bringe ich diese Tradition in die moderne Eventwelt.",
     "p2": "Ob zünftiges Volksfest, elegantes Firmenjubiläum oder das ganz persönliche Vereinsfest – wir verbinden bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
     "quote": "\"Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.\"",
@@ -32,14 +35,15 @@
   "Services": {
     "title": "Unsere Dienstleistungen",
     "subtitle": "Maßgeschneidert für jeden Anlass",
+    "cta": "Event anfragen",
     "items": {
       "volksfest": {
         "title": "Volksfest",
-        "description": "Große Festzelte, traditionelle Musik und beste bayerische Stimmung."
+        "description": "Volle Festzelte, traditionelle und Party Musik – beste bayerische Stimmung."
       },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
-        "description": "Vom 50-jährigen bis zum 150-jährigen: Wir machen euer Vereinsjubiläum zu einem Fest, das in Erinnerung bleibt."
+        "description": "Programm für die Großen und die Kleinen – vom 50. bis zum 150. Vereinsjubiläum."
       }
     }
   },
@@ -76,6 +80,9 @@
     "location": "Standort",
     "email": "E-Mail",
     "phone": "Telefon",
+    "instagram": "Instagram",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
     "form_title": "Event anfragen",
     "form_success_title": "Vielen Dank für deine Anfrage!",
     "form_success_desc": "Wir melden uns in Kürze bei dir mit einem ersten Konzept.",
@@ -98,8 +105,8 @@
     "heading_prefix": "Sende uns eine",
     "heading_accent": "Anfrage",
     "heading_subtitle": "Lass uns gemeinsam Großes planen.",
-    "info_title": "Wir freuen uns auf dich",
-    "info_text": "Egal ob zünftiges Bierzelt oder elegantes Firmenevent.",
+    "info_title": "Wir freuen uns auf deine Anfrage",
+    "info_text": "„Du suchst noch einen Festwirt für deine Veranstaltung? Oder brauchst Unterstützung bei der Planung deines Events? Schick uns hier ganz unverbindlich deine Anfrage. Lass uns gemeinsam Großes planen und echte, unvergessliche Erlebnisse schaffen.\"",
     "step_of": "Schritt {step} von {total}",
     "steps_anlass": "Anlass",
     "steps_kontakt": "Kontakt",
@@ -123,6 +130,8 @@
     "brand_desc": "Wir planen, du feierst. Seit 2025 bringen wir bayerische Tradition und professionelle Event-Expertise zusammen.",
     "links_title": "Links",
     "contact_title": "Kontakt",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
     "rights": "Maurer Events. Alle Rechte vorbehalten.",
     "impressum": "Impressum",
     "agb": "AGB",
@@ -204,6 +213,66 @@
     "cta_positions": "Alle Stellen ansehen",
     "cta_apply": "Initiativ bewerben",
     "empty_hint": "Aktuell sind keine Stellen ausgeschrieben – Initiativbewerbungen sind jederzeit willkommen.",
-    "caption": "Deine Uniform, wenn du dabei bist"
+    "caption": "Deine Uniform, wenn du dabei bist",
+    "quote": "„Ob für die Zubereitung unserer Schmankerl, im Ausschank oder hinter den Kulissen: Für reibungslose Abläufe braucht es ein Team, das Zusammenhalt schätzt und sich gegenseitig unterstützt\"",
+    "cta_row": "Jetzt bewerben",
+    "team_photo_alt": "Unser Team beim Fest",
+    "team_photo_placeholder": "Gruppenfoto folgt"
+  },
+  "Partners": {
+    "title_1": "Unsere",
+    "title_2": "Partner",
+    "subtitle": "Stark durch starke Partnerschaften in der Region.",
+    "placeholder": "Partnerlogo folgt"
+  },
+  "Testimonials": {
+    "title_1": "Das sagen",
+    "title_2": "Partner & Kunden",
+    "subtitle": "Stimmen aus Festzelt, Verein und Zusammenarbeit.",
+    "items": [
+      {
+        "quote": "„Vom ersten Gespräch bis zur letzten Maß: alles aus einer Hand und absolut verlässlich.",
+        "role": "Vereinsvorstand, Landkreis Eichstätt"
+      },
+      {
+        "quote": "„Unser Firmenfest hatte endlich wieder echte Festzelt-Atmosphäre – unsere Gäste reden heute noch davon.",
+        "role": "Geschäftsführung, Firmenkunde"
+      },
+      {
+        "quote": "„Musik, Stimmung, Organisation: Da passt einfach alles. Nächstes Jahr wieder!",
+        "role": "Volksfest-Stammgast"
+      }
+    ]
+  },
+  "Sticky": {
+    "label": "Event anfragen",
+    "aria": "Zum Anfragebereich springen"
+  },
+  "Identity": {
+    "eyebrow": "Bio · Regional · Mit Herz",
+    "title_1": "Unsere Identität.",
+    "title_2": "Unser Anspruch.",
+    "intro": "Wir kommen nicht aus der Eventbranche, wir kommen aus der Wirtsstube und dem Festzelt. Genau das spürt man in jedem Detail: in unserer Küche, unserem Service und unserer Musik.",
+    "values": [
+      {
+        "title": "Bio & Qualität",
+        "text": "Was auf den Tisch kommt, hat Herkunft: bevorzugt Bio-Ware und Erzeuger, denen wir persönlich die Hand geben."
+      },
+      {
+        "title": "Regionalität",
+        "text": "Kurze Wege, echte Wertschöpfung: Metzgerei, Brauerei und Gemüse aus Oberbayern statt anonymer Großmärkte."
+      },
+      {
+        "title": "Handwerk & Tradition",
+        "text": "Festzelt-Kultur mit Wurzeln: vom Steckerlfisch bis zur Blasmusik – echt statt Kulisse."
+      },
+      {
+        "title": "Zusammenhalt",
+        "text": "Vereine, Familien, Firmen: Wir feiern mit euch, nicht nur für euch – verlässlich von der ersten Idee bis zur letzten Maß."
+      }
+    ],
+    "partners_title": "Unsere Erzeuger & Partner",
+    "partners_text": "Logos und Namen unserer regionalen Partner folgen in Kürze – Partnerschaftsanfragen willkommen.",
+    "cta": "Event anfragen"
   }
 }

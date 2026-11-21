@@ -8,6 +8,7 @@ export const DOCUMENT_KIND_LABELS: Record<string, string> = {
   tax_card: "Steuerkarte",
   minijob_form: "Minijob-Formular",
   driver_license: "Führerschein",
+  work_certificate: "Arbeitszeugnis",
   other: "Sonstiges",
 };
 
@@ -30,6 +31,7 @@ const LABEL_TO_KIND: Record<string, string> = {
   "minijob formular": "minijob_form",
   "fuhrerschein": "driver_license",
   "fuehrerschein": "driver_license",
+  "arbeitszeugnis": "work_certificate",
 };
 
 export function kindForRequiredDoc(label: string): string {
@@ -37,7 +39,7 @@ export function kindForRequiredDoc(label: string): string {
   return kind && DOCUMENT_KINDS.has(kind) ? kind : "other";
 }
 
-export type DocumentState = "done" | "missing" | "rejected";
+export type DocumentState = "done" | "missing" | "rejected" | "skipped";
 
 export type RequiredDocStatus = {
   label: string;
@@ -70,6 +72,7 @@ const KIND_DEFAULT_INFO: Record<string, DocInfo> = {
   tax_card: docInfo("Steuerkarte / Steuer-ID", "Hast du automatisch vom Finanzamt erhalten. Ersatz gibt es dort oder online über ELSTER."),
   minijob_form: docInfo("Minijob-Formular", "Wird von uns automatisch aus deinen gerade angegebenen Daten erstellt und gespeichert. Keine extra Datei nötig – einfach deine Daten oben speichern."),
   driver_license: docInfo("Führerschein", "Beim Amt für Fahrerlaubniswesen ausgestellt. Falls vorhanden, reicht eine Kopie/Scan."),
+  work_certificate: docInfo("Arbeitszeugnis", "Bei deinem letzten Arbeitgeber anfordern (einfaches Arbeitszeugnis reicht). Schriftlich per Brief oder E-Mail."),
   other: docInfo("Dokument", "Lade ein Foto oder PDF hoch. Im Zweifel frag den Festwirt, was genau er braucht."),
 };
 
@@ -80,12 +83,18 @@ export function docInfoFor(label: string, kind: string): DocInfo {
 export function resolveRequiredDocs(
   requiredDocuments: string[],
   uploaded: Array<{ kind: string; status: string }>,
+  options?: { minijobTemplateActive?: boolean },
 ): RequiredDocStatus[] {
   return requiredDocuments
     .map(label => label.trim())
     .filter(Boolean)
     .map(label => {
       const kind = kindForRequiredDoc(label);
+      // Minijob-Formular wird automatisch erzeugt – ohne aktive Vorlage kann
+      // es niemand liefern, dann zählt der Punkt nicht als fehlend.
+      if (kind === "minijob_form" && options?.minijobTemplateActive === false) {
+        return { label, kind, state: "skipped" as const };
+      }
       const matches = uploaded.filter(doc => doc.kind === kind);
       const valid = matches.some(doc => doc.status !== "rejected");
       const rejected = matches.length > 0 && !valid;
@@ -95,4 +104,14 @@ export function resolveRequiredDocs(
         state: valid ? ("done" as const) : rejected ? ("rejected" as const) : ("missing" as const),
       };
     });
+}
+
+export function missingRequiredDocLabels(
+  requiredDocuments: string[],
+  uploaded: Array<{ kind: string; status: string }>,
+  options?: { minijobTemplateActive?: boolean },
+): string[] {
+  return resolveRequiredDocs(requiredDocuments, uploaded, options)
+    .filter(doc => doc.state === "missing" || doc.state === "rejected")
+    .map(doc => doc.label);
 }

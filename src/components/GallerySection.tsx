@@ -39,7 +39,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
               viewport={{ once: true }}
               className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-dark"
             >
-              {t("title_1_alt") || "Rückblick in"} <span className="text-accent-green">{t("title_2_alt") || "Bildern"}</span>
+              {t("title_1_alt") || "Rückblick in"} <span className="text-accent-green italic">{t("title_2_alt") || "Bildern"}</span>
             </Heading>
             <motion.p
               initial={{ opacity: 0, x: -20 }}

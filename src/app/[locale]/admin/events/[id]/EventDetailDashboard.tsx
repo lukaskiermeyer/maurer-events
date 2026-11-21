@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 import DropZone from "@/components/ui/DropZone";
 import { Link } from "@/i18n/routing";
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
@@ -60,6 +61,7 @@ interface EventDetailProps {
 
 export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], stripeEnabled = false }: EventDetailProps) {
   const toast = useToast();
+  const dialog = useDialog();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
@@ -154,7 +156,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   };
 
   const removePreset = async () => {
-    if (!selectedPreset || !confirm(`Vorlage "${selectedPreset}" löschen?`)) return;
+    if (!selectedPreset || !await dialog.confirm({ title: "Vorlage löschen", message: `Vorlage "${selectedPreset}" löschen?`, danger: true, confirmLabel: "Löschen" })) return;
     setIsPresetBusy(true);
     try {
       await deletePackagePreset(selectedPreset);
@@ -316,7 +318,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleBulkStatusChange = async (status: string) => {
     if (selectedBulkIds.length === 0) return;
-    if (!confirm(`Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`)) return;
+    if (!await dialog.confirm({ title: "Status Massenänderung", message: `Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`, confirmLabel: "Übernehmen" })) return;
     setIsUpdating(true);
     const results = await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status)));
     const errors = results.filter(r => r && !r.success && r.error).map(r => r.error);
@@ -338,7 +340,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(confirm("ACHTUNG: Dies löscht ALLE bestehenden Tische und generiert ein komplett neues Raster. Fortfahren?")) {
+    if (await dialog.confirm({ title: "Zeltplan neu generieren", message: "ACHTUNG: Dies löscht ALLE bestehenden Tische und generiert ein komplett neues Raster. Fortfahren?", danger: true, confirmLabel: "Generieren" })) {
       setIsUpdating(true);
       await generateTentLayout(genW, genL, genCap);
       router.refresh();
@@ -426,7 +428,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const changeTableVip = async (table: { id: string; isVip: boolean }) => {
     const makeVip = !table.isVip;
-    const price = makeVip ? prompt('VIP Aufpreis für den gesamten Tisch (in €)?', '100') : '0';
+    const price = makeVip ? await dialog.prompt({ title: "VIP-Aufpreis", message: "VIP Aufpreis für den gesamten Tisch (in €)?", inputLabel: "Aufpreis in €", initialValue: "100", confirmLabel: "Speichern" }) : '0';
     if (price === null) return;
     const cents = Math.round(Number(price.replace(',', '.')) * 100);
     if (!Number.isFinite(cents) || cents < 0) { toast.showToast('Bitte einen gültigen Aufpreis eingeben.', "warning"); return; }
@@ -480,16 +482,17 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 void changeTableVip(tableHere);
               }
             }}
-            onClick={() => {
+            onClick={async () => {
               if (mode === "edit") {
                 if (tableHere) {
-                  if (confirm(`Tisch "${tableHere.name}" wirklich löschen?`)) {
+                  if (await dialog.confirm({ title: "Tisch löschen", message: `Tisch "${tableHere.name}" wirklich löschen?`, danger: true, confirmLabel: "Löschen" })) {
                     setIsUpdating(true);
                     deleteTable(tableHere.id).finally(() => setIsUpdating(false));
                   }
                 } else {
-                  const name = prompt("Name für den neuen Tisch (z.B. Tisch 5):");
-                  const cap = prompt("Kapazität (Personen):", "8");
+                  const name = await dialog.prompt({ title: "Neuer Tisch", message: "Name für den neuen Tisch (z.B. Tisch 5):", inputLabel: "Name", confirmLabel: "Anlegen" });
+                  if (!name) return;
+                  const cap = await dialog.prompt({ title: "Neuer Tisch", message: "Kapazität (Personen):", inputLabel: "Kapazität", initialValue: "8", confirmLabel: "Anlegen" });
                   if (name && cap) {
                     setIsUpdating(true);
                     createTable({ name, capacity: Number(cap), positionX: x, positionY: y }).finally(() => setIsUpdating(false));
@@ -588,7 +591,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleSendInviteEmails = async () => {
     if (inviteSelected.length === 0) return;
-    if (!confirm(`${inviteSelected.length} Kunden per E-Mail einladen?`)) return;
+    if (!await dialog.confirm({ title: "Einladungen senden", message: `${inviteSelected.length} Kunden per E-Mail einladen?`, confirmLabel: "Einladen" })) return;
     setInviteSending(true);
     setInviteError("");
     try {
@@ -1495,7 +1498,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     {event.imageUrl !== img.imageUrl && (
                       <button
                         onClick={async () => {
-                          if(confirm("Dieses Bild als Cover für das Event festlegen?")) {
+                          if (await dialog.confirm({ title: "Cover festlegen", message: "Dieses Bild als Cover für das Event festlegen?", confirmLabel: "Als Cover" })) {
                             setIsUpdating(true);
                             await updateEvent(event.id, { imageUrl: img.imageUrl });
                             setIsUpdating(false);
@@ -1512,7 +1515,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     {/* Delete Button */}
                     <button
                       onClick={async () => {
-                        if (confirm("Bild wirklich löschen?")) {
+                        if (await dialog.confirm({ title: "Bild löschen", message: "Bild wirklich löschen?", danger: true, confirmLabel: "Löschen" })) {
                           setIsUpdating(true);
                           await removeGalleryImage(img.id);
                           setIsUpdating(false);
@@ -1569,7 +1572,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             ) : (
                               <button
                                 onClick={async () => {
-                                  if (confirm(`Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`)) {
+                                  if (await dialog.confirm({ title: "Wartelisten-Eintrag benachrichtigen", message: `Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`, confirmLabel: "Benachrichtigen" })) {
                                     setIsUpdating(true);
                                     try {
                                       const result = await notifyWaitlistEntry(entry.id);
@@ -1586,7 +1589,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             )}
                             <button
                               onClick={async () => {
-                                if (confirm("Eintrag aus der Warteliste löschen?")) {
+                                if (await dialog.confirm({ title: "Warteliste löschen", message: "Eintrag aus der Warteliste löschen?", danger: true, confirmLabel: "Löschen" })) {
                                   setIsUpdating(true);
                                   try { await removeWaitlistEntry(entry.id, event.id); }
                                   catch { toast.showToast('Löschen fehlgeschlagen. Bitte erneut versuchen.', "error"); }

@@ -43,7 +43,7 @@ export default function HeroBackground() {
 
     useEffect(() => {
         let alive = true;
-        fetch("/Hintergrund.svg")
+        fetch("/Holzoptik_MaurerEvents.svg")
             .then((r) => (r.ok ? r.text() : null))
             .then((txt) => {
                 if (!alive || !txt) return;
