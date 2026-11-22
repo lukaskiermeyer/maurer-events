@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { events, galleries, reservations, adminAuth, adminSessions, securityRateLimits } from "@/db/schema";
+import { events, galleries, galleryAlbums, reservations, adminAuth, adminSessions, securityRateLimits } from "@/db/schema";
 import { lt, eq, isNotNull, and, or, isNull } from "drizzle-orm";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { NextResponse } from "next/server";
@@ -88,27 +88,49 @@ export async function GET(request: Request) {
       }
 
       if (safeEventIds.length > 0) {
-        const galleryImages = await db.select().from(galleries).where(inArray(galleries.eventId, safeEventIds));
-        for (const img of galleryImages) {
-          if (img.imageUrl) {
-            try {
-              await deleteCloudinaryImage(img.imageUrl);
-              blobsDeleted++;
-            } catch (e) {
-              console.error("Failed to delete blob for gallery image (URL redacted).", e instanceof Error ? e.name : "Unknown");
-            }
-          }
-        }
-
-        // Lösche alle Events ohne Reservierungen in einer Query
+        // Galerie-Alben sind eigenständig und überleben das Event (event_id -> null).
+        // Beim Event-Löschen werden deshalb keine Galeriebilder mehr entfernt.
         await db.delete(events).where(inArray(events.id, safeEventIds));
         deletedCount = safeEventIds.length;
       }
     }
 
+    // 3. Soft-deleted Galerie-Alben (älter als 7 Tage): Bilder- + Cover-Blobs löschen,
+    //    dann das Album entfernen (galleries-Zeilen folgen per ON DELETE CASCADE).
+    let deletedAlbums = 0;
+    const albumsToDelete = await db.select().from(galleryAlbums)
+      .where(and(isNotNull(galleryAlbums.deletedAt), lt(galleryAlbums.deletedAt, sevenDaysAgo)));
+    if (albumsToDelete.length > 0) {
+      const { inArray } = await import("drizzle-orm");
+      const albumIds = albumsToDelete.map(a => a.id);
+      const albumImages = await db.select().from(galleries).where(inArray(galleries.albumId, albumIds));
+      for (const img of albumImages) {
+        if (img.imageUrl) {
+          try {
+            await deleteCloudinaryImage(img.imageUrl);
+            blobsDeleted++;
+          } catch (e) {
+            console.error("Failed to delete blob for gallery image (URL redacted).", e instanceof Error ? e.name : "Unknown");
+          }
+        }
+      }
+      for (const album of albumsToDelete) {
+        if (album.coverImageUrl) {
+          try {
+            await deleteCloudinaryImage(album.coverImageUrl);
+            blobsDeleted++;
+          } catch (e) {
+            console.error("Failed to delete blob for album cover (URL redacted).", e instanceof Error ? e.name : "Unknown");
+          }
+        }
+      }
+      await db.delete(galleryAlbums).where(inArray(galleryAlbums.id, albumIds));
+      deletedAlbums = albumIds.length;
+    }
+
     return NextResponse.json({ 
       success: true, 
-      message: `Cleaned up ${deletedCount} events and ${blobsDeleted} blobs. Updated ${updatedReservationsCount} expired reservations.`,
+      message: `Cleaned up ${deletedCount} events, ${deletedAlbums} gallery albums and ${blobsDeleted} blobs. Updated ${updatedReservationsCount} expired reservations.`,
       updatedReservationsCount,
       purgedCloudinary,
       retention,

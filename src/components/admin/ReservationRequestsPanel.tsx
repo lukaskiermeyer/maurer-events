@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ReservationRow, TableRecord } from "@/types/domain";
 import { confirmReservationRequest, declineReservationRequest } from "@/app/actions/reservationRequests";
 import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -13,6 +14,7 @@ function formatDate(value: Date | string) {
 function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord[] }) {
   const request = row.reservation;
   const toast = useToast();
+  const dialog = useDialog();
   const router = useRouter();
   const [tableId, setTableId] = useState("");
   const [price, setPrice] = useState("");
@@ -43,7 +45,7 @@ function RequestCard({ row, tables }: { row: ReservationRow; tables: TableRecord
   };
 
   const decline = async () => {
-    const reason = prompt("Grund für die Ablehnung (optional, wird an den Gast gesendet):");
+    const reason = await dialog.prompt({ title: "Anfrage ablehnen", message: "Grund für die Ablehnung (optional, wird an den Gast gesendet):", inputLabel: "Grund", confirmLabel: "Ablehnen" });
     if (reason === null) return;
     setBusy(true);
     try {

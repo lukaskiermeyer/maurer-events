@@ -1,8 +1,9 @@
-import type { events, tables, galleries, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments } from '@/db/schema';
+import type { events, tables, galleries, galleryAlbums, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments } from '@/db/schema';
 import type { getAdminStats } from '@/app/actions/events';
 import type { getReservationsByEvent } from '@/app/actions/reservations';
 import type { getPublicEventSettings } from '@/app/actions/eventSettings';
-import type { getAllGalleryImages, getGalleryAlbums } from '@/app/actions/gallery';
+import type { getAllGalleryImages, getGalleryAlbums, getAdminGalleryAlbums } from '@/app/actions/gallery';
+import type { getAdminTeamMembers } from '@/app/actions/team';
 
 export type EventRecord = typeof events.$inferSelect;
 export type TableRecord = typeof tables.$inferSelect;
@@ -20,6 +21,7 @@ export type StaffAvailabilityRecord = typeof staffAvailability.$inferSelect;
 export type EventStaffRequirementRecord = typeof eventStaffRequirements.$inferSelect;
 export type StaffAssignmentRecord = typeof staffAssignments.$inferSelect;
 export type GalleryImage = typeof galleries.$inferSelect;
+export type GalleryAlbumRecord = typeof galleryAlbums.$inferSelect;
 export type WaitlistEntry = typeof waitlists.$inferSelect;
 export type EventSettings = typeof eventSettings.$inferSelect;
 export type FoodPackage = EventSettings['packages'][number];
@@ -28,31 +30,42 @@ export interface CareerPosition {
   id: string;
   title: string;
   titleEn?: string;
+  titleBar?: string;
   badge: string;
   badgeEn?: string;
+  badgeBar?: string;
   employment: string;
   employmentEn?: string;
+  employmentBar?: string;
   description: string;
   descriptionEn?: string;
+  descriptionBar?: string;
   benefits: string[];
   benefitsEn?: string[];
+  benefitsBar?: string[];
 }
 export interface CareerContent {
   headline: string;
   headlineEn?: string;
+  headlineBar?: string;
   intro: string;
   introEn?: string;
+  introBar?: string;
   positions: CareerPosition[];
   closingTitle: string;
   closingTitleEn?: string;
+  closingTitleBar?: string;
   closingText: string;
   closingTextEn?: string;
+  closingTextBar?: string;
 }
 export type AdminStats = Awaited<ReturnType<typeof getAdminStats>>;
 export type ReservationRow = Awaited<ReturnType<typeof getReservationsByEvent>>[number];
 export type PublicEventSettings = NonNullable<Awaited<ReturnType<typeof getPublicEventSettings>>>;
 export type GalleryAlbum = Awaited<ReturnType<typeof getGalleryAlbums>>[number];
-export type GalleryWithEvent = Awaited<ReturnType<typeof getAllGalleryImages>>[number];
+export type AdminGalleryAlbum = Awaited<ReturnType<typeof getAdminGalleryAlbums>>[number];
+export type GalleryWithAlbum = Awaited<ReturnType<typeof getAllGalleryImages>>[number];
+export type TeamMember = Awaited<ReturnType<typeof getAdminTeamMembers>>[number];
 export type ReservationEvent = Omit<EventRecord, 'date' | 'publishTablesAt'> & {
   date: Date | string;
   publishTablesAt: Date | string | null;

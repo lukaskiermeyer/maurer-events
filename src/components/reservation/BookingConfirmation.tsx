@@ -127,7 +127,7 @@ export default function BookingConfirmation({ state }: { state: BookingConfirmat
             </button>
           )}
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-5">
-            <Link href="/" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-accent-green px-7 py-4 text-sm font-bold text-white transition-colors hover:bg-base-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-green sm:w-auto">
+            <Link href="/" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-accent-green px-7 py-4 text-sm font-bold text-white transition-colors hover:bg-accent-green/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-green sm:w-auto">
               {t('home')}<ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
             <Link href="/termine" className="inline-flex min-h-12 items-center justify-center px-5 py-3 text-sm font-bold text-accent-green underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-green">{t('events')}</Link>

@@ -1,0 +1,5 @@
+#!/bin/sh
+# i18n-Abnahme vor jedem Push: blockiert bei unuebersetzten/fehlenden Strings.
+# Schnell und ohne DB/Provider-Keys. Manuell: npm run test:i18n
+# Installieren: copy scripts\git-hooks\pre-push .git\hooks\pre-push
+npm run test:i18n

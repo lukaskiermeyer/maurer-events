@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/i18n/routing";
 import { parseCoordsFromText } from "@/lib/geo";
+import { ui } from "@/lib/localize";
 
 const MAPS_CONSENT_KEY = "me-maps-consent";
 
@@ -37,6 +38,7 @@ export default function EventMapEmbed({
   zip,
   title,
   locale,
+  height = 200,
 }: {
   mapUrl?: string | null;
   embedMapUrl?: string | null;
@@ -44,6 +46,7 @@ export default function EventMapEmbed({
   zip?: string | null;
   title: string;
   locale: string;
+  height?: number;
 }) {
   const [consented, setConsented] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -84,28 +87,26 @@ export default function EventMapEmbed({
   const embedQuery = (embedMapUrl ? extractMapsQuery(embedMapUrl) : null) || (mapUrl ? extractMapsQuery(mapUrl) : null) || fallbackQuery;
   const embedSrc = `https://www.google.com/maps?q=${encodeURIComponent(embedQuery)}&output=embed&hl=${locale === "en" ? "en" : "de"}`;
 
-  const text = locale === "en"
-    ? {
-        consent: "Loading the map transfers data (including your IP address) to Google.",
-        button: "Load map",
-        revoke: "Revoke map consent",
-      }
-    : {
-        consent: "Beim Laden der Karte werden Daten (u. a. Ihre IP-Adresse) an Google übertragen.",
-        button: "Karte laden",
-        revoke: "Zustimmung widerrufen",
-      };
+  const text = {
+    consent: ui(locale, {
+      de: "Beim Laden der Karte werden Daten (u. a. Ihre IP-Adresse) an Google übertragen.",
+      en: "Loading the map transfers data (including your IP address) to Google.",
+      bar: "Beim Ladn der Karte werdn Daten (u. a. Eure IP-Adress) an Google übertrogn.",
+    }),
+    button: ui(locale, { de: "Karte laden", en: "Load map", bar: "Karte ladn" }),
+    revoke: ui(locale, { de: "Zustimmung widerrufen", en: "Revoke map consent", bar: "Zustimmung widerrufn" }),
+  };
 
   return (
     <div>
-      <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">Karte</span>
+      <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-2">{ui(locale, { de: "Karte", en: "Map", bar: "Karte" })}</span>
       <div className="rounded-2xl overflow-hidden border border-border-light">
         {consented ? (
           <iframe
             key={embedSrc}
             src={embedSrc}
             width="100%"
-            height="200"
+            height={height}
             style={{ border: 0 }}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
@@ -113,7 +114,7 @@ export default function EventMapEmbed({
             allowFullScreen
           />
         ) : (
-          <div className="h-[200px] bg-canvas-light flex flex-col items-center justify-center text-center px-6 gap-3">
+          <div className="bg-canvas-light flex flex-col items-center justify-center text-center px-6 gap-3" style={{ height }}>
             <svg className="w-8 h-8 text-accent-wood" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -121,14 +122,14 @@ export default function EventMapEmbed({
             <p className="text-xs text-base-dark/70 leading-relaxed">
               {text.consent}{" "}
               <Link href="/datenschutz" target="_blank" className="text-accent-green underline underline-offset-2 font-bold">
-                {locale === "en" ? "Privacy policy" : "Datenschutzerklärung"}
+                {ui(locale, { de: "Datenschutzerklärung", en: "Privacy policy", bar: "Datenschutzerklärung" })}
               </Link>
             </p>
             <button
               type="button"
               onClick={accept}
               disabled={!mounted}
-              className="bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-base-dark transition-colors disabled:opacity-50"
+              className="bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-accent-green/80 transition-colors disabled:opacity-50"
             >
               {text.button}
             </button>
@@ -141,7 +142,7 @@ export default function EventMapEmbed({
         rel="noopener noreferrer"
         className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-accent-green hover:underline"
       >
-        In Google Maps öffnen
+        {ui(locale, { de: "In Google Maps öffnen", en: "Open in Google Maps", bar: "In Google Maps aufmachn" })}
       </a>
       {mounted && consented && (
         <button

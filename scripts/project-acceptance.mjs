@@ -55,14 +55,15 @@ try {
   await run('migrations-fresh', ['scripts/db-migrate.mjs']);
   await run('migrations-repeat', ['scripts/db-migrate.mjs']);
   const [{ count }] = await client`SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations`;
-  if (count !== 33) throw new Error('Unexpected migration ledger.');
+  const journal = JSON.parse(await fs.readFile('src/db/migrations/meta/_journal.json', 'utf8'));
+  if (count !== journal.entries.length) throw new Error(`Unexpected migration ledger: ${count} applied, ${journal.entries.length} in journal.`);
   const eventId = randomUUID(), albumId = randomUUID(), adminToken = randomUUID();
   const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   await client`INSERT INTO public.events (id,title,date,location,description,reservable,allow_table_selection,max_capacity,reservable_dates)
     VALUES (${eventId},'Abnahme Sommerfest',${day},'Testzelt','Veranstaltung für die lokale Projektabnahme.',true,true,100,${JSON.stringify([day])})`;
-  await client`INSERT INTO public.events (id,title,date,location,description,type,image_url)
-    VALUES (${albumId},'Abnahme Galerie','2025-08-01','Testzelt','Galerie für die lokale Projektabnahme.','gallery','/maennchen.svg')`;
-  await client`INSERT INTO public.galleries (event_id,image_url) VALUES (${albumId},'/maennchen.svg'),(${albumId},'/Logo.png')`;
+  await client`INSERT INTO public.gallery_albums (id,event_id,title,date,location,description,cover_image_url)
+    VALUES (${albumId},${eventId},'Abnahme Galerie','2025-08-01','Testzelt','Galerie für die lokale Projektabnahme.','/maennchen.svg')`;
+  await client`INSERT INTO public.galleries (album_id,image_url) VALUES (${albumId},'/maennchen.svg'),(${albumId},'/Logo.png')`;
   await client`INSERT INTO public.tables (name,capacity,position_x,position_y) VALUES ('Tisch 1',8,0,0),('Tisch 2',10,1,0)`;
   await client`INSERT INTO public.waitlists (event_id,name,email,guest_count) VALUES
     (${eventId},'Alexandra Beispiel','alexandra.beispiel.mit.langer.adresse@example.com',8)`;

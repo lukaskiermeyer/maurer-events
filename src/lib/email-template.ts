@@ -11,7 +11,7 @@ const BRAND = {
   muted: "#6b6b6b",
 };
 
-const LOGO_URL = "https://www.maurer-events.com/Logo.png";
+const LOGO_URL = "https://www.maurer-events.com/LogoFinalGrün_MaurerEvents.svg";
 const SITE_URL = "https://www.maurer-events.com";
 
 export type EmailBlock =

@@ -23,7 +23,7 @@ export default function HeroBackgroundRuntime() {
     /* SVG laden */
     useEffect(() => {
         let alive = true;
-        fetch("/Hintergrund.svg")
+        fetch("/Holzoptik_MaurerEvents.svg")
             .then((r) => (r.ok ? r.text() : null))
             .then((txt) => alive && txt && setRaw(txt))
             .catch(() => {});

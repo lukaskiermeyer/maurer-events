@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { PDFImage, PDFPage } from "pdf-lib";
 import { db } from "@/db";
 import { documentFormTemplates, staff as staffTable, staffDocuments, staffRoles } from "@/db/schema";
+import { COMPANY } from "./legal/terms";
 import { escapeHtml } from "./escape";
 import { decryptField } from "./secure-fields";
 
@@ -21,7 +25,7 @@ function dateDe(value: Date | null | undefined) {
 }
 
 export function formValues(member: StaffRow, role: RoleRow | null): FormFieldBundle {
-  const adresse = [member.street, [member.zip, member.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const adresse = [[member.street, member.houseNumber].filter(Boolean).join(" "), [member.zip, member.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   return {
     vorname: member.firstName,
     nachname: member.lastName,
@@ -100,17 +104,41 @@ export async function generateFormPdf(renderedHtml: string, title: string, membe
   const pageHeight = 842;
   const margin = 56;
   const maxWidth = pageWidth - margin * 2;
-  let page = pdfDoc.addPage([pageWidth, pageHeight]);
-  let y = pageHeight - margin;
+  const green = rgb(32 / 255, 96 / 255, 60 / 255);
+  const wood = rgb(203 / 255, 121 / 255, 19 / 255);
+  const ink = rgb(0.08, 0.1, 0.08);
+  const muted = rgb(0.45, 0.45, 0.45);
 
-  const drawHeader = () => {
-    page.drawRectangle({ x: 0, y: pageHeight - 8, width: pageWidth, height: 8, color: rgb(31 / 255, 87 / 255, 50 / 255) });
-    page.drawText("MAURER EVENTS", { x: margin, y: y - 18, size: 20, font: bold as never, color: rgb(31 / 255, 87 / 255, 50 / 255) });
-    page.drawText(title, { x: margin, y: y - 40, size: 10, font: regular, color: rgb(0.38, 0.42, 0.38) });
-    y -= 58;
+  let logo: PDFImage | null = null;
+  try {
+    logo = await pdfDoc.embedPng(fs.readFileSync(path.join(process.cwd(), "public", "LogoFinalGrün_MaurerEvents.png")));
+  } catch {
+    logo = null;
+  }
+  const logoH = 34;
+  const logoW = logo ? (logo.width / logo.height) * logoH : 0;
+
+  // Briefkopf wie auf der Website: Logo, grüne Linie mit Holz-Akzent.
+  const drawLetterhead = (target: PDFPage) => {
+    const top = pageHeight - margin;
+    if (logo) {
+      target.drawImage(logo, { x: margin, y: top - logoH, width: logoW, height: logoH });
+    } else {
+      target.drawText("MAURER EVENTS", { x: margin, y: top - 24, size: 20, font: bold as never, color: green });
+    }
+    target.drawRectangle({ x: margin, y: top - logoH - 8, width: maxWidth * 0.78, height: 2, color: green });
+    target.drawRectangle({ x: margin + maxWidth * 0.78, y: top - logoH - 8, width: maxWidth * 0.22, height: 2, color: wood });
+    return top - logoH - 8 - 22;
   };
-  drawHeader();
-  page.drawText(`Ausgefüllt für: ${memberName}`, { x: margin, y: y - 6, size: 10, font: regular, color: rgb(0.45, 0.45, 0.45) });
+  const addPage = () => {
+    const next = pdfDoc.addPage([pageWidth, pageHeight]);
+    return { page: next, y: drawLetterhead(next) };
+  };
+
+  let { page, y } = addPage();
+  page.drawText(title, { x: margin, y, size: 12, font: bold as never, color: ink });
+  y -= 16;
+  page.drawText(`Ausgefüllt für: ${memberName}`, { x: margin, y, size: 10, font: regular, color: muted });
   y -= 26;
 
   for (const line of htmlToLines(renderedHtml)) {
@@ -119,15 +147,21 @@ export async function generateFormPdf(renderedHtml: string, title: string, membe
     for (const [index, text] of wrapped.entries()) {
       if (index === 0) y -= line.spaceBefore;
       if (y < margin + 40) {
-        page = pdfDoc.addPage([pageWidth, pageHeight]);
-        y = pageHeight - margin;
+        ({ page, y } = addPage());
       }
-      page.drawText(text, { x: margin, y, size: line.size, font, color: rgb(0.08, 0.1, 0.08) });
+      page.drawText(text, { x: margin, y, size: line.size, font, color: ink });
       y -= line.size * 1.4;
     }
   }
-  page.drawText(`Erstellt am ${new Date().toLocaleDateString("de-DE")}`, {
-    x: margin, y: margin - 24 < 20 ? 24 : margin - 24, size: 8, font: regular, color: rgb(0.6, 0.6, 0.6),
+
+  const pages = pdfDoc.getPages();
+  const footerLine = `${COMPANY.brand} · Inhaber ${COMPANY.owner} · ${COMPANY.street}, ${COMPANY.city} · ${COMPANY.email} · maurer-events.com`;
+  pages.forEach((target, index) => {
+    target.drawRectangle({ x: margin, y: margin - 14, width: maxWidth, height: 0.75, color: rgb(0.85, 0.83, 0.78) });
+    target.drawText(footerLine, { x: margin, y: margin - 26, size: 7.5, font: regular, color: muted });
+    target.drawText(`Seite ${index + 1} von ${pages.length} · Erstellt am ${new Date().toLocaleDateString("de-DE")}`, {
+      x: margin, y: margin - 36, size: 7.5, font: regular, color: muted,
+    });
   });
   return Buffer.from(await pdfDoc.save());
 }

@@ -1,7 +1,7 @@
 import { getReservationsByEvent } from "@/app/actions/reservations";
 import { getTables } from "@/app/actions/tables";
 import { getTentSettings, getPackagePresets, getTaxStatus } from "@/app/actions/settings";
-import { getGalleryImages } from "@/app/actions/gallery";
+import { getEventGalleryImages } from "@/app/actions/gallery";
 import { getWaitlist } from "@/app/actions/waitlist";
 import { getEventSettings } from "@/app/actions/eventSettings";
 import { getAdminEventDocuments } from "@/app/actions/eventDocuments";
@@ -29,7 +29,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     getReservationsByEvent(resolvedParams.id),
     getTables(),
     getTentSettings(),
-    getGalleryImages(resolvedParams.id),
+    getEventGalleryImages(resolvedParams.id),
     getWaitlist(resolvedParams.id),
     getEventSettings(resolvedParams.id),
     db.select({ id: scannerAccess.id, email: scannerAccess.email, validUntil: scannerAccess.validUntil }).from(scannerAccess).where(eq(scannerAccess.eventId, resolvedParams.id)),

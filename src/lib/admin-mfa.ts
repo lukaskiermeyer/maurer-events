@@ -1,133 +1,141 @@
 import crypto from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { adminMfa, adminTrustedDevices } from "@/db/schema";
+import { adminRecoveryCodes, adminTrustedDevices, adminUsers } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "./secret-box";
-import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode } from "./totp";
+import { generateRecoveryCodes, hashRecoveryCodeLegacy } from "./totp";
+import { consumeRecoveryCode, countRecoveryCodes, storeRecoveryCodes } from "./admin-recovery";
+import { hashToken } from "./admin-crypto";
 
-export type AdminMfaRow = typeof adminMfa.$inferSelect;
+export type AdminRow = typeof adminUsers.$inferSelect;
 
-export async function getAdminMfa(email: string): Promise<AdminMfaRow | null> {
+export async function getAdminByEmail(email: string): Promise<AdminRow | null> {
   const normalized = email.trim().toLowerCase();
-  const [row] = await db.select().from(adminMfa).where(eq(adminMfa.email, normalized));
+  const [row] = await db.select().from(adminUsers)
+    .where(sql`lower(trim(${adminUsers.email})) = ${normalized}`);
   return row || null;
 }
 
-export async function ensureAdminMfaRow(email: string): Promise<AdminMfaRow> {
-  const normalized = email.trim().toLowerCase();
-  const existing = await getAdminMfa(normalized);
-  if (existing) return existing;
-  const [row] = await db.insert(adminMfa).values({ email: normalized }).onConflictDoNothing().returning();
-  if (row) return row;
-  const again = await getAdminMfa(normalized);
-  if (!again) throw new Error("MFA-Zeile konnte nicht angelegt werden.");
-  return again;
+export function isTotpEnabled(admin: AdminRow | null): boolean {
+  return !!admin && !!admin.totpSecretEnc && !!admin.totpEnrolledAt;
 }
 
-export function isTotpEnabled(row: AdminMfaRow | null): boolean {
-  return !!row && !!row.totpSecretEnc && !!row.totpEnabledAt;
+// Login nur mit Passwort + TOTP + status active.
+export function canLoginWithPassword(admin: AdminRow | null): boolean {
+  return !!admin && admin.status === "active" && !!admin.passwordSetAt && isTotpEnabled(admin);
 }
 
-export async function createPendingTotpSecret(email: string): Promise<{ secret: string; qrSecret: string }> {
-  const normalized = email.trim().toLowerCase();
-  const secret = generateTotpSecret();
-  const enc = encryptSecret(secret);
-  await ensureAdminMfaRow(normalized);
-  await db.update(adminMfa).set({
-    pendingSecretEnc: enc,
-    pendingCreatedAt: new Date(),
-    updatedAt: new Date(),
-  }).where(eq(adminMfa.email, normalized));
-  return { secret, qrSecret: secret.replace(/=+$/, "") };
+export function getTotpSecret(admin: AdminRow | null): string | null {
+  if (!admin || !admin.totpSecretEnc) return null;
+  try {
+    return decryptSecret(Buffer.from(admin.totpSecretEnc).toString("base64"));
+  } catch {
+    return null;
+  }
 }
 
-export async function getPendingSecret(email: string): Promise<string | null> {
-  const row = await getAdminMfa(email);
-  if (!row || !row.pendingSecretEnc || !row.pendingCreatedAt) return null;
-  // Pending expires after 15 minutes
-  if (row.pendingCreatedAt.getTime() < Date.now() - 15 * 60000) return null;
-  try { return decryptSecret(row.pendingSecretEnc); }
-  catch { return null; }
+export async function updateLastStep(adminId: string, step: number): Promise<void> {
+  await db.update(adminUsers)
+    .set({ totpLastUsedStep: step, updatedAt: new Date() })
+    .where(eq(adminUsers.id, adminId));
 }
 
-export async function enableTotp(email: string, pendingSecret: string): Promise<{ recoveryCodes: string[] }> {
-  const normalized = email.trim().toLowerCase();
+export async function enableTotp(adminId: string, secretBase32: string): Promise<{ recoveryCodes: string[] }> {
   const recoveryCodes = generateRecoveryCodes(10);
-  const hashed = recoveryCodes.map(hashRecoveryCode);
-  const enc = encryptSecret(pendingSecret);
-  await ensureAdminMfaRow(normalized);
-  await db.update(adminMfa).set({
-    totpSecretEnc: enc,
-    totpEnabledAt: new Date(),
-    totpLastCounter: null,
-    recoveryCodes: hashed,
-    pendingSecretEnc: null,
-    pendingCreatedAt: null,
+  const enc = encryptSecret(secretBase32);
+  await db.update(adminUsers).set({
+    totpSecretEnc: Buffer.from(enc, "base64"),
+    totpEnrolledAt: new Date(),
+    totpLastUsedStep: null,
     updatedAt: new Date(),
-  }).where(eq(adminMfa.email, normalized));
+  }).where(eq(adminUsers.id, adminId));
+  await storeRecoveryCodes(adminId, recoveryCodes);
   return { recoveryCodes };
 }
 
-export async function getTotpSecret(email: string): Promise<string | null> {
-  const row = await getAdminMfa(email);
-  if (!row || !row.totpSecretEnc) return null;
-  try { return decryptSecret(row.totpSecretEnc); }
-  catch { return null; }
+export async function disableTotp(adminId: string): Promise<void> {
+  await db.update(adminUsers).set({
+    totpSecretEnc: null,
+    totpEnrolledAt: null,
+    totpLastUsedStep: null,
+    updatedAt: new Date(),
+  }).where(eq(adminUsers.id, adminId));
 }
 
-export async function updateLastCounter(email: string, counter: number): Promise<void> {
-  await db.update(adminMfa).set({ totpLastCounter: counter, updatedAt: new Date() })
-    .where(eq(adminMfa.email, email.trim().toLowerCase()));
+export async function setPasswordHash(adminId: string, hash: string): Promise<void> {
+  await db.update(adminUsers).set({
+    passwordHash: hash,
+    passwordSetAt: new Date(),
+    failedPasswordAttempts: 0,
+    lockedUntil: null,
+    updatedAt: new Date(),
+  }).where(eq(adminUsers.id, adminId));
 }
 
-// Recovery codes
-export async function consumeRecoveryCode(email: string, code: string): Promise<boolean> {
-  const normalized = email.trim().toLowerCase();
-  const row = await getAdminMfa(normalized);
+// Recovery-Code einlösen: aktuelles HMAC-Schema, Fallback für migrierte SHA-256-Codes.
+export async function consumeRecoveryCodeForAdmin(adminId: string, code: string): Promise<boolean> {
+  if (await consumeRecoveryCode(adminId, code)) return true;
+  const legacyHash = hashRecoveryCodeLegacy(code);
+  const [row] = await db.select().from(adminRecoveryCodes)
+    .where(and(eq(adminRecoveryCodes.adminId, adminId), eq(adminRecoveryCodes.codeHash, legacyHash), isNull(adminRecoveryCodes.consumedAt)));
   if (!row) return false;
-  const hash = hashRecoveryCode(code);
-  const codes = (row.recoveryCodes as string[] | null) || [];
-  if (!codes.includes(hash)) return false;
-  const remaining = codes.filter(c => c !== hash);
-  await db.update(adminMfa).set({ recoveryCodes: remaining, updatedAt: new Date() })
-    .where(eq(adminMfa.email, normalized));
+  await db.update(adminRecoveryCodes).set({ consumedAt: new Date() }).where(eq(adminRecoveryCodes.id, row.id));
   return true;
 }
 
-export async function countRecoveryCodes(email: string): Promise<number> {
-  const row = await getAdminMfa(email);
-  return ((row?.recoveryCodes as string[] | null) || []).length;
-}
+export { countRecoveryCodes };
 
-// Trusted devices
+// ---------------- Trusted Devices ("Dieses Gerät 30 Tage merken") ----------------
+// Überspringt NUR TOTP, nie das Passwort. Token gehasht, an Session gebunden,
+// rotierend, Widerruf bei Passwort-Change/-Reset.
+const TRUSTED_DEVICE_DAYS = 30;
+
 function deviceFingerprint(req: { userAgent?: string | null; ip?: string | null }): string {
   return `${req.userAgent || ""}|${(req.ip || "").split(".").slice(0, 3).join(".")}`;
 }
 
-export async function createTrustedDevice(email: string, req: { userAgent?: string | null; ip?: string | null }): Promise<string> {
+export async function createTrustedDevice(
+  email: string,
+  req: { userAgent?: string | null; ip?: string | null },
+  sessionToken: string,
+): Promise<string> {
   const normalized = email.trim().toLowerCase();
   const raw = crypto.randomBytes(32).toString("base64url");
   const hash = crypto.createHash("sha256").update(raw).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 86400000);
+  const expiresAt = new Date(Date.now() + TRUSTED_DEVICE_DAYS * 86400000);
   await db.insert(adminTrustedDevices).values({
     email: normalized,
     tokenHash: hash,
     fingerprint: deviceFingerprint(req),
+    sessionHash: hashToken(sessionToken),
     expiresAt,
   });
   return raw;
 }
 
-export async function findTrustedDevice(rawToken: string, email: string, req: { userAgent?: string | null; ip?: string | null }): Promise<{ id: string } | null> {
+export async function findTrustedDevice(
+  rawToken: string,
+  email: string,
+  req: { userAgent?: string | null; ip?: string | null },
+): Promise<{ id: string } | null> {
   const normalized = email.trim().toLowerCase();
   const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const [row] = await db.select().from(adminTrustedDevices)
     .where(and(eq(adminTrustedDevices.tokenHash, hash), eq(adminTrustedDevices.email, normalized), gt(adminTrustedDevices.expiresAt, new Date())));
   if (!row) return null;
-  // Fingerprint check (soft): if mismatch, reject
   if (row.fingerprint && row.fingerprint !== deviceFingerprint(req)) return null;
   await db.update(adminTrustedDevices).set({ lastUsedAt: new Date() }).where(eq(adminTrustedDevices.id, row.id));
   return { id: row.id };
+}
+
+// Rotation: neuer Token + Bindung an die frische Session, alter Token ungültig.
+export async function rotateTrustedDevice(deviceId: string, sessionToken: string): Promise<string> {
+  const raw = crypto.randomBytes(32).toString("base64url");
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  await db.update(adminTrustedDevices)
+    .set({ tokenHash: hash, sessionHash: hashToken(sessionToken) })
+    .where(eq(adminTrustedDevices.id, deviceId));
+  return raw;
 }
 
 export async function revokeTrustedDevices(email: string): Promise<void> {

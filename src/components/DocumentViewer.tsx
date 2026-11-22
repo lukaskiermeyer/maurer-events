@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { EventDocument } from "@/types/domain";
+import { ui, localized } from "@/lib/localize";
 
 export default function DocumentViewer({
   open,
@@ -46,7 +47,7 @@ export default function DocumentViewer({
       <button
         type="button"
         onClick={onClose}
-        aria-label={locale === "en" ? "Close" : "Schließen"}
+        aria-label={ui(locale, { de: "Schließen", en: "Close", bar: "Schliaßn" })}
         className="absolute top-4 right-4 md:top-8 md:right-8 z-30 w-12 h-12 rounded-full bg-white/90 text-base-dark flex items-center justify-center hover:bg-white transition-colors"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,10 +59,10 @@ export default function DocumentViewer({
         <div className="flex items-center justify-between gap-3 text-white mb-3 px-1">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">{title}</p>
-            <h2 className="font-display font-bold text-lg md:text-2xl truncate">{activeDocument.title}</h2>
+            <h2 className="font-display font-bold text-lg md:text-2xl truncate">{localized(activeDocument, "title", locale)}</h2>
           </div>
           <a href={`/api/documents/${activeDocument.id}`} target="_blank" rel="noopener noreferrer" className="shrink-0 bg-white text-base-dark px-4 py-2 rounded-full text-sm font-bold hover:bg-canvas-light transition-colors">
-            {locale === "en" ? "Open file" : "Datei öffnen"}
+            {ui(locale, { de: "Datei öffnen", en: "Open file", bar: "Datei aufmachn" })}
           </a>
         </div>
 
@@ -73,9 +74,9 @@ export default function DocumentViewer({
           ) : (
             <div className="h-[55vh] flex flex-col items-center justify-center text-center p-8">
               <span className="font-display font-black text-5xl text-accent-green">PDF</span>
-              <p className="mt-3 text-base-dark/60">{locale === "en" ? "PDF preview is not available. Please open the file." : "Für dieses PDF ist keine Vorschau verfügbar. Bitte die Datei öffnen."}</p>
+              <p className="mt-3 text-base-dark/60">{ui(locale, { de: "Für dieses PDF ist keine Vorschau verfügbar. Bitte die Datei öffnen.", en: "PDF preview is not available. Please open the file.", bar: "Für des PDF gibt's koa Vorschau. Bitte d'Datei aufmachn." })}</p>
               <a href={`/api/documents/${activeDocument.id}`} target="_blank" rel="noopener noreferrer" className="mt-5 bg-accent-green text-white px-5 py-2.5 rounded-full font-bold text-sm">
-                {locale === "en" ? "Open PDF" : "PDF öffnen"}
+                {ui(locale, { de: "PDF öffnen", en: "Open PDF", bar: "PDF aufmachn" })}
               </a>
             </div>
           )}
@@ -83,11 +84,11 @@ export default function DocumentViewer({
 
         {documents.length > 1 && (
           <div className="flex items-center justify-center gap-3 mt-3">
-            <button type="button" onClick={() => setIndex(current => Math.max(0, current - 1))} disabled={index === 0} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label="Zurück">
+            <button type="button" onClick={() => setIndex(current => Math.max(0, current - 1))} disabled={index === 0} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label={ui(locale, { de: "Zurück", en: "Back", bar: "Zruck" })}>
               ←
             </button>
             <span className="text-white/70 text-sm font-bold">{index + 1} / {documents.length}</span>
-            <button type="button" onClick={() => setIndex(current => Math.min(documents.length - 1, current + 1))} disabled={index === documents.length - 1} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label="Weiter">
+            <button type="button" onClick={() => setIndex(current => Math.min(documents.length - 1, current + 1))} disabled={index === documents.length - 1} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label={ui(locale, { de: "Weiter", en: "Next", bar: "Weita" })}>
               →
             </button>
           </div>

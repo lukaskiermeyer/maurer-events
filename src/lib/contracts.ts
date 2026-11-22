@@ -11,7 +11,7 @@ export function renderContract(bodyHtml: string, staff: StaffRow, role: RoleRow 
     vorname: staff.firstName,
     nachname: staff.lastName,
     name: `${staff.firstName} ${staff.lastName}`,
-    adresse: [staff.street, [staff.zip, staff.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+    adresse: [[staff.street, staff.houseNumber].filter(Boolean).join(" "), [staff.zip, staff.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
     email: staff.email,
     telefon: staff.phone || "",
     rolle: role?.name || "",
@@ -53,6 +53,9 @@ export async function ensureContractForStaff(staffId: string) {
   const [role] = member.roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
   const template = await activeTemplateForRole(member.roleId);
   if (!template) return null;
+  // Die Unterschriftsart wird zentral über die Rolle festgelegt (Rolle > Vertrag > Onboarding)
+  // und nicht über die Vertragsvorlage geändert.
+  const signatureMode = (role as { requiresHandwrittenSignature?: boolean } | null)?.requiresHandwrittenSignature ? "handwritten" : "text";
   const [existing] = await db.select().from(contracts).where(and(
     eq(contracts.staffId, staffId),
     eq(contracts.templateId, template.id),
@@ -62,9 +65,13 @@ export async function ensureContractForStaff(staffId: string) {
   // und der Vertrag noch nicht unterschrieben ist (pending).
   if (existing && existing.status === "pending") {
     const freshBody = renderContract(template.bodyHtml, member, role || null);
-    if (freshBody !== existing.bodyHtml) {
-      await db.update(contracts).set({ bodyHtml: freshBody, updatedAt: new Date() }).where(eq(contracts.id, existing.id));
-      existing.bodyHtml = freshBody;
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (freshBody !== existing.bodyHtml) patch.bodyHtml = freshBody;
+    if (existing.signatureMode !== signatureMode) patch.signatureMode = signatureMode;
+    if (Object.keys(patch).length > 1) {
+      await db.update(contracts).set(patch).where(eq(contracts.id, existing.id));
+      if (patch.bodyHtml) existing.bodyHtml = freshBody;
+      if (patch.signatureMode) existing.signatureMode = signatureMode;
     }
     // auch Marker-Check (alte Verträge)
     if (/\{\{#/.test(existing.bodyHtml)) {
@@ -82,7 +89,7 @@ export async function ensureContractForStaff(staffId: string) {
       templateVersion: template.version,
       roleId: member.roleId,
       bodyHtml: renderContract(template.bodyHtml, member, role || null),
-      signatureMode: template.signatureMode,
+      signatureMode,
       consentVersion: "2026-11",
     }).returning();
     // Alte pending-Vertraege desselben Mitarbeiters als superseded markieren

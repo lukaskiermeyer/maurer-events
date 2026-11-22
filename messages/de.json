@@ -5,14 +5,61 @@
     "services": "Dienstleistungen",
     "events": "Veranstaltungen",
     "karriere": "Karriere",
+    "identitaet": "Unser Anspruch",
     "contact": "Kontakt",
-    "event_anfragen": "Event Anfragen"
+    "event_anfragen": "Event anfragen",
+    "change_language": "Sprache wechseln"
+  },
+  "UeberUns": {
+    "meta_title": "Über uns – Festwirt & Team",
+    "eyebrow": "Das Team hinter dem Fest",
+    "headline": "Stimmen aus dem Team",
+    "subline": "Zitate & positives Feedback – direkt aus dem Festzelt.",
+    "prev": "Vorherige Stimme",
+    "next": "Nächste Stimme",
+    "voices": [
+      {
+        "name": "Sepp",
+        "role": "Ausschank",
+        "quote": "Ich zapfe schneller, als die Gäste Durst bekommen können – und genau so soll es sein.",
+        "spruch": "Ein Bier ohne Schaum ist wie ein Fest ohne Blasmusik.",
+        "image": "https://i.pravatar.cc/600?u=sepp"
+      },
+      {
+        "name": "Lena",
+        "role": "Service",
+        "quote": "Tablett voll, Herz voll: Wenn die Gäste lachen, ist mein Abend perfekt.",
+        "spruch": "Ich trag acht Maß auf einmal – nur die Verantwortung nicht.",
+        "image": "https://i.pravatar.cc/600?u=lena"
+      },
+      {
+        "name": "Michi",
+        "role": "Zeltaufbau",
+        "quote": "Vom leeren Feld zum Festzelt in zwei Tagen – das ist unser kleines Wunder.",
+        "spruch": "Ich stell nicht nur Zelte auf, ich stell Laune auf.",
+        "image": "https://i.pravatar.cc/600?u=michi"
+      },
+      {
+        "name": "Anna",
+        "role": "Küche",
+        "quote": "Wenn der Schweinsbraten duftet, vergessen die Gäste kurz das Handy.",
+        "spruch": "Liebe geht durch den Magen – bei uns durch die ganze Festhalle.",
+        "image": "https://i.pravatar.cc/600?u=anna"
+      },
+      {
+        "name": "Resi",
+        "role": "Theke & Kaffee",
+        "quote": "Nach dem Fest ist vor dem Fest – und dazwischen gibt es bei mir Kuchen.",
+        "spruch": "Kaffee schwarz, Tracht bunt, Laune gold.",
+        "image": "https://i.pravatar.cc/600?u=resi"
+      }
+    ]
   },
   "Hero": {
     "badge": "Est. 2025 · Modernes Festwesen",
     "title_1": "Tradition",
     "title_2": "neu gedacht.",
-    "subtitle": "Erlebe zünftige Feste, modern interpretiert. Vom kleinen Dorffest bis zur exklusiven Eventgastronomie – wir bringen den Wirt von damals in das Heute.",
+    "subtitle": "Erlebe zünftige Feste, modern interpretiert. Vom kleinen Dorffest bis zur exklusiven Eventgastronomie – wir bringen den Wirt von damals ins Heute.",
     "cta_primary": "Event anfragen",
     "cta_secondary": "Termine ansehen",
     "scroll": "Scrollen"
@@ -22,24 +69,29 @@
     "title_2_alt": "Festwirt",
     "title": "Servus beim Maurerwirt!",
     "subtitle": "Bayerische Wurzeln. Moderne Feste.",
+    "cta": "Jetzt Event anfragen",
     "p1": "Ich bin Florian Maurer – für viele einfach \"da Maurerwirt\". Mit Wurzeln in der Metzgerei Halbauer habe ich früh gelernt, was Qualität und echte Gastfreundschaft bedeuten. Heute bringe ich diese Tradition in die moderne Eventwelt.",
     "p2": "Ob zünftiges Volksfest, elegantes Firmenjubiläum oder das ganz persönliche Vereinsfest – wir verbinden bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
-    "quote": "\"Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.\"",
+    "quote": "„Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.“",
     "p3": "Lass uns gemeinsam ein Event auf die Beine stellen, das deinen Gästen noch lange in bester Erinnerung bleibt.",
     "placeholder_img": "Platzhalter: Foto Florian Maurer",
-    "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting"
+    "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting",
+    "hero_greeting": "Servus",
+    "hero_intro": "Ich bin Florian – für viele einfach \"da Maurerwirt\". Meine Mission: Tradition aufrecht erhalten, Menschen eine schöne Zeit bescheren und das Beste aus jedem Fest machen. Wir haben nur ein Leben – und das sollten wir feiern.",
+    "hero_team": "Ich stehe zwar gerne im Rampenlicht – aber ohne mein Team würde hier gar nichts laufen. Jeder Handgriff, jedes Lachen, jede Maß Bier: das ist das Werk von Menschen, die mit Herz bei der Sache sind. Deshalb: Danke an alle, die mit anpacken."
   },
   "Services": {
     "title": "Unsere Dienstleistungen",
     "subtitle": "Maßgeschneidert für jeden Anlass",
+    "cta": "Event anfragen",
     "items": {
       "volksfest": {
         "title": "Volksfest",
-        "description": "Große Festzelte, traditionelle Musik und beste bayerische Stimmung."
+        "description": "Volle Festzelte, traditionelle Musik und Partymusik – beste bayerische Stimmung."
       },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
-        "description": "Vom 50-jährigen bis zum 150-jährigen: Wir machen euer Vereinsjubiläum zu einem Fest, das in Erinnerung bleibt."
+        "description": "Programm für die Großen und die Kleinen – für 5- bis 150-jährige Vereinsjubiläen."
       }
     }
   },
@@ -73,16 +125,19 @@
   "Contact": {
     "title": "Lass uns reden!",
     "subtitle": "Erzähl uns von deinen Plänen und wir machen ein Fest daraus.",
-    "location": "Standort",
+    "location": "Adresse",
     "email": "E-Mail",
     "phone": "Telefon",
+    "instagram": "Instagram",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
     "form_title": "Event anfragen",
     "form_success_title": "Vielen Dank für deine Anfrage!",
     "form_success_desc": "Wir melden uns in Kürze bei dir mit einem ersten Konzept.",
     "form_success_btn": "Weitere Anfrage senden",
     "label_name": "Name / Firma",
     "placeholder_name": "Max Mustermann",
-    "label_email": "E-Mail Adresse",
+    "label_email": "E-Mail-Adresse",
     "placeholder_email": "max@beispiel.de",
     "label_type": "Art der Veranstaltung",
     "option_default": "Bitte wählen...",
@@ -98,8 +153,8 @@
     "heading_prefix": "Sende uns eine",
     "heading_accent": "Anfrage",
     "heading_subtitle": "Lass uns gemeinsam Großes planen.",
-    "info_title": "Wir freuen uns auf dich",
-    "info_text": "Egal ob zünftiges Bierzelt oder elegantes Firmenevent.",
+    "info_title": "Wir freuen uns auf deine Anfrage",
+    "info_text": "Du suchst noch einen Festwirt für deine Veranstaltung? Oder brauchst Unterstützung bei der Planung deines Events? Schick uns hier ganz unverbindlich deine Anfrage. Lass uns gemeinsam Großes planen und echte, unvergessliche Erlebnisse schaffen.",
     "step_of": "Schritt {step} von {total}",
     "steps_anlass": "Anlass",
     "steps_kontakt": "Kontakt",
@@ -122,7 +177,10 @@
   "Footer": {
     "brand_desc": "Wir planen, du feierst. Seit 2025 bringen wir bayerische Tradition und professionelle Event-Expertise zusammen.",
     "links_title": "Links",
+    "nav_title": "Navigation",
     "contact_title": "Kontakt",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
     "rights": "Maurer Events. Alle Rechte vorbehalten.",
     "impressum": "Impressum",
     "agb": "AGB",
@@ -160,7 +218,42 @@
     "waitlist_title": "Warteliste",
     "waitlist_desc": "Trage dich ein und wir informieren dich sofort, wenn durch Stornierungen wieder Tische frei werden.",
     "waitlist_success": "Eingetragen! Du stehst jetzt auf der Warteliste und wir melden uns, sobald ein Platz frei wird.",
-    "waitlist_submit": "Kostenlos eintragen"
+    "waitlist_submit": "Kostenlos eintragen",
+    "head_event_date": "Event & Datum",
+    "no_events_title": "Aktuell keine Events verfügbar",
+    "no_events_text": "Schau bald wieder vorbei – neue Events werden regelmäßig veröffentlicht.",
+    "select_day": "Wähle einen Tag",
+    "select_table": "Tisch auswählen",
+    "not_published_title": "Reservierungen noch nicht freigeschaltet",
+    "not_published_text": "Die Tischauswahl öffnet sich am {date}.",
+    "all_booked_title": "Alle Tische sind ausgebucht!",
+    "all_booked_text": "Für dieses Datum sind leider keine Tische mehr verfügbar. Trage dich in die Warteliste ein, und wir melden uns, falls ein Tisch frei wird.",
+    "waitlist_cta": "Auf die Warteliste",
+    "pers_abbr": "Pers.",
+    "table_title": "{name} ({count} Personen)",
+    "table_aria": "{name}, {count} Personen, {status}",
+    "status_free": "frei",
+    "status_booked": "belegt",
+    "legend_free": "Frei",
+    "legend_booked": "Belegt",
+    "legend_selected": "Gewählt",
+    "selected_label": "Ausgewählt",
+    "capacity_label": "Kapazität",
+    "head_time_package": "Uhrzeit & Paket",
+    "time_label": "Uhrzeit",
+    "guests_label": "Gästezahl",
+    "guests_decrease": "Gästezahl verringern",
+    "guests_increase": "Gästezahl erhöhen",
+    "package_label": "Konsumations-Paket",
+    "head_checkout": "Deine Daten & Bezahlung",
+    "err_name": "Bitte mindestens 2 Zeichen eingeben",
+    "err_email": "Bitte eine gültige E-Mail-Adresse eingeben",
+    "spam_label": "Spamschutz",
+    "legal_consent": "Mit dem Klick auf den Button akzeptierst du unsere <agb>AGB</agb>, die <storno>Stornobedingungen</storno> und die <privacy>Datenschutzerklärung</privacy>. Hinweise zum <widerruf>Widerrufsrecht</widerruf>.",
+    "summary_table": "Tisch",
+    "vip_surcharge": "VIP Aufpreis",
+    "service_fee": "Service- & Buchungsgebühr",
+    "total_paren": "(Gesamt: {amount})"
   },
   "BookingConfirmation": {
     "meta_title": "Deine Buchung",
@@ -204,6 +297,75 @@
     "cta_positions": "Alle Stellen ansehen",
     "cta_apply": "Initiativ bewerben",
     "empty_hint": "Aktuell sind keine Stellen ausgeschrieben – Initiativbewerbungen sind jederzeit willkommen.",
-    "caption": "Deine Uniform, wenn du dabei bist"
+    "cta_row": "Jetzt bewerben",
+    "team_photo_alt": "Unser Team beim Fest",
+    "team_photo_placeholder": "Gruppenfoto folgt"
+  },
+  "Partners": {
+    "title_1": "Unsere",
+    "title_2": "Partner",
+    "subtitle": "Stark durch starke Partnerschaften in der Region.",
+    "placeholder": "Partnerlogo folgt"
+  },
+  "Testimonials": {
+    "title_1": "Das sagen",
+    "title_2": "Partner & Kunden",
+    "subtitle": "Stimmen aus Festzelt, Verein und Zusammenarbeit.",
+    "items": [
+      {
+        "quote": "„Vom ersten Gespräch bis zur letzten Maß: alles aus einer Hand und absolut verlässlich.“",
+        "role": "Vereinsvorstand, Landkreis Eichstätt"
+      },
+      {
+        "quote": "„Unser Firmenfest hatte endlich wieder echte Festzelt-Atmosphäre – unsere Gäste reden heute noch davon.“",
+        "role": "Geschäftsführung, Firmenkunde"
+      },
+      {
+        "quote": "„Musik, Stimmung, Organisation: Da passt einfach alles. Nächstes Jahr wieder!“",
+        "role": "Volksfest-Stammgast"
+      }
+    ]
+  },
+  "Sticky": {
+    "label": "Event anfragen",
+    "aria": "Zum Anfragebereich springen"
+  },
+  "Identity": {
+    "eyebrow": "Bio · Regional · Mit Herz",
+    "title_1": "Unsere Identität.",
+    "title_2": "Unser Anspruch.",
+    "intro": "Wir kommen nicht aus der Eventbranche, wir kommen aus der Wirtsstube und dem Festzelt. Genau das spürt man in jedem Detail: in unserer Küche, unserem Service und unserer Musik.",
+    "values": [
+      {
+        "title": "Bio & Qualität",
+        "text": "Was auf den Tisch kommt, hat Herkunft: Bio und Erzeuger, die wir kennen."
+      },
+      {
+        "title": "Regionalität",
+        "text": "Metzgerei, Brauerei und Gemüse aus der Region statt anonymer Großmärkte."
+      },
+      {
+        "title": "Handwerk & Tradition",
+        "text": "Festzelt-Kultur mit Wurzeln: vom Steckerlfisch bis zur Blasmusik – echt statt Kulisse."
+      },
+      {
+        "title": "Zusammenhalt",
+        "text": "Wir feiern mit euch, nicht nur für euch – verlässlich bis zur letzten Maß."
+      }
+    ],
+    "partners_title": "Unsere Erzeuger & Partner",
+    "partners_text": "Logos und Namen unserer regionalen Partner folgen in Kürze – Partnerschaftsanfragen willkommen.",
+    "signature": "– Florian, da Maurerwirt",
+    "recipe_title": "Rezept für ein gutes Fest",
+    "recipe_items": [
+      "Eine große Portion Herzblut",
+      "Regionale Zutaten, frisch vom Erzeuger",
+      "Ein Schuss Blasmusik",
+      "Viel Platz für Freunde & Familie",
+      "Eine Prise Wahnsinn",
+      "Unendlich viele schöne Momente"
+    ],
+    "recipe_note": "Alles vermengen, mit Liebe servieren – fertig ist euer Fest.",
+    "cta": "Event anfragen"
   }
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { getEvents, getEventById } from "@/app/actions/events";
-import { getGalleryImages } from "@/app/actions/gallery";
+import { getEventGalleryImages, getAlbumsForEvent } from "@/app/actions/gallery";
 import { Link } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import dynamicComponent from "next/dynamic";
@@ -13,7 +13,8 @@ import EventDetailStage from "@/components/event-detail/EventDetailStage";
 import DescriptionRenderer from "@/components/DescriptionRenderer";
 import GalleryGrid from "@/components/GalleryGrid";
 import { getPublicEventDocuments } from "@/app/actions/eventDocuments";
-import { reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
+import { resolveReservationMode } from "@/lib/reservation-mode";
+import { localized, DATE_TAG } from "@/lib/localize";
 
 export const revalidate = 60;
 
@@ -24,7 +25,7 @@ const ReservationSection = dynamicComponent(() => import("@/components/Reservati
 const GALLERY_TEASER_COUNT = 8;
 
 function formatDateRange(start: Date, end: Date | null, locale: string): string {
-  const tag = locale === "en" ? "en-US" : "de-DE";
+  const tag = DATE_TAG[locale] ?? "de-DE";
   const full = (date: Date) => date.toLocaleDateString(tag, { day: "2-digit", month: "long", year: "numeric" });
   if (!end || end.getTime() === start.getTime()) return full(start);
   if (end.getFullYear() === start.getFullYear() && end.getMonth() === start.getMonth()) {
@@ -70,8 +71,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const event = await getEventById(id);
   if (!event) return { title: "Event nicht gefunden" };
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
+  const title = localized(event, "title", locale);
+  const description = localized(event, "description", locale);
 
   return {
     title: `${title} | MAURER EVENTS`,
@@ -93,9 +94,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
   const { id, locale } = await params;
 
-  const [event, galleryImages, upcomingEvents, documents, t] = await Promise.all([
+  const [event, galleryImages, eventAlbums, upcomingEvents, documents, t] = await Promise.all([
     getEventById(id),
-    getGalleryImages(id),
+    getEventGalleryImages(id),
+    getAlbumsForEvent(id),
     getEvents(),
     getPublicEventDocuments(id),
     getTranslations({ locale, namespace: "EventDetail" })
@@ -105,15 +107,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  // Foto-Sektion verlinkt auf das Album dieses Festes (falls vorhanden).
+  const galleryAlbumHref = eventAlbums.length > 0 ? `/galerie/${eventAlbums[0].id}` : "/galerie";
+
   const resolvedMapUrl = await resolveShortMapsUrl(event.mapUrl);
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const title = localized(event, "title", locale);
+  const description = localized(event, "description", locale);
+  const location = localized(event, "location", locale);
   const reservationMode = resolveReservationMode(event);
-  const statusLabel = reservationStatusLabel(reservationMode, locale);
   const dateLabel = formatDateRange(new Date(event.date), event.endDate ? new Date(event.endDate) : null, locale);
-  const reservationCta = reservationMode === "online" ? t("reserve_cta") : reservationMode === "email" ? t("email_cta") : null;
   const galleryTeaser = galleryImages.slice(0, GALLERY_TEASER_COUNT);
 
   const eventSchema = {
@@ -147,63 +150,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema).replace(/</g, '\\u003c') }}
       />
 
-      <EventDetailStage event={event} dateLabel={dateLabel} />
+      <EventDetailStage event={event} dateLabel={dateLabel} resolvedMapUrl={resolvedMapUrl} />
 
       {/* Event Details Content */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-16 md:mt-24">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
-          <div className="lg:col-span-2">
-            <h2 className="font-display font-bold text-3xl md:text-4xl mb-6 text-base-dark">
-              {t("about_1")} <span className="text-accent-green">{t("about_2")}</span>
-            </h2>
-            <DescriptionRenderer content={description} />
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-canvas-light p-8 rounded-3xl border border-border-light border-t-4 border-t-accent-green sticky top-32 shadow-sm">
-              <h3 className="font-subhead text-xl mb-6 text-base-dark">{t("overview")}</h3>
-              <ul className="space-y-6">
-                <li>
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("date")}</span>
-                  <span className="font-sans font-bold text-base-dark">{dateLabel}</span>
-                </li>
-                <li className="pt-6 border-t border-border-light">
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("location")}</span>
-                  <span className="font-sans font-bold text-base-dark">{location}{event.zip ? ` · ${event.zip}` : ""}</span>
-                </li>
-                <li className="pt-6 border-t border-border-light">
-                  <span className="block text-xs uppercase tracking-widest text-accent-wood font-bold mb-1">{t("status")}</span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-accent-green/10 text-accent-green font-bold text-sm">
-                    {statusLabel}
-                  </span>
-                </li>
-              </ul>
-              {location && (
-                 <div className="mt-6 pt-6 border-t border-border-light">
-                   <EventMapEmbed
-                     mapUrl={event.mapUrl}
-                     embedMapUrl={resolvedMapUrl}
-                     location={location}
-                     zip={event.zip}
-                     title={title}
-                     locale={locale}
-                   />
-                 </div>
-              )}
-               {reservationCta && (
-                <a
-                  href="#reservierung"
-                  className="mt-8 flex items-center justify-center gap-2 bg-accent-green text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-base-dark transition-colors shadow-sm"
-                >
-                  {reservationCta}
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </a>
-              )}
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-12 md:mt-16">
+        <div className="max-w-3xl">
+          <h2 className="font-display font-bold text-3xl md:text-4xl mb-6 text-base-dark">
+            {t("about_1")} <span className="text-accent-green">{t("about_2")}</span>
+          </h2>
+          <DescriptionRenderer content={description} />
+          {location && (
+            <div className="mt-10 lg:hidden">
+              <EventMapEmbed
+                mapUrl={event.mapUrl}
+                embedMapUrl={resolvedMapUrl}
+                location={location}
+                zip={event.zip}
+                title={title}
+                locale={locale}
+              />
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -233,7 +200,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <GalleryGrid images={galleryTeaser} />
           <div className="mt-10 text-center">
             <Link
-              href={`/galerie/${event.id}`}
+              href={galleryAlbumHref}
               className="inline-flex items-center gap-3 bg-border-light text-base-dark px-6 py-3 rounded-full hover:bg-accent-green hover:text-white font-display font-bold uppercase tracking-wide text-sm transition-colors shadow-sm"
             >
               {t("gallery_all")}

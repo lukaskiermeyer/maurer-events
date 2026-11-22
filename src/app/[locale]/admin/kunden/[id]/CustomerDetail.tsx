@@ -6,6 +6,7 @@ import type { CustomerRecord, EventRecord, TableRecord } from "@/types/domain";
 import { updateCustomer, deleteCustomer, anonymizeCustomer, exportCustomerData } from "@/app/actions/customers";
 import { assignTableToCustomer } from "@/app/actions/table-assignments";
 import { getBookedTableIds } from "@/app/actions/tables";
+import { useDialog } from "@/components/ui/Dialog";
 
 type HistoryRow = {
   reservation: {
@@ -36,6 +37,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
+  const dialog = useDialog();
 
   const assignableEvents = useMemo(
     () => events.filter(event => event.type !== "gallery").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
@@ -99,7 +101,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
   };
 
   const anonymize = async () => {
-    if (!confirm("Kundendaten wirklich anonymisieren und löschen? Reservierungen bleiben erhalten.")) return;
+    if (!await dialog.confirm({ title: "Kunde anonymisieren", message: "Kundendaten wirklich anonymisieren und löschen? Reservierungen bleiben erhalten.", danger: true, confirmLabel: "Anonymisieren" })) return;
     setBusy(true);
     try {
       await anonymizeCustomer(customer.id);
@@ -151,7 +153,7 @@ export default function CustomerDetail({ customer, history, events, tables }: { 
   };
 
   const remove = async () => {
-    if (!confirm("Kunde wirklich löschen? Die Reservierungen bleiben erhalten.")) return;
+    if (!await dialog.confirm({ title: "Kunde löschen", message: "Kunde wirklich löschen? Die Reservierungen bleiben erhalten.", danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true);
     try {
       await deleteCustomer(customer.id);

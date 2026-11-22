@@ -1,42 +1,45 @@
 "use client";
 
-import type { EventRecord, AdminStats, CareerContent, GalleryWithEvent } from '@/types/domain';
+import type { EventRecord, AdminStats, CareerContent, GalleryWithAlbum, AdminGalleryAlbum, TeamMember } from '@/types/domain';
 
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
 import AdminGalleryTab from "./AdminGalleryTab";
 import AdminCareerTab from "./AdminCareerTab";
+import AdminTeamTab from "./AdminTeamTab";
 
 export default function AdminTabs({
   initialEvents,
   stats,
   careerContent,
-  initialGallery = []
+  albums = [],
+  initialGallery = [],
+  teamMembers = []
 }: {
   initialEvents: EventRecord[],
   stats?: AdminStats,
   careerContent: CareerContent,
-  initialGallery?: GalleryWithEvent[]
+  albums?: AdminGalleryAlbum[],
+  initialGallery?: GalleryWithAlbum[],
+  teamMembers?: TeamMember[]
 }) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career" | "about">("dashboard");
 
-  // Type 'event' usually refers to standard reservable/future events
+  // Galerie-Alben sind eigenständig (gallery_albums); Events sind nur noch Feste.
   const futureEvents = initialEvents.filter(e => e.type === 'event');
-  
-  // Type 'gallery' usually refers to past/album events
-  const pastGalleries = initialEvents.filter(e => e.type === 'gallery');
 
   const tabs = [
     { id: "dashboard", label: "Übersicht" },
     { id: "events", label: "Veranstaltungen" },
     { id: "gallery", label: "Galerie" },
     { id: "career", label: "Karriere" },
+    { id: "about", label: "Über Uns" },
   ] as const;
 
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -61,31 +64,31 @@ export default function AdminTabs({
           {/* Top KPI row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 [&>div]:p-4 sm:[&>div]:p-6 [&_.text-4xl]:text-2xl sm:[&_.text-4xl]:text-4xl [&>div]:min-w-0">
             <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Bestätigte Gäste (Total)</div>
-              <div className="text-4xl font-display font-black text-base-dark">{stats.totalGuests}</div>
-              <div className="text-xs font-bold text-accent-wood mt-2">{stats.pendingCount} Zahlungen stehen noch aus</div>
-            </div>
-            
-            <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Erwarteter Umsatz</div>
-              <div className="text-4xl font-display font-black text-accent-green">{stats.revenue.toFixed(2)} €</div>
-              <div className="text-xs font-bold opacity-50 mt-2">Umsatz durch Reservierungen</div>
+              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg></div>
+              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Offene Anfragen</div>
+              <div className={`text-4xl font-display font-black ${(stats.openRequestsCount || 0) > 0 ? 'text-amber-600' : 'text-base-dark'}`}>{stats.openRequestsCount || 0}</div>
+              <div className="text-xs font-bold text-accent-wood mt-2">E-Mail-Reservierungen zur Bestätigung</div>
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">To-Dos (Zuweisung)</div>
-              <div className="text-4xl font-display font-black text-orange-500">{stats.unassignedPaidCount}</div>
-              <div className="text-xs font-bold text-orange-600 mt-2">Gäste ohne zugewiesenen Tisch</div>
+              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Personallücken</div>
+              <div className={`text-4xl font-display font-black ${(stats.staffGapsCount || 0) > 0 ? 'text-orange-500' : 'text-base-dark'}`}>{stats.staffGapsCount || 0}</div>
+              <div className="text-xs font-bold text-orange-600 mt-2">{stats.staffedEventsWithGaps || 0} Feste mit offenen Schichten</div>
             </div>
-            
+
+            <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Mitarbeiter zur Prüfung</div>
+              <div className={`text-4xl font-display font-black ${(stats.pendingStaffCount || 0) > 0 ? 'text-sky-600' : 'text-base-dark'}`}>{stats.pendingStaffCount || 0}</div>
+              <div className="text-xs font-bold opacity-50 mt-2">{stats.pendingDocumentsCount || 0} Dokumente · {stats.pendingContractsCount || 0} Verträge offen</div>
+            </div>
+
             <div className="bg-white p-6 rounded-2xl border border-border-light shadow-sm flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Warteliste</div>
-              <div className="text-4xl font-display font-black text-base-dark">{stats.waitlistCount || 0}</div>
-              <div className="text-xs font-bold opacity-50 mt-2">Warten auf freie Tische</div>
+              <div className="text-xs uppercase tracking-widest font-bold opacity-50 mb-2">Offene Schichtwünsche</div>
+              <div className={`text-4xl font-display font-black ${(stats.selfSignupsPendingCount || 0) > 0 ? 'text-amber-600' : 'text-base-dark'}`}>{stats.selfSignupsPendingCount || 0}</div>
+              <div className="text-xs font-bold opacity-50 mt-2">Selbst-Eintragungen zu bestätigen</div>
             </div>
           </div>
           
@@ -168,11 +171,15 @@ export default function AdminTabs({
       )}
       
       {activeTab === "gallery" && (
-        <AdminGalleryTab galleries={pastGalleries} convertibleEvents={futureEvents} initialGallery={initialGallery} />
+        <AdminGalleryTab albums={albums} convertibleEvents={futureEvents} initialGallery={initialGallery} />
       )}
 
       {activeTab === "career" && (
         <AdminCareerTab initialContent={careerContent} />
+      )}
+
+      {activeTab === "about" && (
+        <AdminTeamTab initialMembers={teamMembers} />
       )}
     </div>
   );

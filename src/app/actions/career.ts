@@ -4,10 +4,11 @@ import { db } from '@/db';
 import { settings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { Resend } from 'resend';
 
 import { requireAdmin } from '@/lib/auth';
-import { parseCareerContent, validateCareerContent } from '@/lib/career';
+import { parseCareerContent, validateCareerContent, fillCareerTranslations } from '@/lib/career';
 import { emailFrom } from '@/lib/email';
 import { renderEmail } from '@/lib/email-template';
 import { escapeHtml } from '@/lib/escape';
@@ -43,6 +44,19 @@ export async function updateCareerContent(input: unknown) {
   });
   revalidatePath('/[locale]/karriere', 'page');
   revalidatePath('/[locale]', 'layout');
+  // KI-Uebersetzung nicht blockierend: leere EN/Bar-Felder nach der Antwort fuellen.
+  after(async () => {
+    try {
+      const [row] = await db.select().from(settings).where(eq(settings.key, CAREER_KEY));
+      const current = parseCareerContent(row?.value);
+      const filled = await fillCareerTranslations(current);
+      if (JSON.stringify(filled) !== JSON.stringify(current)) {
+        await db.update(settings).set({ value: JSON.stringify(filled) }).where(eq(settings.key, CAREER_KEY));
+        revalidatePath('/[locale]/karriere', 'page');
+        revalidatePath('/[locale]', 'layout');
+      }
+    } catch (e) { console.error('Career background translation failed:', e); }
+  });
   return content;
 }
 

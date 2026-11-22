@@ -3,11 +3,12 @@
 import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 import DropZone from "@/components/ui/DropZone";
 import { Link } from "@/i18n/routing";
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import Image from "next/image";
-import { updateEvent } from "@/app/actions/events";
+import { updateEvent, translateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
@@ -23,7 +24,7 @@ function stringToColor(str: string) {
   return `hsl(${hue}, 70%, 85%)`;
 }
 
-import { removeGalleryImage, addGalleryImage } from "@/app/actions/gallery";
+import { removeGalleryImage, addGalleryImage, getOrCreateEventAlbum } from "@/app/actions/gallery";
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 import { findCustomersNearEvent, sendEventInvitations } from "@/app/actions/eventInvitations";
 import { updateEventSettings } from "@/app/actions/eventSettings";
@@ -58,12 +59,30 @@ interface EventDetailProps {
   stripeEnabled?: boolean;
 }
 
+function TranslationField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) {
+  const filled = value.trim().length > 0;
+  const inputClass = "w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green text-sm";
+  return (
+    <div>
+      <label className="block text-xs font-bold mb-1 opacity-70">
+        {label}{" "}
+        <span className={filled ? "text-accent-green" : "text-amber-600"}>{filled ? "✓ gefüllt" : "· leer"}</span>
+      </label>
+      {multiline
+        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={4} className={inputClass} />
+        : <input type="text" value={value} onChange={e => onChange(e.target.value)} className={inputClass} />}
+    </div>
+  );
+}
+
 export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], stripeEnabled = false }: EventDetailProps) {
   const toast = useToast();
+  const dialog = useDialog();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [taxStatus, setTaxStatus] = useState<TaxStatus>(initialTaxStatus);
   const [selectedResId, setSelectedResId] = useState<string | null>(null);
   const [selectedBulkIds, setSelectedBulkIds] = useState<string[]>([]);
@@ -99,7 +118,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     reservationNote: event.reservationNote || "",
     maxCapacity: event.maxCapacity || 0,
     walkInReserve: event.walkInReserve || 0,
-    isPublished: event.isPublished ?? true
+    isPublished: event.isPublished ?? true,
+    titleEn: event.titleEn || "",
+    titleBar: event.titleBar || "",
+    locationEn: event.locationEn || "",
+    locationBar: event.locationBar || "",
+    descriptionEn: event.descriptionEn || "",
+    descriptionBar: event.descriptionBar || ""
   });
 
   const [file, setFile] = useState<File | null>(null);
@@ -154,7 +179,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   };
 
   const removePreset = async () => {
-    if (!selectedPreset || !confirm(`Vorlage "${selectedPreset}" löschen?`)) return;
+    if (!selectedPreset || !await dialog.confirm({ title: "Vorlage löschen", message: `Vorlage "${selectedPreset}" löschen?`, danger: true, confirmLabel: "Löschen" })) return;
     setIsPresetBusy(true);
     try {
       await deletePackagePreset(selectedPreset);
@@ -304,6 +329,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(false);
   };
 
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    try {
+      const translations = await translateEvent(event.id, false);
+      setFormData(prev => ({ ...prev, ...translations }));
+      toast.showToast("Leere Übersetzungen wurden per KI gefüllt.", "success");
+    } catch {
+      toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error");
+    }
+    setIsTranslating(false);
+  };
+
   const handleStatusChange = async (id: string, status: string) => {
     setIsUpdating(true);
     const res = await updateReservationStatus(id, status);
@@ -316,7 +353,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleBulkStatusChange = async (status: string) => {
     if (selectedBulkIds.length === 0) return;
-    if (!confirm(`Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`)) return;
+    if (!await dialog.confirm({ title: "Status Massenänderung", message: `Sicher, dass du ${selectedBulkIds.length} Reservierungen auf "${status}" setzen willst?`, confirmLabel: "Übernehmen" })) return;
     setIsUpdating(true);
     const results = await Promise.all(selectedBulkIds.map(id => updateReservationStatus(id, status)));
     const errors = results.filter(r => r && !r.success && r.error).map(r => r.error);
@@ -338,7 +375,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(confirm("ACHTUNG: Dies löscht ALLE bestehenden Tische und generiert ein komplett neues Raster. Fortfahren?")) {
+    if (await dialog.confirm({ title: "Zeltplan neu generieren", message: "ACHTUNG: Dies löscht ALLE bestehenden Tische und generiert ein komplett neues Raster. Fortfahren?", danger: true, confirmLabel: "Generieren" })) {
       setIsUpdating(true);
       await generateTentLayout(genW, genL, genCap);
       router.refresh();
@@ -359,6 +396,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
     setIsUpdating(true);
     try {
+      // Bilder hängen am Album dieses Festes; Album wird bei Bedarf angelegt.
+      const album = await getOrCreateEventAlbum(event.id);
       if (galleryFiles.length > 0) {
         // Upload multiple files in parallel
         await Promise.all(
@@ -367,17 +406,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             uploadData.append("file", file);
             const res = await uploadImage(uploadData);
             if (res.success) {
-              await addGalleryImage(event.id, res.url);
+              await addGalleryImage(album.id, res.url);
             }
           })
         );
       } else if (galleryUrl) {
         // Fallback for single external URL
-        await addGalleryImage(event.id, galleryUrl);
+        await addGalleryImage(album.id, galleryUrl);
       }
 
       setGalleryFiles([]);
       setGalleryUrl("");
+      router.refresh();
     } catch {
       toast.showToast("Bildupload fehlgeschlagen. Prüfe die Dateigröße (max. 10 MB) und das Format (JPG, PNG, WebP).", "error");
     }
@@ -426,7 +466,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const changeTableVip = async (table: { id: string; isVip: boolean }) => {
     const makeVip = !table.isVip;
-    const price = makeVip ? prompt('VIP Aufpreis für den gesamten Tisch (in €)?', '100') : '0';
+    const price = makeVip ? await dialog.prompt({ title: "VIP-Aufpreis", message: "VIP Aufpreis für den gesamten Tisch (in €)?", inputLabel: "Aufpreis in €", initialValue: "100", confirmLabel: "Speichern" }) : '0';
     if (price === null) return;
     const cents = Math.round(Number(price.replace(',', '.')) * 100);
     if (!Number.isFinite(cents) || cents < 0) { toast.showToast('Bitte einen gültigen Aufpreis eingeben.', "warning"); return; }
@@ -480,16 +520,17 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 void changeTableVip(tableHere);
               }
             }}
-            onClick={() => {
+            onClick={async () => {
               if (mode === "edit") {
                 if (tableHere) {
-                  if (confirm(`Tisch "${tableHere.name}" wirklich löschen?`)) {
+                  if (await dialog.confirm({ title: "Tisch löschen", message: `Tisch "${tableHere.name}" wirklich löschen?`, danger: true, confirmLabel: "Löschen" })) {
                     setIsUpdating(true);
                     deleteTable(tableHere.id).finally(() => setIsUpdating(false));
                   }
                 } else {
-                  const name = prompt("Name für den neuen Tisch (z.B. Tisch 5):");
-                  const cap = prompt("Kapazität (Personen):", "8");
+                  const name = await dialog.prompt({ title: "Neuer Tisch", message: "Name für den neuen Tisch (z.B. Tisch 5):", inputLabel: "Name", confirmLabel: "Anlegen" });
+                  if (!name) return;
+                  const cap = await dialog.prompt({ title: "Neuer Tisch", message: "Kapazität (Personen):", inputLabel: "Kapazität", initialValue: "8", confirmLabel: "Anlegen" });
                   if (name && cap) {
                     setIsUpdating(true);
                     createTable({ name, capacity: Number(cap), positionX: x, positionY: y }).finally(() => setIsUpdating(false));
@@ -588,7 +629,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
   const handleSendInviteEmails = async () => {
     if (inviteSelected.length === 0) return;
-    if (!confirm(`${inviteSelected.length} Kunden per E-Mail einladen?`)) return;
+    if (!await dialog.confirm({ title: "Einladungen senden", message: `${inviteSelected.length} Kunden per E-Mail einladen?`, confirmLabel: "Einladen" })) return;
     setInviteSending(true);
     setInviteError("");
     try {
@@ -729,6 +770,27 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                  placeholder="Event-Beschreibung..."
                  collapsedByDefault={false}
                />
+              <details className="bg-base-light border border-border-light rounded-lg p-4">
+                <summary className="cursor-pointer text-sm font-bold select-none">Übersetzungen (EN / Bairisch)</summary>
+                <div className="mt-3 space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-xs opacity-60 max-w-sm">Leere Felder werden beim Speichern automatisch per KI gefüllt. Ausgefüllte Felder bleiben erhalten (manuelle Korrektur). „Jetzt übersetzen“ füllt nur leere Felder des gespeicherten Stands.</p>
+                    <button type="button" onClick={handleTranslate} disabled={isTranslating} className="shrink-0 bg-accent-green text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-accent-green/80 disabled:opacity-50 transition-colors">
+                      {isTranslating ? "Übersetzt…" : "Jetzt übersetzen"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TranslationField label="Titel (EN)" value={formData.titleEn} onChange={v => setFormData({ ...formData, titleEn: v })} />
+                    <TranslationField label="Titel (Bairisch)" value={formData.titleBar} onChange={v => setFormData({ ...formData, titleBar: v })} />
+                    <TranslationField label="Ort (EN)" value={formData.locationEn} onChange={v => setFormData({ ...formData, locationEn: v })} />
+                    <TranslationField label="Ort (Bairisch)" value={formData.locationBar} onChange={v => setFormData({ ...formData, locationBar: v })} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TranslationField label="Beschreibung (EN)" value={formData.descriptionEn} onChange={v => setFormData({ ...formData, descriptionEn: v })} multiline />
+                    <TranslationField label="Beschreibung (Bairisch)" value={formData.descriptionBar} onChange={v => setFormData({ ...formData, descriptionBar: v })} multiline />
+                  </div>
+                </div>
+              </details>
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <div
@@ -1495,7 +1557,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     {event.imageUrl !== img.imageUrl && (
                       <button
                         onClick={async () => {
-                          if(confirm("Dieses Bild als Cover für das Event festlegen?")) {
+                          if (await dialog.confirm({ title: "Cover festlegen", message: "Dieses Bild als Cover für das Event festlegen?", confirmLabel: "Als Cover" })) {
                             setIsUpdating(true);
                             await updateEvent(event.id, { imageUrl: img.imageUrl });
                             setIsUpdating(false);
@@ -1512,7 +1574,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                     {/* Delete Button */}
                     <button
                       onClick={async () => {
-                        if (confirm("Bild wirklich löschen?")) {
+                        if (await dialog.confirm({ title: "Bild löschen", message: "Bild wirklich löschen?", danger: true, confirmLabel: "Löschen" })) {
                           setIsUpdating(true);
                           await removeGalleryImage(img.id);
                           setIsUpdating(false);
@@ -1569,7 +1631,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             ) : (
                               <button
                                 onClick={async () => {
-                                  if (confirm(`Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`)) {
+                                  if (await dialog.confirm({ title: "Wartelisten-Eintrag benachrichtigen", message: `Möchtest du ${entry.name} benachrichtigen, dass ein Tisch frei ist? (Sendet E-Mail)`, confirmLabel: "Benachrichtigen" })) {
                                     setIsUpdating(true);
                                     try {
                                       const result = await notifyWaitlistEntry(entry.id);
@@ -1586,7 +1648,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                             )}
                             <button
                               onClick={async () => {
-                                if (confirm("Eintrag aus der Warteliste löschen?")) {
+                                if (await dialog.confirm({ title: "Warteliste löschen", message: "Eintrag aus der Warteliste löschen?", danger: true, confirmLabel: "Löschen" })) {
                                   setIsUpdating(true);
                                   try { await removeWaitlistEntry(entry.id, event.id); }
                                   catch { toast.showToast('Löschen fehlgeschlagen. Bitte erneut versuchen.', "error"); }

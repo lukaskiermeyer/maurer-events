@@ -9,10 +9,12 @@ import { uploadImage } from "@/lib/client-image-upload";
 import { Link } from "@/i18n/routing";
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import { useToast } from "@/components/ui/Toast";
+import { useDialog } from "@/components/ui/Dialog";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 
 export default function AdminEventList({ initialEvents, stats }: { initialEvents: EventRecord[], stats?: AdminStats }) {
   const toast = useToast();
+  const dialog = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -294,11 +296,10 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                        const summary = await getEventDeletionSummary(event.id);
                        const parts = [];
                        if (summary.reservations > 0) parts.push(`${summary.reservations} Reservierung(en)`);
-                       if (summary.galleries > 0) parts.push(`${summary.galleries} Galeriebild(er)`);
                        if (summary.waitlists > 0) parts.push(`${summary.waitlists} Wartelisteneintrag/-einträge`);
                        const detail = parts.length ? `\nVerknüpft: ${parts.join(", ")}.` : "";
                        const msg = `Event "${event.title}" wirklich löschen?${detail}\n\nEs wird zuerst nur als gelöscht markiert und kann innerhalb von 7 Tagen wiederhergestellt werden. Danach wird es endgültig gelöscht.`;
-                       if (!confirm(msg)) return;
+                       if (!await dialog.confirm({ title: "Event löschen", message: msg, danger: true, confirmLabel: "Löschen" })) return;
                        await deleteEvent(event.id);
                        toast.showToast("Event gelöscht (wiederherstellbar innerhalb von 7 Tagen).", "success");
                        router.refresh();

@@ -1,5 +1,7 @@
 import { BookingError } from './reservation-policy';
 import type { CareerContent, CareerPosition } from '@/types/domain';
+import { localized, localizedList } from './localize';
+import { translateFields } from './translate';
 
 export const MAX_POSITIONS = 20;
 export const MAX_BENEFITS = 10;
@@ -8,8 +10,8 @@ export const MAX_BENEFITS = 10;
 export const DEFAULT_CAREER_CONTENT: CareerContent = {
   headline: 'Werde Teil der Familie',
   headlineEn: 'Become part of the family',
-  intro: 'Maurer Events steht für unvergessliche Feste, ausgelassene Stimmung und echte bayerische Gastfreundschaft. Damit das so bleibt, suchen wir motivierte Leute, die anpacken können und Freude am Umgang mit Menschen haben!',
-  introEn: 'Maurer Events stands for unforgettable parties, great vibes and genuine Bavarian hospitality. To keep it that way, we are looking for motivated people who can lend a hand and enjoy meeting people!',
+  intro: 'Ob für die Zubereitung unserer Schmankerl, im Ausschank oder hinter den Kulissen: Für reibungslose Abläufe braucht es ein Team, das Zusammenhalt schätzt und sich gegenseitig unterstützt.',
+  introEn: 'Whether preparing our delicacies, serving drinks, or behind the scenes: smooth operations need a team that values cohesion and supports each other.',
   positions: [
     {
       id: 'servicekraefte',
@@ -81,14 +83,19 @@ function readPosition(value: unknown): CareerPosition {
     id: readText(entry.id, 'Kennung', 100),
     title: readText(entry.title, 'Stellenbezeichnung', 120),
     titleEn: readOptionalText(entry.titleEn, 'Stellenbezeichnung (Englisch)', 120),
+    titleBar: readOptionalText(entry.titleBar, 'Stellenbezeichnung (Bairisch)', 120),
     badge: readText(entry.badge, 'Hinweis', 60, false),
     badgeEn: readOptionalText(entry.badgeEn, 'Hinweis (Englisch)', 60),
+    badgeBar: readOptionalText(entry.badgeBar, 'Hinweis (Bairisch)', 60),
     employment: readText(entry.employment, 'Anstellungsart', 60, false),
     employmentEn: readOptionalText(entry.employmentEn, 'Anstellungsart (Englisch)', 60),
+    employmentBar: readOptionalText(entry.employmentBar, 'Anstellungsart (Bairisch)', 60),
     description: readText(entry.description, 'Beschreibung', 2000),
     descriptionEn: readOptionalText(entry.descriptionEn, 'Beschreibung (Englisch)', 2000),
+    descriptionBar: readOptionalText(entry.descriptionBar, 'Beschreibung (Bairisch)', 2000),
     benefits: readBenefits(entry.benefits, 'Vorteile'),
     benefitsEn: readBenefits(entry.benefitsEn, 'Vorteile (Englisch)'),
+    benefitsBar: readBenefits(entry.benefitsBar, 'Vorteile (Bairisch)'),
   };
 }
 
@@ -109,13 +116,17 @@ export function validateCareerContent(input: unknown): CareerContent {
   return {
     headline: readText(data.headline, 'Überschrift', 200),
     headlineEn: readOptionalText(data.headlineEn, 'Überschrift (Englisch)', 200),
+    headlineBar: readOptionalText(data.headlineBar, 'Überschrift (Bairisch)', 200),
     intro: readText(data.intro, 'Einleitungstext', 2000),
     introEn: readOptionalText(data.introEn, 'Einleitungstext (Englisch)', 2000),
+    introBar: readOptionalText(data.introBar, 'Einleitungstext (Bairisch)', 2000),
     positions,
     closingTitle: readText(data.closingTitle, 'Abschluss-Überschrift', 120, false),
     closingTitleEn: readOptionalText(data.closingTitleEn, 'Abschluss-Überschrift (Englisch)', 120),
+    closingTitleBar: readOptionalText(data.closingTitleBar, 'Abschluss-Überschrift (Bairisch)', 120),
     closingText: readText(data.closingText, 'Abschluss-Text', 1000, false),
     closingTextEn: readOptionalText(data.closingTextEn, 'Abschluss-Text (Englisch)', 1000),
+    closingTextBar: readOptionalText(data.closingTextBar, 'Abschluss-Text (Bairisch)', 1000),
   };
 }
 
@@ -130,23 +141,69 @@ export function parseCareerContent(raw: string | undefined): CareerContent {
   }
 }
 
-// Englische Variante anzeigen, wenn vorhanden — sonst deutsche Fassung als Fallback.
+// Zielsprache anzeigen, wenn vorhanden — sonst Englisch, sonst Deutsch.
+// Deckt EN und Bar ueber die zentrale Lokalisierung ab.
 export function localizeCareerContent(content: CareerContent, locale: string): CareerContent {
-  if (locale !== 'en') return content;
-  const en = (value: string | undefined, fallback: string) => (value && value.trim() ? value : fallback);
+  if (locale === 'de') return content;
   return {
     ...content,
-    headline: en(content.headlineEn, content.headline),
-    intro: en(content.introEn, content.intro),
-    closingTitle: en(content.closingTitleEn, content.closingTitle),
-    closingText: en(content.closingTextEn, content.closingText),
+    headline: localized(content, 'headline', locale),
+    intro: localized(content, 'intro', locale),
+    closingTitle: localized(content, 'closingTitle', locale),
+    closingText: localized(content, 'closingText', locale),
     positions: content.positions.map((position) => ({
       ...position,
-      title: en(position.titleEn, position.title),
-      badge: en(position.badgeEn, position.badge),
-      employment: en(position.employmentEn, position.employment),
-      description: en(position.descriptionEn, position.description),
-      benefits: position.benefitsEn && position.benefitsEn.length > 0 ? position.benefitsEn : position.benefits,
+      title: localized(position, 'title', locale),
+      badge: localized(position, 'badge', locale),
+      employment: localized(position, 'employment', locale),
+      description: localized(position, 'description', locale),
+      benefits: localizedList(position, 'benefits', locale),
     })),
+  };
+}
+
+// Fuellt leere EN/Bar-Felder per KI (einmal eingeben, dann nur drüberlesen).
+// Ohne NIM_API_KEY bleibt der Originaltext stehen (Fallback), manuell editierbar.
+export async function fillCareerTranslations(content: CareerContent): Promise<CareerContent> {
+  const scalar = await translateFields({
+    headline: content.headline,
+    intro: content.intro,
+    closingTitle: content.closingTitle,
+    closingText: content.closingText,
+  });
+  const fill = (current: string | undefined, translated: string | null) =>
+    current && current.trim() ? current : (translated ?? undefined);
+
+  const positions = await Promise.all(content.positions.map(async (position) => {
+    const t = await translateFields({
+      title: position.title,
+      badge: position.badge,
+      employment: position.employment,
+      description: position.description,
+    });
+    return {
+      ...position,
+      titleEn: fill(position.titleEn, t.en.title),
+      titleBar: fill(position.titleBar, t.bar.title),
+      badgeEn: fill(position.badgeEn, t.en.badge),
+      badgeBar: fill(position.badgeBar, t.bar.badge),
+      employmentEn: fill(position.employmentEn, t.en.employment),
+      employmentBar: fill(position.employmentBar, t.bar.employment),
+      descriptionEn: fill(position.descriptionEn, t.en.description),
+      descriptionBar: fill(position.descriptionBar, t.bar.description),
+    };
+  }));
+
+  return {
+    ...content,
+    headlineEn: fill(content.headlineEn, scalar.en.headline),
+    headlineBar: fill(content.headlineBar, scalar.bar.headline),
+    introEn: fill(content.introEn, scalar.en.intro),
+    introBar: fill(content.introBar, scalar.bar.intro),
+    closingTitleEn: fill(content.closingTitleEn, scalar.en.closingTitle),
+    closingTitleBar: fill(content.closingTitleBar, scalar.bar.closingTitle),
+    closingTextEn: fill(content.closingTextEn, scalar.en.closingText),
+    closingTextBar: fill(content.closingTextBar, scalar.bar.closingText),
+    positions,
   };
 }

@@ -1,4 +1,6 @@
 import { Link } from "@/i18n/routing";
+import { getLocale } from "next-intl/server";
+import { ui } from "@/lib/localize";
 
 import { type LegalDocument } from "@/lib/legal/terms";
 
@@ -10,7 +12,13 @@ const others = [
   { slug: 'impressum', label: 'Impressum' },
 ];
 
-export default function LegalDocumentPage({ document }: { document: LegalDocument }) {
+// Rechtstexte sind bewusst DE/EN (bar faellt auf DE zurueck); nur die Navigations-
+// Chrome wird lokalisiert, der Rechtsinhalt selbst kommt aus den Legal-Datenquellen.
+export default async function LegalDocumentPage({ document }: { document: LegalDocument }) {
+  const locale = await getLocale();
+  const contents = ui(locale, { de: "Inhalt", en: "Contents", bar: "Inhalt" });
+  const more = ui(locale, { de: "Weitere Rechtstexte", en: "More legal documents", bar: "Weitere Rechtstexte" });
+
   return (
     <article className="pt-28 sm:pt-32 pb-16 px-4 sm:px-8 max-w-[1000px] mx-auto min-h-screen">
       <header className="mb-8 sm:mb-10">
@@ -23,8 +31,8 @@ export default function LegalDocumentPage({ document }: { document: LegalDocumen
 
       <p className="text-base-dark/80 font-sans leading-relaxed mb-10">{document.intro}</p>
 
-      <nav aria-label="Inhalt" className="bg-canvas-light p-5 sm:p-6 rounded-2xl border border-border-light mb-10">
-        <h2 className="font-bold text-lg mb-3">Inhalt</h2>
+      <nav aria-label={contents} className="bg-canvas-light p-5 sm:p-6 rounded-2xl border border-border-light mb-10">
+        <h2 className="font-bold text-lg mb-3">{contents}</h2>
         <ol className="grid gap-3 sm:grid-cols-2 text-sm">
           {document.sections.map(section => (
             <li key={section.id}>
@@ -44,7 +52,7 @@ export default function LegalDocumentPage({ document }: { document: LegalDocumen
               {section.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
             </div>
             {section.list && section.list.length > 0 && (
-              <ul className="mt-4 space-y-2 list-disc pl-6">
+              <ul className="space-y-2 list-disc pl-6">
                 {section.list.map(entry => <li key={entry}>{entry}</li>)}
               </ul>
             )}
@@ -52,8 +60,8 @@ export default function LegalDocumentPage({ document }: { document: LegalDocumen
         ))}
       </div>
 
-      <nav aria-label="Weitere Rechtstexte" className="mt-16 pt-8 border-t border-border-light">
-        <h2 className="font-bold text-lg mb-4">Weitere Rechtstexte</h2>
+      <nav aria-label={more} className="mt-16 pt-8 border-t border-border-light">
+        <h2 className="font-bold text-lg mb-4">{more}</h2>
         <ul className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
           {others.filter(entry => entry.slug !== document.slug).map(entry => (
             <li key={entry.slug}>

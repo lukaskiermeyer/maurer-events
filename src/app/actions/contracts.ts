@@ -4,9 +4,10 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { contracts } from "@/db/schema";
+import { contracts, staffRoles } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember, clientIp } from "@/lib/staff-auth";
+import { missingRequiredDocsForStaff } from "@/lib/staff-required-docs";
 import { sha256 } from "@/lib/secure-fields";
 import { uuid } from "@/lib/reservation-policy";
 import { audit } from "@/lib/audit";
@@ -21,6 +22,10 @@ export async function signContractText(contractId: string, fullName: string) {
     if (!contract) throw new Error("Vertrag nicht gefunden.");
     if (contract.status !== "pending") throw new Error("Dieser Vertrag ist nicht mehr offen.");
     if (contract.signatureMode !== "text") throw new Error("Dieser Vertrag muss handschriftlich unterschrieben werden.");
+    const roleId = contract.roleId || member.roleId;
+    const [role] = roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, roleId)) : [];
+    const missingDocs = await missingRequiredDocsForStaff(member.id, role?.requiredDocuments ?? []);
+    if (missingDocs.length > 0) throw new Error(`Bitte lade zuerst diese Pflichtdokumente im Onboarding hoch: ${missingDocs.join(", ")}.`);
     const expected = `${member.firstName} ${member.lastName}`.trim().toLowerCase();
     if (typeof fullName !== "string" || fullName.trim().toLowerCase() !== expected) throw new Error("Bitte deinen vollständigen Namen exakt eingeben.");
     const requestHeaders = await headers();
@@ -57,7 +62,10 @@ export async function attachSignedContract(contractId: string, fileUrl: string, 
     const [contract] = await db.select().from(contracts).where(and(eq(contracts.id, contractId), eq(contracts.staffId, member.id)));
     if (!contract) throw new Error("Vertrag nicht gefunden.");
     if (contract.status !== "pending") throw new Error("Dieser Vertrag ist nicht mehr offen.");
-    if (contract.signatureMode !== "handwritten") throw new Error("Dieser Vertrag wird digital unterschrieben.");
+    const attachRoleId = contract.roleId || member.roleId;
+    const [attachRole] = attachRoleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, attachRoleId)) : [];
+    const attachMissingDocs = await missingRequiredDocsForStaff(member.id, attachRole?.requiredDocuments ?? []);
+    if (attachMissingDocs.length > 0) throw new Error(`Bitte lade zuerst diese Pflichtdokumente im Onboarding hoch: ${attachMissingDocs.join(", ")}.`);
     const [updated] = await db.update(contracts).set({
       status: "signed",
       signedAt: new Date(),

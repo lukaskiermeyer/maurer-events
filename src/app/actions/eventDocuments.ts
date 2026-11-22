@@ -7,6 +7,7 @@ import { eventDocuments, events } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { uuid } from "@/lib/reservation-policy";
+import { translateFields } from "@/lib/translate";
 import type { EventDocument } from "@/types/domain";
 
 export async function getPublicEventDocuments(eventId: string): Promise<EventDocument[]> {
@@ -48,4 +49,32 @@ export async function deleteEventDocument(id: string) {
   }
   revalidatePath("/[locale]", "layout");
   return { success: true };
+}
+
+// Manuelle EN/Bar-Titel eines Dokuments setzen (leer = null, damit die KI sie
+// spaeter fuellen kann). Laengenbegrenzung wie beim Upload (150 Zeichen).
+export async function updateEventDocumentTranslations(id: string, data: { titleEn?: string | null; titleBar?: string | null }) {
+  await requireAdmin();
+  uuid(id);
+  const titleEn = data.titleEn ?? null;
+  const titleBar = data.titleBar ?? null;
+  if (titleEn !== null && (typeof titleEn !== "string" || titleEn.length > 150)) throw new Error("Ungültiger Titel (EN).");
+  if (titleBar !== null && (typeof titleBar !== "string" || titleBar.length > 150)) throw new Error("Ungültiger Titel (Bairisch).");
+  await db.update(eventDocuments).set({ titleEn, titleBar }).where(eq(eventDocuments.id, id));
+  revalidatePath("/[locale]", "layout");
+  return { success: true };
+}
+
+// On-Demand-Uebersetzung eines Dokuments: fuellt nur leere Titel-Felder.
+export async function translateEventDocument(id: string) {
+  await requireAdmin();
+  uuid(id);
+  const [doc] = await db.select().from(eventDocuments).where(eq(eventDocuments.id, id));
+  if (!doc) throw new Error("Dokument nicht gefunden.");
+  const t = await translateFields({ title: doc.title });
+  const titleEn = doc.titleEn && doc.titleEn.trim() ? doc.titleEn : t.en.title;
+  const titleBar = doc.titleBar && doc.titleBar.trim() ? doc.titleBar : t.bar.title;
+  await db.update(eventDocuments).set({ titleEn, titleBar }).where(eq(eventDocuments.id, id));
+  revalidatePath("/[locale]", "layout");
+  return { titleEn: titleEn ?? "", titleBar: titleBar ?? "" };
 }

@@ -232,6 +232,62 @@
       "when": 1795000000000,
       "tag": "0035_admin_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795076648414,
+      "tag": "0036_staff_house_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795079000000,
+      "tag": "0037_work_certificate_doc",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795082000000,
+      "tag": "0038_admin_password_totp",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795200000000,
+      "tag": "0039_bavarian_translations",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795300000000,
+      "tag": "0040_gallery_favorites",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795400000000,
+      "tag": "0041_gallery_albums",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795500000000,
+      "tag": "0042_gallery_album_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795600000000,
+      "tag": "0043_team_members",
+      "breakpoints": true
     }
   ]
 }

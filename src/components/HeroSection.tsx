@@ -31,7 +31,7 @@ export default function HeroSection() {
                 </Link>
                 <Link
                     href="/#events"
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-black bg-accent-green px-5 py-3.5 text-center font-display text-sm font-bold tracking-wide whitespace-nowrap text-white shadow-lg transition-all hover:-translate-y-1 hover:bg-base-dark hover:shadow-xl min-[420px]:px-7 min-[420px]:py-4 min-[420px]:text-base md:px-11 md:py-5 md:text-lg"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-black bg-accent-green px-5 py-3.5 text-center font-display text-sm font-bold tracking-wide whitespace-nowrap text-white shadow-lg transition-all hover:-translate-y-1 hover:bg-accent-green/80 hover:shadow-xl min-[420px]:px-7 min-[420px]:py-4 min-[420px]:text-base md:px-11 md:py-5 md:text-lg"
                 >
                     {t("cta_secondary")}
                 </Link>

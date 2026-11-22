@@ -8,6 +8,7 @@ import type { ContractRecord, StaffDocumentRecord, StaffRecord, StaffRole } from
 import { DOCUMENT_KIND_LABELS } from "@/lib/required-documents";
 import { getStaffErasureStatus, updateStaffAdmin, anonymizeStaffForErasure, eraseDeletableStaffData, deleteStaffHardDev, verifyStaffDocument } from "@/app/actions/staff";
 import { verifyContract, deleteContract } from "@/app/actions/contracts";
+import { useDialog } from "@/components/ui/Dialog";
 
 type Detail = { member: StaffRecord; role: StaffRole | null; documents: StaffDocumentRecord[]; contracts: ContractRecord[] };
 
@@ -36,6 +37,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [erasure, setErasure] = useState<Awaited<ReturnType<typeof getStaffErasureStatus>> | null>(null);
+  const dialog = useDialog();
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,7 +68,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
     const label = signed
       ? `Vertrag Version ${version} endgültig löschen? Er ist unterschrieben – die Unterschriftsdatei wird mitgelöscht. Prüfe vorher die steuerliche Aufbewahrungspflicht (§§ 147 AO, 257 HGB). Das kann nicht rückgängig gemacht werden.`
       : `Vertrag Version ${version} (noch nicht unterschrieben) wirklich löschen? Wird der Vertrag erneut gebraucht, erstellt das System automatisch einen neuen aus der aktiven Vorlage.`;
-    if (!confirm(label)) return;
+    if (!await dialog.confirm({ title: "Vertrag löschen", message: label, danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true); setMessage("");
     try { await deleteContract(id); window.location.reload(); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Vertrag konnte nicht gelöscht werden."); }
@@ -81,7 +83,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
   };
 
   const doPartialErasure = async () => {
-    if (!confirm("Nur die sofort löschbaren Daten entfernen (Dokumente, Schichten, Einladungen)? Lohn-/Steuerdaten und Verträge bleiben erhalten.")) return;
+    if (!await dialog.confirm({ title: "Daten teilweise löschen", message: "Nur die sofort löschbaren Daten entfernen (Dokumente, Schichten, Einladungen)? Lohn-/Steuerdaten und Verträge bleiben erhalten.", danger: true, confirmLabel: "Löschen" })) return;
     setBusy(true); setMessage("");
     try { await eraseDeletableStaffData(member.id); setErasure(await getStaffErasureStatus(member.id)); setMessage("Löschbare Daten entfernt. Lohn-/Steuerdaten bleiben aufbewahrt."); window.location.reload(); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Löschen fehlgeschlagen."); }
@@ -89,7 +91,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
   };
 
   const doFullErasure = async () => {
-    if (!confirm("Person vollständig anonymisieren? Verträge & Dokumente werden gelöscht, Name/E-Mail durch Anonymisiert ersetzt. Das kann nicht rückgängig gemacht werden.")) return;
+    if (!await dialog.confirm({ title: "Person anonymisieren", message: "Person vollständig anonymisieren? Verträge & Dokumente werden gelöscht, Name/E-Mail durch Anonymisiert ersetzt. Das kann nicht rückgängig gemacht werden.", danger: true, confirmLabel: "Anonymisieren" })) return;
     setBusy(true); setMessage("");
     try { await anonymizeStaffForErasure(member.id); window.location.reload(); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Anonymisieren fehlgeschlagen."); }
@@ -98,7 +100,7 @@ export default function StaffDetailAdmin({ detail, roles }: { detail: Detail; ro
 
   const isDev = process.env.NODE_ENV === "development";
   const devHardDelete = async () => {
-    if (!confirm("DEV ONLY: Diesen Mitarbeiter ENDGÜLTIG löschen (Testmüll)? Alles (Verträge, Dokumente) verschwindet sofort. Nur für Tests!")) return;
+    if (!await dialog.confirm({ title: "DEV: Hard Delete", message: "DEV ONLY: Diesen Mitarbeiter ENDGÜLTIG löschen (Testmüll)? Alles (Verträge, Dokumente) verschwindet sofort. Nur für Tests!", danger: true, confirmLabel: "Endgültig löschen" })) return;
     setBusy(true); setMessage("");
     try { await deleteStaffHardDev(member.id); router.push("/admin/mitarbeiter"); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Löschen fehlgeschlagen."); }

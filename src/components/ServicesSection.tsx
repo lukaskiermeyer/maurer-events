@@ -3,9 +3,11 @@ import Image from 'next/image';
 
 import type { SVGProps } from 'react';
 
-import { motion, Variants } from "framer-motion";
+import { useRef } from "react";
+import { motion, Variants, useReducedMotion, useInView } from "framer-motion";
 import { services } from "@/data/services";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 // Ultra-minimalist traditional SVGs (Thin line art)
 const Icons = {
@@ -67,9 +69,34 @@ const itemVariants: Variants = {
 
 export default function ServicesSection() {
   const t = useTranslations("Services");
+  const reduced = useReducedMotion() ?? false;
+  const sectionRef = useRef<HTMLElement>(null);
+  // Die Silhouette startet off-screen; whileInView auf ihr selbst wuerde nie
+  // feuern. Deshalb triggert die Entrance ueber die Sektion im Viewport.
+  const inView = useInView(sectionRef, { once: true, margin: "-60px" });
 
   return (
-    <section id="services" className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden border-t-4 border-base-dark">
+    <section id="services" ref={sectionRef} className="py-16 sm:py-20 lg:py-24 bg-accent-green text-base-light relative overflow-hidden">
+
+      {/* Maennchen als Silhouette oben rechts im freien Bereich neben der
+          Headline. Animiert EINMALIG von rechts nach links herein (Init, kein
+          Loop), mit einem einzelnen Auf-Ab-Bob; danach statisch. Auf Mobile
+          ausgeblendet, dort ist kein freier Bereich. Liegt hinter dem Content. */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute top-8 right-6 sm:right-10 z-0 pointer-events-none hidden sm:block"
+        initial={false}
+        animate={reduced || inView ? { x: 0, opacity: 1 } : { x: "12vw", opacity: 0 }}
+        transition={reduced ? { duration: 0 } : { duration: 1.6, ease: "easeOut" }}
+      >
+        <motion.div
+          initial={false}
+          animate={inView && !reduced ? { y: [0, -10, 0] } : { y: 0 }}
+          transition={reduced ? { duration: 0 } : { duration: 1.6, ease: "easeInOut" }}
+        >
+          <Image src="/Icon_MaurerGrün.svg" alt="" width={160} height={160} sizes="176px" className="w-28 sm:w-36 lg:w-44 h-auto brightness-0 invert opacity-20" />
+        </motion.div>
+      </motion.div>
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10">
 
@@ -82,7 +109,8 @@ export default function ServicesSection() {
               viewport={{ once: true }}
               className="font-display font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] break-words mb-4 text-base-light"
             >
-              {t("title")}
+              {t("title").split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="text-accent-wood italic">{t("title").split(" ").slice(-1)}</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -93,18 +121,9 @@ export default function ServicesSection() {
             >
               {t("subtitle")}
             </motion.p>
+
           </div>
 
-          {/* Männchen rechts von der Überschrift, als eigene Spalte im Flex-Header */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-            className="shrink-0 w-20 sm:w-40 lg:w-56 pointer-events-none"
-          >
-            <Image src="/maennchen.svg" alt="Festwirt Icon" width={241} height={205} sizes="200px" className="w-full h-auto brightness-0 invert opacity-20 drop-shadow-md" />
-          </motion.div>
         </div>
 
         <motion.div
@@ -138,6 +157,24 @@ export default function ServicesSection() {
               </motion.div>
             );
           })}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="mt-10 sm:mt-14 flex justify-center"
+        >
+          <Link
+            href="/#contact"
+            className="inline-flex items-center gap-3 bg-white text-base-dark px-8 py-4 rounded-full font-display font-bold uppercase tracking-wide text-sm shadow-lg hover:bg-accent-green-deep hover:text-white transition-colors"
+          >
+            {t("cta")}
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </Link>
         </motion.div>
       </div>
     </section>

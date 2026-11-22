@@ -28,7 +28,7 @@ export async function getStaffingData(eventId: string) {
   if (!event) throw new BookingError("Event nicht gefunden.", 404);
   const [roles, team, rules, requirements, availability, assignments] = await Promise.all([
     db.select().from(staffRoles).where(eq(staffRoles.active, true)).orderBy(asc(staffRoles.name)),
-    db.select({ member: staff, role: staffRoles }).from(staff).leftJoin(staffRoles, eq(staffRoles.id, staff.roleId)).where(and(isNull(staff.exitDate), inArray(staff.status, ["active", "ready"]))).orderBy(asc(staff.lastName)),
+    db.select({ member: staff, role: staffRoles }).from(staff).leftJoin(staffRoles, eq(staffRoles.id, staff.roleId)).where(and(isNull(staff.exitDate), inArray(staff.status, ["active", "ready", "onboarding"]))).orderBy(asc(staff.lastName)),
     db.select().from(staffingRules),
     db.select().from(eventStaffRequirements).where(eq(eventStaffRequirements.eventId, eventId)).orderBy(asc(eventStaffRequirements.date), asc(eventStaffRequirements.startTime)),
     db.select().from(staffAvailability).where(eq(staffAvailability.eventId, eventId)).orderBy(asc(staffAvailability.date), asc(staffAvailability.startTime)),
@@ -78,6 +78,39 @@ export async function deleteRequirement(id: string) {
   await db.delete(eventStaffRequirements).where(eq(eventStaffRequirements.id, id));
   revalidatePath("/[locale]/admin", "layout");
   return { success: true };
+}
+
+export async function updateRequirement(id: string, data: { roleId: string; date: string; startTime?: string | null; endTime?: string | null; requiredCount: number; note?: string }) {
+  await requireAdmin(); uuid(id); uuid(data.roleId, "Rolle");
+  const day = calendarDate(data.date);
+  const startTime = data.startTime ? cleanTime(data.startTime) : null;
+  const endTime = data.endTime ? cleanTime(data.endTime) : null;
+  const effectiveStart = startTime || "00:00";
+  const effectiveEnd = endTime || "23:59";
+  if (effectiveStart !== "00:00" || effectiveEnd !== "23:59") {
+    if (shiftHours(effectiveStart, effectiveEnd) <= 0 || shiftHours(effectiveStart, effectiveEnd) > 24) throw new BookingError("Ungültige Schichtdauer.");
+  }
+  const requiredCount = int(data.requiredCount, 1, 500, "Anzahl");
+  const [updated] = await db.update(eventStaffRequirements).set({
+    roleId: data.roleId,
+    date: day,
+    startTime,
+    endTime,
+    requiredCount,
+    note: data.note?.trim().slice(0, 500) || null,
+  }).where(eq(eventStaffRequirements.id, id)).returning();
+  if (!updated) throw new BookingError("Schicht nicht gefunden.", 404);
+  revalidatePath("/[locale]/admin", "layout");
+  return { success: true, requirement: updated };
+}
+
+export async function updateRequirementCount(id: string, requiredCount: number) {
+  await requireAdmin(); uuid(id);
+  const count = int(requiredCount, 1, 500, "Anzahl");
+  const [updated] = await db.update(eventStaffRequirements).set({ requiredCount: count }).where(eq(eventStaffRequirements.id, id)).returning();
+  if (!updated) throw new BookingError("Schicht nicht gefunden.", 404);
+  revalidatePath("/[locale]/admin", "layout");
+  return { success: true, requirement: updated };
 }
 
 export async function suggestRequirements(eventId: string, data: { date: string; startTime: string; endTime: string; guests?: number }) {

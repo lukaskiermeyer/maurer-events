@@ -1,14 +1,15 @@
 "use client";
 
-import type { GalleryAlbum } from '@/types/domain';
+import type { GalleryAlbum, GalleryWithAlbum } from '@/types/domain';
 
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@/i18n/routing";
 import ImageWithSkeleton from "./ImageWithSkeleton";
 import { useTranslations, useLocale } from "next-intl";
+import { localized, ui, DATE_TAG } from "@/lib/localize";
 
-export default function GallerySection({ albums, sneakPeek = false }: { albums?: GalleryAlbum[], sneakPeek?: boolean }) {
+export default function GallerySection({ albums, sneakPeek = false, favorites = [] }: { albums?: GalleryAlbum[], sneakPeek?: boolean, favorites?: GalleryWithAlbum[] }) {
   const t = useTranslations("Gallery");
   const locale = useLocale();
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -21,10 +22,8 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
     return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
   });
 
-  // Startseite: Nur markierte Alben, maximal 4 (für ein sauberes 2x2 Grid)
-  const visibleAlbums = sneakPeek 
-    ? sortedAlbums.filter(a => a.isFeaturedGallery).slice(0, 4) 
-    : sortedAlbums;
+  // Startseite zeigt die kuratierten Favoriten-Bilder; die Album-Übersicht alle Alben.
+  const visibleAlbums = sortedAlbums;
 
   const Heading = sneakPeek ? motion.h2 : motion.h1;
 
@@ -39,7 +38,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
               viewport={{ once: true }}
               className="font-display font-bold text-5xl md:text-7xl mb-4 text-base-dark"
             >
-              {t("title_1_alt") || "Rückblick in"} <span className="text-accent-green">{t("title_2_alt") || "Bildern"}</span>
+              {t("title_1_alt") || "Rückblick in"} <span className="text-accent-green italic">{t("title_2_alt") || "Bildern"}</span>
             </Heading>
             <motion.p
               initial={{ opacity: 0, x: -20 }}
@@ -86,14 +85,45 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
           )}
         </div>
 
-        <div className={`grid ${sneakPeek ? 'grid-cols-2 gap-3 sm:gap-8 max-w-5xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8'}`}>
+        {sneakPeek ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+            {favorites.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-base-dark/70 font-bold border border-dashed border-border-light rounded-2xl">
+                {t("empty_homepage")}
+              </div>
+            ) : favorites.map((fav, i) => (
+              <motion.div
+                key={fav.gallery.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (i % 4) * 0.1 }}
+              >
+                <Link
+                  href={fav.album ? `/galerie/${fav.album.id}` : "/galerie"}
+                  className="group block relative overflow-hidden rounded-2xl border border-border-light shadow-sm bg-base-light aspect-square transition-all hover:shadow-lg hover:-translate-y-1"
+                >
+                  <ImageWithSkeleton
+                    src={fav.gallery.imageUrl}
+                    alt={fav.album?.title ?? "Galeriebild"}
+                    sizes="(max-width: 639px) 50vw, 25vw"
+                    className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                    loading="lazy"
+                    wrapperClassName="w-full h-full"
+                  />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {visibleAlbums.length === 0 ? (
             <div className="col-span-full py-12 text-center text-base-dark/70 font-bold border border-dashed border-border-light rounded-2xl">
-              {sneakPeek ? t("empty_homepage") : locale === 'en' ? 'Photos from our events will appear here soon.' : 'Hier findest du bald Bilder unserer Veranstaltungen.'}
+              {ui(locale, { de: 'Hier findest du bald Bilder unserer Veranstaltungen.', en: 'Photos from our events will appear here soon.', bar: 'Do findest du bald Bilder von unsere Veranstaltungen.' })}
             </div>
           ) : visibleAlbums.map((album, i) => {
-            const title = locale === "en" && album.titleEn ? album.titleEn : album.title;
-            const description = locale === "en" && album.descriptionEn ? album.descriptionEn : album.description;
+            const title = localized(album, "title", locale);
+            const description = localized(album, "description", locale);
             
             return (
             <motion.div
@@ -123,7 +153,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
                 <div className="p-3 sm:p-6">
                   <h3 className="font-subhead text-lg sm:text-xl text-base-dark mb-1 group-hover:text-accent-green transition-colors line-clamp-1">{title}</h3>
                   <p className="text-base-dark/50 text-xs sm:text-sm font-bold mb-2 sm:mb-3">
-                    {new Date(album.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE')}
+                    {new Date(album.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE')}
                   </p>
                   <p className="font-sans text-xs sm:text-sm text-base-dark/70 line-clamp-2 whitespace-pre-line">
                     {description}
@@ -133,6 +163,7 @@ export default function GallerySection({ albums, sneakPeek = false }: { albums?:
             </motion.div>
           )})}
         </div>
+        )}
       </div>
     </section>
   );

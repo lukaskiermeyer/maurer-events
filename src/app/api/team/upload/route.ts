@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     let contract: { id: string } | undefined;
     if (typeof contractId === "string" && contractId) {
       const [found] = await db.select().from(contracts).where(and(eq(contracts.id, contractId), eq(contracts.staffId, member.id)));
-      if (!found || found.signatureMode !== "handwritten") return NextResponse.json({ error: "Vertrag nicht gefunden." }, { status: 404 });
+      if (!found) return NextResponse.json({ error: "Vertrag nicht gefunden." }, { status: 404 });
       contract = { id: found.id };
     } else if (!DOCUMENT_KINDS.has(kind)) {
       return NextResponse.json({ error: "Ungültige Dokumentart." }, { status: 400 });

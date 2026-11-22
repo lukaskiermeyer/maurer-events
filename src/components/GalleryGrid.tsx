@@ -4,13 +4,23 @@ import type { GalleryImage } from '@/types/domain';
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useLocale } from "next-intl";
+import { ui } from "@/lib/localize";
 import ImageWithSkeleton from "./ImageWithSkeleton";
 
 export default function GalleryGrid({ images }: { images: GalleryImage[] }) {
+  const locale = useLocale();
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
 
+  const copy = {
+    empty: ui(locale, { de: "Keine Bilder vorhanden.", en: "No images available.", bar: "Koane Buidln vorhanda." }),
+    alt_thumb: ui(locale, { de: "Galerie Bild", en: "Gallery image", bar: "Galerie Buidl" }),
+    alt_full: ui(locale, { de: "Galeriebild in voller Größe", en: "Gallery image in full size", bar: "Galeriebuidl in volla Größe" }),
+    close: ui(locale, { de: "Bild schließen", en: "Close image", bar: "Buidl zuamacha" }),
+  };
+
   if (!images || images.length === 0) {
-    return <div className="text-center py-20 text-base-dark/50">Keine Bilder vorhanden.</div>;
+    return <div className="text-center py-20 text-base-dark/50">{copy.empty}</div>;
   }
 
   return (
@@ -26,9 +36,9 @@ export default function GalleryGrid({ images }: { images: GalleryImage[] }) {
             className="relative break-inside-avoid overflow-hidden rounded-2xl group cursor-pointer border border-border-light shadow-sm bg-base-light"
             onClick={() => setSelectedImage(img)}
           >
-            <ImageWithSkeleton 
-              src={img.imageUrl} 
-              alt="Galerie Bild"
+            <ImageWithSkeleton
+              src={img.imageUrl}
+              alt={copy.alt_thumb}
               naturalAspectRatio
               sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
               className="object-cover transform group-hover:scale-105 transition-transform duration-700"
@@ -42,12 +52,12 @@ export default function GalleryGrid({ images }: { images: GalleryImage[] }) {
 
       {/* Lightbox */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-base-dark/98 backdrop-blur-xl p-4 md:p-8"
           onClick={() => setSelectedImage(null)}
         >
-          <button 
-            aria-label="Bild schließen"
+          <button
+            aria-label={copy.close}
             className="absolute top-6 right-6 md:top-10 md:right-10 text-white hover:text-accent-green transition-colors p-2 z-50"
             onClick={() => setSelectedImage(null)}
           >
@@ -56,9 +66,9 @@ export default function GalleryGrid({ images }: { images: GalleryImage[] }) {
             </svg>
           </button>
           <div className="relative w-full max-w-6xl max-h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
-            <ImageWithSkeleton 
-              src={selectedImage.imageUrl} 
-              alt="Galeriebild in voller Größe"
+            <ImageWithSkeleton
+              src={selectedImage.imageUrl}
+              alt={copy.alt_full}
               sizes="(max-width: 1215px) 100vw, 1152px"
               className="object-contain rounded-xl"
               wrapperClassName="w-full h-[90vh]"

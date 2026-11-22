@@ -7,9 +7,9 @@ export default function Loading() {
         {/* Logo Container */}
         <div className="relative mb-16 animate-[float_4s_ease-in-out_infinite]">
           <Image
-            src="/Logo.png" 
+            src="/LogoFinalGrün_MaurerEvents.svg" 
             width={490}
-            height={145}
+            height={230}
             sizes="(max-width: 767px) 325px, 433px"
             alt="Maurer Events Logo" 
             className="relative z-10 h-24 md:h-32 w-auto object-contain drop-shadow-sm"

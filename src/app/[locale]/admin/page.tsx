@@ -1,6 +1,7 @@
 import { getAllEvents, getAdminStats } from "@/app/actions/events";
 import { getCareerContent } from "@/app/actions/career";
-import { getAllGalleryImages } from "@/app/actions/gallery";
+import { getAllGalleryImages, getAdminGalleryAlbums } from "@/app/actions/gallery";
+import { getAdminTeamMembers } from "@/app/actions/team";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
@@ -16,11 +17,13 @@ export default async function AdminPage() {
   let events = [];
   let stats = null;
   let galleryImages = [];
+  let albums = [];
   let loadFailed = false;
   try {
     events = await getAllEvents();
     stats = await getAdminStats();
     galleryImages = await getAllGalleryImages();
+    albums = await getAdminGalleryAlbums();
   } catch {
     loadFailed = true;
     console.error("Admin overview unavailable");
@@ -28,6 +31,7 @@ export default async function AdminPage() {
 
   // Karriere-Inhalte dürfen die Übersicht nicht blockieren.
   const careerContent = await getCareerContent().catch(() => DEFAULT_CAREER_CONTENT);
+  const teamMembers = await getAdminTeamMembers().catch(() => []);
 
   return (
     <div className="min-h-screen bg-base-light pb-12">
@@ -44,7 +48,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} initialGallery={galleryImages} />
+        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} albums={albums} initialGallery={galleryImages} teamMembers={teamMembers} />
       </div>
     </div>
   );

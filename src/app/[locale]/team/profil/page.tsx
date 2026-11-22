@@ -11,6 +11,7 @@ export default async function ProfilePage() {
     lastName: member.lastName,
     phone: member.phone || "",
     street: member.street || "",
+    houseNumber: member.houseNumber || "",
     zip: member.zip || "",
     city: member.city || "",
     iban: decryptField(member.ibanEnc) || "",

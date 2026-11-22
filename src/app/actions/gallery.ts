@@ -1,72 +1,417 @@
 "use server";
 
 import { db } from "@/db";
-import { galleries, events } from "@/db/schema";
-import { eq, sql, and, isNull } from "drizzle-orm";
+import { galleries, galleryAlbums, events } from "@/db/schema";
+import { eq, sql, and, or, isNull, isNotNull, asc, desc, lte, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { translateFields } from "@/lib/translate";
+import { uuid } from "@/lib/reservation-policy";
 
-export async function addGalleryImage(eventId: string | null, imageUrl: string) {
+const MAX_FAVORITES = 8;
+
+function revalidateGallery() {
+  revalidatePath("/");
+  revalidatePath("/galerie");
+  revalidatePath("/galerie/[albumId]", "page");
+  revalidatePath("/admin");
+  revalidatePath("/admin/events/[id]", "page");
+  revalidatePath("/termine/[id]", "page");
+}
+
+// ---------- Alben (öffentlich) ----------
+
+// Galerie-Übersicht: nur vergangene, nicht gelöschte Alben (Galerie = Rückblick).
+export async function getGalleryAlbums() {
+  const result = await db.select({
+    id: galleryAlbums.id,
+    title: galleryAlbums.title,
+    titleEn: galleryAlbums.titleEn,
+    titleBar: galleryAlbums.titleBar,
+    date: galleryAlbums.date,
+    description: galleryAlbums.description,
+    descriptionEn: galleryAlbums.descriptionEn,
+    descriptionBar: galleryAlbums.descriptionBar,
+    location: galleryAlbums.location,
+    locationEn: galleryAlbums.locationEn,
+    locationBar: galleryAlbums.locationBar,
+    coverImageUrl: galleryAlbums.coverImageUrl,
+    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
+    imageCount: sql<number>`count(${galleries.id})::int`
+  })
+    .from(galleryAlbums)
+    .leftJoin(galleries, eq(galleryAlbums.id, galleries.albumId))
+    .where(and(isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date())))
+    .groupBy(galleryAlbums.id)
+    .orderBy(asc(galleryAlbums.sortOrder), desc(galleryAlbums.date));
+
+  return result.map(album => ({
+    ...album,
+    isFeaturedGallery: true,
+    coverImage: album.coverImageUrl || album.fallbackImageUrl,
+    imageCount: Number(album.imageCount)
+  }));
+}
+
+export async function getGalleryAlbumById(albumId: string) {
+  const [album] = await db.select().from(galleryAlbums)
+    .where(and(eq(galleryAlbums.id, albumId), isNull(galleryAlbums.deletedAt)));
+  return album ?? null;
+}
+
+export async function getGalleryImages(albumId: string) {
+  return await db.select().from(galleries)
+    .where(eq(galleries.albumId, albumId))
+    .orderBy(asc(galleries.createdAt));
+}
+
+// Alben, die mit einem Fest verknüpft sind (Eventseite + Event-Admin).
+export async function getAlbumsForEvent(eventId: string) {
+  return await db.select().from(galleryAlbums)
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
+    .orderBy(asc(galleryAlbums.createdAt));
+}
+
+// Bilder aller Alben eines Festes – für die Foto-Sektion der Eventseite.
+export async function getEventGalleryImages(eventId: string) {
+  const albums = await getAlbumsForEvent(eventId);
+  if (albums.length === 0) return [];
+  return await db.select().from(galleries)
+    .where(inArray(galleries.albumId, albums.map(a => a.id)))
+    .orderBy(asc(galleries.createdAt));
+}
+
+// ---------- Alben (Admin) ----------
+
+export async function getAdminGalleryAlbums() {
   await requireAdmin();
-  await db.insert(galleries).values({
-    eventId: eventId || null,
-    imageUrl,
+  const result = await db.select({
+    album: galleryAlbums,
+    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
+    imageCount: sql<number>`count(${galleries.id})::int`
+  })
+    .from(galleryAlbums)
+    .leftJoin(galleries, eq(galleryAlbums.id, galleries.albumId))
+    .where(isNull(galleryAlbums.deletedAt))
+    .groupBy(galleryAlbums.id)
+    .orderBy(asc(galleryAlbums.sortOrder), desc(galleryAlbums.date));
+
+  return result.map(({ album, fallbackImageUrl, imageCount }) => ({
+    ...album,
+    coverImage: album.coverImageUrl || fallbackImageUrl,
+    imageCount: Number(imageCount)
+  }));
+}
+
+// Einzelnes Album inkl. aufgelöstem Cover + Bildzahl (für Admin-Listen & Mutationen).
+async function loadAdminAlbum(id: string) {
+  const rows = await db.select({
+    album: galleryAlbums,
+    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
+    imageCount: sql<number>`count(${galleries.id})::int`
+  })
+    .from(galleryAlbums)
+    .leftJoin(galleries, eq(galleryAlbums.id, galleries.albumId))
+    .where(eq(galleryAlbums.id, id))
+    .groupBy(galleryAlbums.id);
+  const r = rows[0];
+  if (!r) throw new Error('Album nicht gefunden.');
+  return { ...r.album, coverImage: r.album.coverImageUrl || r.fallbackImageUrl, imageCount: Number(r.imageCount) };
+}
+
+export async function getDeletedGalleryAlbums() {
+  await requireAdmin();
+  const rows = await db.select({
+    album: galleryAlbums,
+    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
+    imageCount: sql<number>`count(${galleries.id})::int`
+  })
+    .from(galleryAlbums)
+    .leftJoin(galleries, eq(galleryAlbums.id, galleries.albumId))
+    .where(isNotNull(galleryAlbums.deletedAt))
+    .groupBy(galleryAlbums.id)
+    .orderBy(desc(galleryAlbums.deletedAt));
+  return rows.map(({ album, fallbackImageUrl, imageCount }) => ({
+    ...album,
+    coverImage: album.coverImageUrl || fallbackImageUrl,
+    imageCount: Number(imageCount)
+  }));
+}
+
+function assertAlbumText(data: { title?: string; location?: string; description?: string }) {
+  if (data.title !== undefined && (typeof data.title !== 'string' || !data.title.trim() || data.title.length > 300)) throw new Error('Ungültiger Titel.');
+  if (data.location !== undefined && (typeof data.location !== 'string' || !data.location.trim() || data.location.length > 300)) throw new Error('Ungültiger Ort.');
+  if (data.description !== undefined && (typeof data.description !== 'string' || !data.description.trim() || data.description.length > 100000)) throw new Error('Ungültige Beschreibung.');
+}
+
+export async function createGalleryAlbum(data: {
+  title: string;
+  date: Date;
+  location: string;
+  description: string;
+  coverImageUrl?: string | null;
+  eventId?: string | null;
+}) {
+  await requireAdmin();
+  assertAlbumText(data);
+  if (!(data.date instanceof Date) || !Number.isFinite(data.date.getTime())) throw new Error('Ungültiges Datum.');
+  if (data.eventId) uuid(data.eventId, 'Event-ID');
+  const translated = await translateFields({
+    title: data.title,
+    location: data.location,
+    description: data.description,
   });
-  if (eventId) {
-    revalidatePath("/admin/events/[id]", "page");
-    revalidatePath(`/termine/${eventId}`);
+  const [{ maxOrder }] = await db
+    .select({ maxOrder: sql<number>`coalesce(max(${galleryAlbums.sortOrder}), 0)` })
+    .from(galleryAlbums);
+  const [album] = await db.insert(galleryAlbums).values({
+    sortOrder: Number(maxOrder) + 1,
+    title: data.title.trim(),
+    date: data.date,
+    location: data.location.trim(),
+    description: data.description,
+    coverImageUrl: data.coverImageUrl || null,
+    eventId: data.eventId || null,
+    titleEn: translated.en.title,
+    locationEn: translated.en.location,
+    descriptionEn: translated.en.description,
+    titleBar: translated.bar.title,
+    locationBar: translated.bar.location,
+    descriptionBar: translated.bar.description,
+  }).returning({ id: galleryAlbums.id });
+  revalidateGallery();
+  return await loadAdminAlbum(album.id);
+}
+
+export async function updateGalleryAlbum(id: string, data: {
+  title?: string;
+  date?: Date;
+  location?: string;
+  description?: string;
+  coverImageUrl?: string | null;
+  coverPublicId?: string | null;
+}) {
+  await requireAdmin();
+  uuid(id);
+  assertAlbumText(data);
+  const updates: Partial<typeof galleryAlbums.$inferInsert> = { updatedAt: new Date() };
+  if (data.title !== undefined) updates.title = data.title.trim();
+  if (data.location !== undefined) updates.location = data.location.trim();
+  if (data.description !== undefined) updates.description = data.description;
+  if (data.date !== undefined) {
+    if (!(data.date instanceof Date) || !Number.isFinite(data.date.getTime())) throw new Error('Ungültiges Datum.');
+    updates.date = data.date;
   }
-  revalidatePath("/admin", "page");
-  revalidatePath("/galerie", "page");
+  if (data.coverImageUrl !== undefined) updates.coverImageUrl = data.coverImageUrl || null;
+  if (data.coverPublicId !== undefined) updates.coverPublicId = data.coverPublicId || null;
+
+  if (data.title !== undefined || data.location !== undefined || data.description !== undefined) {
+    const translated = await translateFields({
+      title: data.title,
+      location: data.location,
+      description: data.description,
+    });
+    if (data.title !== undefined) { updates.titleEn = translated.en.title; updates.titleBar = translated.bar.title; }
+    if (data.location !== undefined) { updates.locationEn = translated.en.location; updates.locationBar = translated.bar.location; }
+    if (data.description !== undefined) { updates.descriptionEn = translated.en.description; updates.descriptionBar = translated.bar.description; }
+  }
+
+  await db.update(galleryAlbums).set(updates).where(eq(galleryAlbums.id, id));
+  revalidateGallery();
+  return await loadAdminAlbum(id);
+}
+
+// Cover eines Albums auf ein bestimmtes Album-Bild setzen.
+export async function setAlbumCoverFromImage(albumId: string, imageId: string) {
+  await requireAdmin();
+  uuid(albumId); uuid(imageId);
+  const [img] = await db.select().from(galleries)
+    .where(and(eq(galleries.id, imageId), eq(galleries.albumId, albumId)));
+  if (!img) throw new Error('Bild gehört nicht zu diesem Album.');
+  await db.update(galleryAlbums)
+    .set({ coverImageUrl: img.imageUrl, coverPublicId: img.publicId, updatedAt: new Date() })
+    .where(eq(galleryAlbums.id, albumId));
+  revalidateGallery();
+  return await loadAdminAlbum(albumId);
+}
+
+// Soft delete: Album kann innerhalb von 7 Tagen wiederhergestellt werden (Cleanup-Cron).
+export async function deleteGalleryAlbum(id: string) {
+  await requireAdmin();
+  uuid(id);
+  await db.update(galleryAlbums).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(galleryAlbums.id, id));
+  revalidateGallery();
+}
+
+export async function restoreGalleryAlbum(id: string) {
+  await requireAdmin();
+  uuid(id);
+  await db.update(galleryAlbums).set({ deletedAt: null, updatedAt: new Date() }).where(eq(galleryAlbums.id, id));
+  revalidateGallery();
+  return await loadAdminAlbum(id);
+}
+
+export async function getGalleryAlbumDeletionSummary(id: string) {
+  await requireAdmin();
+  uuid(id);
+  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(galleries).where(eq(galleries.albumId, id));
+  return { images: Number(row?.count ?? 0) };
+}
+
+// Album eines Festes holen oder anlegen. Das Event bleibt immer erhalten;
+// Titel/Datum/Ort/Beschreibung (inkl. Übersetzungen) werden kopiert.
+// Genutzt vom Event-Tab (erster Upload) und von "Album aus Event erstellen".
+export async function getOrCreateEventAlbum(eventId: string) {
+  await requireAdmin();
+  uuid(eventId);
+  const [existing] = await db.select({ id: galleryAlbums.id }).from(galleryAlbums)
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
+    .orderBy(asc(galleryAlbums.createdAt))
+    .limit(1);
+  if (existing) return await loadAdminAlbum(existing.id);
+
+  const [event] = await db.select().from(events).where(eq(events.id, eventId));
+  if (!event) throw new Error('Event nicht gefunden.');
+  const [{ maxOrder }] = await db
+    .select({ maxOrder: sql<number>`coalesce(max(${galleryAlbums.sortOrder}), 0)` })
+    .from(galleryAlbums);
+  const [album] = await db.insert(galleryAlbums).values({
+    sortOrder: Number(maxOrder) + 1,
+    eventId,
+    title: event.title,
+    titleEn: event.titleEn,
+    titleBar: event.titleBar,
+    date: event.date,
+    location: event.location,
+    locationEn: event.locationEn,
+    locationBar: event.locationBar,
+    description: event.description,
+    descriptionEn: event.descriptionEn,
+    descriptionBar: event.descriptionBar,
+    coverImageUrl: event.imageUrl,
+  }).returning({ id: galleryAlbums.id });
+  revalidateGallery();
+  return await loadAdminAlbum(album.id);
+}
+
+// ---------- Bilder ----------
+
+export async function addGalleryImage(albumId: string | null, imageUrl: string, publicId?: string | null) {
+  await requireAdmin();
+  if (albumId) uuid(albumId);
+  if (typeof imageUrl !== 'string' || !imageUrl.trim()) throw new Error('Ungültige Bild-URL.');
+  const [row] = await db.insert(galleries).values({
+    albumId: albumId || null,
+    imageUrl,
+    publicId: publicId ?? null,
+  }).returning();
+  revalidateGallery();
+  return row;
 }
 
 export async function removeGalleryImage(imageId: string) {
   await requireAdmin();
+  uuid(imageId);
   await db.delete(galleries).where(eq(galleries.id, imageId));
-  revalidatePath("/admin/events/[id]", "page");
+  revalidateGallery();
 }
 
-export async function getGalleryImages(eventId: string) {
-  return await db.select().from(galleries).where(eq(galleries.eventId, eventId));
+// Bild aus dem Pool einem Album zuordnen (oder zurück in den Pool legen).
+export async function assignGalleryImage(imageId: string, albumId: string | null) {
+  await requireAdmin();
+  uuid(imageId);
+  if (albumId) uuid(albumId);
+  await db.update(galleries).set({ albumId: albumId || null }).where(eq(galleries.id, imageId));
+  revalidateGallery();
 }
 
+// Admin-Übersicht: Bilder mit Album (ohne Bilder bereits gelöschter Alben).
 export async function getAllGalleryImages() {
-  const result = await db.select({
-    gallery: galleries,
-    event: events
-  })
-  .from(galleries)
-  .leftJoin(events, eq(galleries.eventId, events.id))
-  .where(isNull(events.deletedAt))
-  .orderBy(galleries.createdAt);
-
-  return result.reverse(); // Newest first
+  return await db.select({ gallery: galleries, album: galleryAlbums })
+    .from(galleries)
+    .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
+    .where(or(isNull(galleryAlbums.id), isNull(galleryAlbums.deletedAt)))
+    .orderBy(desc(galleries.createdAt));
 }
 
-export async function getGalleryAlbums() {
-  const result = await db.select({
-    id: events.id,
-    title: events.title,
-    titleEn: events.titleEn,
-    date: events.date,
-    description: events.description,
-    descriptionEn: events.descriptionEn,
-    location: events.location,
-    locationEn: events.locationEn,
-    eventImageUrl: events.imageUrl,
-    isFeaturedGallery: events.isFeaturedGallery,
-    fallbackImageUrl: sql<string | null>`min(${galleries.imageUrl})`,
-    imageCount: sql<number>`count(${galleries.id})::int`
-  })
-      .from(events)
-      .leftJoin(galleries, eq(events.id, galleries.eventId))
-      .where(and(eq(events.type, 'gallery'), isNull(events.deletedAt)))
-      .groupBy(events.id, events.title, events.titleEn, events.date, events.description, events.descriptionEn, events.location, events.locationEn, events.imageUrl, events.isFeaturedGallery)
-      .orderBy(events.date);
+// ---------- Startseiten-Favoriten ----------
 
-  return result.reverse().map(album => ({
-    ...album,
-    coverImage: album.eventImageUrl || album.fallbackImageUrl,
-    imageCount: Number(album.imageCount)
-  }));
+// Kuratierte "Best of"-Fotos fuer die Startseite (ueber alle Alben), in Reihenfolge.
+export async function getFavoriteGalleryImages(limit = MAX_FAVORITES) {
+  return await db.select({ gallery: galleries, album: galleryAlbums })
+    .from(galleries)
+    .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
+    .where(and(eq(galleries.isFavorite, true), or(isNull(galleryAlbums.id), isNull(galleryAlbums.deletedAt))))
+    .orderBy(asc(galleries.favoriteOrder), asc(galleries.createdAt))
+    .limit(limit);
+}
+
+export async function setGalleryFavorite(imageId: string, favorite: boolean) {
+  await requireAdmin();
+  uuid(imageId);
+  let updated;
+  if (favorite) {
+    const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(galleries).where(eq(galleries.isFavorite, true));
+    if (Number(row?.count ?? 0) >= MAX_FAVORITES) throw new Error(`Maximal ${MAX_FAVORITES} Favoriten für die Startseite.`);
+    const [{ maxOrder }] = await db
+      .select({ maxOrder: sql<number>`coalesce(max(${galleries.favoriteOrder}), 0)` })
+      .from(galleries)
+      .where(eq(galleries.isFavorite, true));
+    [updated] = await db.update(galleries)
+      .set({ isFavorite: true, favoriteOrder: Number(maxOrder) + 1 })
+      .where(eq(galleries.id, imageId))
+      .returning();
+  } else {
+    [updated] = await db.update(galleries)
+      .set({ isFavorite: false, favoriteOrder: 0 })
+      .where(eq(galleries.id, imageId))
+      .returning();
+  }
+  revalidateGallery();
+  return updated;
+}
+
+// Reihenfolge der Favoriten: tauscht den Platz mit dem Nachbarn in Pfeilrichtung.
+// Gibt die komplette sortierte Favoritenliste ({id, favoriteOrder}) zurück.
+export async function moveGalleryFavorite(imageId: string, direction: -1 | 1) {
+  await requireAdmin();
+  uuid(imageId);
+  const favorites = await db.select().from(galleries)
+    .where(eq(galleries.isFavorite, true))
+    .orderBy(asc(galleries.favoriteOrder));
+  const idx = favorites.findIndex(f => f.id === imageId);
+  const swapIdx = idx + direction;
+  if (idx >= 0 && swapIdx >= 0 && swapIdx < favorites.length) {
+    const a = favorites[idx];
+    const b = favorites[swapIdx];
+    await db.update(galleries).set({ favoriteOrder: b.favoriteOrder }).where(eq(galleries.id, a.id));
+    await db.update(galleries).set({ favoriteOrder: a.favoriteOrder }).where(eq(galleries.id, b.id));
+    revalidateGallery();
+  }
+  return await db.select({ id: galleries.id, favoriteOrder: galleries.favoriteOrder })
+    .from(galleries).where(eq(galleries.isFavorite, true)).orderBy(asc(galleries.favoriteOrder));
+}
+
+// Album-Reihenfolge: tauscht den Platz mit dem Nachbarn in Pfeilrichtung.
+// Bestimmt die Anzeige auf /galerie und in der Admin-Liste.
+// Gibt die komplette sortierte Albumliste ({id, sortOrder}) zurück.
+export async function moveGalleryAlbum(albumId: string, direction: -1 | 1) {
+  await requireAdmin();
+  uuid(albumId);
+  const albums = await db.select({ id: galleryAlbums.id, sortOrder: galleryAlbums.sortOrder })
+    .from(galleryAlbums)
+    .where(isNull(galleryAlbums.deletedAt))
+    .orderBy(asc(galleryAlbums.sortOrder), desc(galleryAlbums.date));
+  const idx = albums.findIndex(a => a.id === albumId);
+  const swapIdx = idx + direction;
+  if (idx >= 0 && swapIdx >= 0 && swapIdx < albums.length) {
+    const a = albums[idx];
+    const b = albums[swapIdx];
+    await db.update(galleryAlbums).set({ sortOrder: b.sortOrder }).where(eq(galleryAlbums.id, a.id));
+    await db.update(galleryAlbums).set({ sortOrder: a.sortOrder }).where(eq(galleryAlbums.id, b.id));
+    revalidateGallery();
+  }
+  return await db.select({ id: galleryAlbums.id, sortOrder: galleryAlbums.sortOrder })
+    .from(galleryAlbums).where(isNull(galleryAlbums.deletedAt))
+    .orderBy(asc(galleryAlbums.sortOrder), desc(galleryAlbums.date));
 }

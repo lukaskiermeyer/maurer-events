@@ -1,0 +1,371 @@
+{
+  "Navbar": {
+    "startseite": "Startseitn",
+    "about": "Üba uns",
+    "services": "Unsa Orbat",
+    "events": "Veranstaltunga",
+    "karriere": "Karriere",
+    "identitaet": "Unsa Ospruch",
+    "contact": "Kontakt",
+    "event_anfragen": "Event ofrogn",
+    "change_language": "Sproch wechsln"
+  },
+  "UeberUns": {
+    "meta_title": "Üba uns – Festwirt & Team",
+    "eyebrow": "As Team hinterm Fest",
+    "headline": "Stimmen ausm Team",
+    "subline": "Zitat & positives Feedback – direkt ausm Festzelt.",
+    "prev": "Stimm davor",
+    "next": "Nächste Stimm",
+    "voices": [
+      {
+        "name": "Sepp",
+        "role": "Ausschank",
+        "quote": "I zapf schneia, als d'Gäst Durst kriagn kenna – und genau so soi's sei.",
+        "spruch": "A Bier ohne Schaum is wia a Fest ohne Blasmusik.",
+        "image": "https://i.pravatar.cc/600?u=sepp"
+      },
+      {
+        "name": "Lena",
+        "role": "Service",
+        "quote": "Tablett voi, Herz voi: wenn d'Gäst lacha, is mei Obnd perfekt.",
+        "spruch": "I trag acht Maß auf oamoi – nur d'Verantwortung ned.",
+        "image": "https://i.pravatar.cc/600?u=lena"
+      },
+      {
+        "name": "Michi",
+        "role": "Zeltaufbau",
+        "quote": "Vom laarn Feld zum Festzelt in zwoa Dog – des is unsa kloans Wunder.",
+        "spruch": "I stoi ned nur Zelt auf, i stoi Laune auf.",
+        "image": "https://i.pravatar.cc/600?u=michi"
+      },
+      {
+        "name": "Anna",
+        "role": "Kuchl",
+        "quote": "Wenn da Schweinsbratn duftet, vergessn d'Gäst kurz as Handy.",
+        "spruch": "Liabe geht durch dn Mong – bei uns durch de ganze Festhalln.",
+        "image": "https://i.pravatar.cc/600?u=anna"
+      },
+      {
+        "name": "Resi",
+        "role": "Theke & Kaffee",
+        "quote": "Nachm Fest is vorm Fest – und dazwischn gibt's bei mir Kuacha.",
+        "spruch": "Kaffee schwarz, Tracht bunt, Laune goidn.",
+        "image": "https://i.pravatar.cc/600?u=resi"
+      }
+    ]
+  },
+  "Hero": {
+    "badge": "Est. 2025 · Moderns Festwesn",
+    "title_1": "Tradition",
+    "title_2": "nei dacht.",
+    "subtitle": "Erleb zünftige Feste, modern interpretiert. Vom kloana Dorffest bis zur exklusivn Eventgastronomie – mia bringan dn Wirt vo domois ins Heit.",
+    "cta_primary": "Event ofrogn",
+    "cta_secondary": "Termine oschaugn",
+    "scroll": "Scrolln"
+  },
+  "About": {
+    "title_1_alt": "Dei",
+    "title_2_alt": "Festwirt",
+    "title": "Servus beim Maurerwirt!",
+    "subtitle": "Bayerische Wurzln. Moderne Feste.",
+    "cta": "Jetz Event ofrogn",
+    "p1": "I bin da Florian Maurer – fia vui einfach \"da Maurerwirt\". Mit Wurzln in da Metzgerei Halbauer hob i friah glernt, wos Qualität und echte Gastfreundschaft bedait. Heit bring i de Tradition in de moderne Eventwelt.",
+    "p2": "Ob zünftigs Voiksfest, elegants Firmenjubiläum oder des ganz persönliche Vereinsfest – mia verbindn bayerische Herzlichkeit mit präziser Planung und professionellem Equipment.",
+    "quote": "„A guads Festl plant se ned vo alloa, aber es soi se so ofühln.“",
+    "p3": "Loss uns gmeinsam a Event auf d'Boana stoin, des wo deine Gäst no lang in bester Erinnerung bleibt.",
+    "placeholder_img": "Platzhoita: Foto Florian Maurer",
+    "placeholder_desc": "(Da Maurerwirt) in Ledahosn, moderns Setting",
+    "hero_greeting": "Servus",
+    "hero_intro": "I bin da Florian – fia vui einfach \"da Maurerwirt\". Mei Mission: Tradition aufrecht erhoitn, Menschn a scheene Zeit bescheren und as Beste aus jedem Fest machan. Mia hom nur oa Leben – und des soit ma feian.",
+    "hero_team": "I steh zwar gern im Rampenlicht – aber ohne mei Team dad do gar nix laffa. Jeder Handgriff, jedes Lacha, jede Maß Bier: des is as Werk vo Menschn, die mit Herz bei da Sach san. Deshoib: Danke an olle, die mit opackn."
+  },
+  "Services": {
+    "title": "Unsa Orbat",
+    "subtitle": "Maßgeschneidat fia jedn Onlass",
+    "cta": "Event ofrogn",
+    "items": {
+      "volksfest": {
+        "title": "Voiksfest",
+        "description": "Volle Festzejtn, traditionelle und Party-Musik – beste bayerische Stimmung."
+      },
+      "vereinsfest": {
+        "title": "Vereinsjubiläum",
+        "description": "Programm fia de Großn und de Kloana – fia 5- bis 150-jährige Vereinsjubiläen."
+      }
+    }
+  },
+  "Events": {
+    "title_1_alt": "Unsare",
+    "title_2_alt": "Events",
+    "title": "De nächstn Feste",
+    "subtitle": "",
+    "view_all": "Olle Termine oschaugn",
+    "date_label": "Datum",
+    "details_btn": "Details",
+    "no_events": "Koane Veranstaltungen gfundn.",
+    "empty_title_1": "Boid gibt's wos zum",
+    "empty_title_2": "Feian!",
+    "empty_text": "Da Wirt feilt grad no am Programm. Soboid de nächstn Termine feststengan, findst's genau do. Schau boid wieda vorbei!"
+  },
+  "EventDetail": {
+    "back": "Zruck zur Übersicht",
+    "date": "Datum",
+    "location": "Ort",
+    "status": "Status",
+    "about_1": "Üba des",
+    "about_2": "Event",
+    "overview": "Auf an Blick",
+    "reserve_cta": "Tisch reserviern",
+    "email_cta": "Tisch ofrogn",
+    "gallery_1": "Rückblick",
+    "gallery_2": "Galerie",
+    "gallery_all": "Olle Fotos oschaugn"
+  },
+  "Contact": {
+    "title": "Loss uns redn!",
+    "subtitle": "Erzähj uns vo deine Pläne und mia machan a Fest draus.",
+    "location": "Adress",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "instagram": "Instagram",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
+    "form_title": "Event ofrogn",
+    "form_success_title": "Vergelt's Gott fia dei Anfrage!",
+    "form_success_desc": "Mia mejdn uns in Kürze bei dir mit am erstn Konzept.",
+    "form_success_btn": "Weitare Anfrage oschicka",
+    "label_name": "Nam / Firma",
+    "placeholder_name": "Max Mustermann",
+    "label_email": "E-Mail-Adress",
+    "placeholder_email": "max@beispiel.de",
+    "label_type": "Art vo da Veranstaltung",
+    "option_default": "Bitt wähln...",
+    "option_volksfest": "Voiksfest / Bierzelt",
+    "option_firma": "Firmenevent / Jubiläum",
+    "option_verein": "Vereinsjubiläum",
+    "option_privat": "Private Feier / Hochzeit",
+    "option_other": "Sunstigs",
+    "label_message": "Dei Nochricht",
+    "placeholder_message": "Erzähj uns a bissl üba dei plonts Event...",
+    "btn_submit": "Anfrage oschicka",
+    "btn_submitting": "Wird gschickt...",
+    "heading_prefix": "Schick uns a",
+    "heading_accent": "Anfrage",
+    "heading_subtitle": "Loss uns gmeinsam Großes planen.",
+    "info_title": "Mia gfrein uns auf dei Anfrage",
+    "info_text": "Du suachst no an Festwirt fia dei Veranstaltung? Oder brauchst Unterstützung bei da Planung vo deim Event? Schick uns do ganz unverbindlich dei Anfrage. Loss uns gmeinsam Großes planen und echte, unvergessliche Erlebnisse schaffn.",
+    "step_of": "Schritt {step} vo {total}",
+    "steps_anlass": "Onlass",
+    "steps_kontakt": "Kontakt",
+    "steps_nachricht": "Nochricht",
+    "step1_title": "Wos steht o?",
+    "step1_hint": "Wähj de Art vo deiner Veranstaltung.",
+    "step2_title": "Wer plant des Fest?",
+    "step2_hint": "Damit mia uns bei dir mejdn kinna.",
+    "step3_title": "Fast gschafft!",
+    "step3_hint": "Erzähj uns kurz vo deine Pläne.",
+    "back": "Zruck",
+    "next": "Weita",
+    "your_occasion": "Dei Onlass:",
+    "change": "Ändan",
+    "err_event_type": "Bitt wähj a Art vo da Veranstaltung.",
+    "err_contact": "Bitt gib dein Nam und a gültige E-Mail-Adress o.",
+    "err_message": "Bitt schreib uns no a poar Zeiln zu deim Fest.",
+    "err_robot": "Bitt bestätige, dass du koa Roboter bist."
+  },
+  "Footer": {
+    "brand_desc": "Mia planan, du feierst. Seit 2025 bringan mia bayerische Tradition und professionelle Event-Expertise zam.",
+    "links_title": "Links",
+    "nav_title": "Navigation",
+    "contact_title": "Kontakt",
+    "locations_label": "Standorte & Einsatzgebiet",
+    "locations": "Ingolstadt · Eichstätt · München",
+    "rights": "Maurer Events. Olle Rechte vorbehoitn.",
+    "impressum": "Impressum",
+    "agb": "AGB",
+    "storno": "Stornobedingungen",
+    "widerruf": "Widerruf",
+    "datenschutz": "Datenschutz"
+  },
+  "Reservation": {
+    "title_1_alt": "Tisch",
+    "title_2_alt": "reserviern",
+    "title": "Sichra dir dein Platz",
+    "subtitle": "Garantierte Sitzplätze und bester Service am Tisch.",
+    "step_1": "1. Event & Gäste",
+    "step_2": "2. Uhrzeit",
+    "step_3": "3. Verzehrpakete",
+    "select_event": "Event auswähln",
+    "guests": "Gäste",
+    "persons": "Persona",
+    "full_table_hint": "Du reservierst an ganzn Tisch fia {count} Persona. De Gästezoi is scho fia di eistoid.",
+    "summary": "Zammfassung",
+    "event_time": "Event & Zeit",
+    "consumption_package": "Verzehrpaket",
+    "name_label": "Nam / Reservierung auf",
+    "name_placeholder": "Max Mustermann",
+    "email_label": "E-Mail fia Bestätigung",
+    "email_placeholder": "max@beispiel.de",
+    "total_amount": "Gsamtbetrag",
+    "voucher_hint": "(Davo {amount} ois Gutschein)",
+    "submit_btn": "Jetz zahlungspflichtig buchn",
+    "submitting": "Oan Moment...",
+    "error_checkout": "Fehler beim Checkout",
+    "error_connection": "Verbindungsfehler",
+    "popular": "Beliebt",
+    "waitlist_btn": "Koan passendn Tisch dabei? In d'Wartelistn eitrong",
+    "waitlist_title": "Wartelistn",
+    "waitlist_desc": "Trog di ei und mia informiern di sofort, wenn durch Stornierungen wieda Tische frei werdn.",
+    "waitlist_success": "Eitrong! Du stehst jetz auf da Wartelistn und mia mejdn uns, soboid a Platz frei wird.",
+    "waitlist_submit": "Kostenlos eitrong",
+    "head_event_date": "Event & Datum",
+    "no_events_title": "Aktuell koane Events verfügbar",
+    "no_events_text": "Schau boid wieda vorbei – neie Events werdn regelmäßig veröffentlicht.",
+    "select_day": "Wähj an Dog",
+    "select_table": "Tisch auswähln",
+    "not_published_title": "Reservierunga no ned freigeschaltet",
+    "not_published_text": "De Tischauswahl geht am {date} auf.",
+    "all_booked_title": "Olle Tische san ausgebucht!",
+    "all_booked_text": "Fia des Datum san leider koa Tische mehr verfügbar. Trag di in d'Wartelistn ei und mia mejdn uns, falls a Tisch frei wird.",
+    "waitlist_cta": "Auf d'Wartelistn",
+    "pers_abbr": "Pers.",
+    "table_title": "{name} ({count} Persona)",
+    "table_aria": "{name}, {count} Persona, {status}",
+    "status_free": "frei",
+    "status_booked": "belegt",
+    "legend_free": "Frei",
+    "legend_booked": "Belegt",
+    "legend_selected": "Gwählt",
+    "selected_label": "Ausgwählt",
+    "capacity_label": "Kapazität",
+    "head_time_package": "Uhrzeit & Paket",
+    "time_label": "Uhrzeit",
+    "guests_label": "Gästezoi",
+    "guests_decrease": "Gästezoi verringern",
+    "guests_increase": "Gästezoi erhöhen",
+    "package_label": "Konsumations-Paket",
+    "head_checkout": "Dei Daten & Bezahlung",
+    "err_name": "Bitt mindestens 2 Zeichn eigem",
+    "err_email": "Bitt a gültige E-Mail-Adress eigem",
+    "spam_label": "Spamschutz",
+    "legal_consent": "Mit dem Klick auf den Button akzeptierst du unsere <agb>AGB</agb>, de <storno>Stornobedingungen</storno> und de <privacy>Datenschutzerklärung</privacy>. Hinweise zum <widerruf>Widerrufsrecht</widerruf>.",
+    "summary_table": "Tisch",
+    "vip_surcharge": "VIP Aufpreis",
+    "service_fee": "Service- & Buchungsgebühr",
+    "total_paren": "(Gsamt: {amount})"
+  },
+  "BookingConfirmation": {
+    "meta_title": "Dei Buchung",
+    "success_label": "Buchung erfolgreich",
+    "success_title": "Du bist dabei!",
+    "success_description": "Danke fia dei Buchung. Jetz is ois bereit fia an scheen Obnd mit uns.",
+    "pending_label": "Zahlung wird bestätigt",
+    "pending_title": "Fast gschafft!",
+    "pending_description": "Dei Zahlung wird no bestätigt. Soboid des erledigt is, kriagst dei Ticket per E-Mail. Des ko je noch Zoiungsart a bissl dauan.",
+    "unavailable_label": "Dei Buchung",
+    "unavailable_title": "Schau in dei E-Mails",
+    "unavailable_description": "Mia kinna dein Buchungsstatus grad ned ozeign. Prüf dei E-Mail-Postfach fia de Bestätigung oder lad dn Status erneut. Wennst unsicher bist, mejd di bei uns.",
+    "next_steps": "So geht's weita",
+    "step": "Schritt {number}",
+    "email_title": "E-Mails checkn",
+    "email_description": "Noch bestätigter Zahlung kriagst dei Ticket mit QR-Code an de E-Mail-Adress aus deiner Buchung. Speicha des PDF fia dn Eventtag.",
+    "email_hint": "Schau aa kurz in dein Spam-Ordner.",
+    "qr_title": "QR-Code zoagn",
+    "qr_description": "Zoag uns beim Event dn QR-Code aus deim Ticket am Einlass. Mia scannan den und hoaßn di und dei Gruppe willkommen.",
+    "qr_hint": "Aufm Handy oder ausdruckt – beides geht.",
+    "see_you": "Mia gfrein uns auf di. Bis beim Event!",
+    "refresh": "Status erneut prüfn",
+    "home": "Zur Startseitn",
+    "events": "Weitare Events entdeckn",
+    "support": "Frogn zu deina Buchung?"
+  },
+  "Gallery": {
+    "title_1_alt": "Rückblick in",
+    "title_2_alt": "Buidln",
+    "subtitle": "Entdeck de scheenstn Momente unsara vergangnen Feste.",
+    "view_all": "Olle Oibn oschaugn",
+    "sort_newest": "Neieste zuerst",
+    "sort_oldest": "Äjtste zuerst",
+    "sort_label": "Sortiern",
+    "empty_homepage": "Es san no koane Galerien fia d'Startseitn markiert worn.",
+    "images": "Buidln",
+    "back_to_overview": "Zruck zur Übersicht"
+  },
+  "CareersTeaser": {
+    "eyebrow": "Karriere",
+    "cta_positions": "Olle Stoin oschaugn",
+    "cta_apply": "Initiativ bewerm",
+    "empty_hint": "Aktuell san koane Stoin ausgeschriebn – Initiativbewerbungen san jederzeit willkommen.",
+    "cta_row": "Jetz bewerm",
+    "team_photo_alt": "Unsa Team beim Fest",
+    "team_photo_placeholder": "Gruppenfoto kimmt boid"
+  },
+  "Partners": {
+    "title_1": "Unsare",
+    "title_2": "Partna",
+    "subtitle": "Stark durch starke Partnaschaften in da Region.",
+    "placeholder": "Partnalogo kimmt boid"
+  },
+  "Testimonials": {
+    "title_1": "Des song",
+    "title_2": "Partna & Kundn",
+    "subtitle": "Stimmen ausm Festzelt, Verein und da Zammanorbat.",
+    "items": [
+      {
+        "quote": "„Vom erstn Gespräch bis zur letztn Maß: ois aus oana Hand und absolut verlässli.“",
+        "role": "Vereinsvorstand, Landkreis Eichstätt"
+      },
+      {
+        "quote": "„Unsa Firmenfest hod endlich wieda echte Festzelt-Atmosphäre ghobt – unsare Gäst redn heit no davo.“",
+        "role": "Gschäftsführung, Firmenkunde"
+      },
+      {
+        "quote": "„Musik, Stimmung, Organisation: Do passt einfach ois. Nächsts Joar wieda!“",
+        "role": "Voiksfest-Stammgast"
+      }
+    ]
+  },
+  "Sticky": {
+    "label": "Event ofrogn",
+    "aria": "Zum Ofrogebereich springa"
+  },
+  "Identity": {
+    "eyebrow": "Bio · Regional · Mit Herz",
+    "title_1": "Unsare Identität.",
+    "title_2": "Unsa Ospruch.",
+    "intro": "Mia kemma ned aus da Eventbranche, mia kemma aus da Wirtsstubn und am Festzelt. Genau des spürt ma in jedem Detail: in unsara Kuchl, unsam Service und unsara Musik.",
+    "values": [
+      {
+        "title": "Bio & Qualität",
+        "text": "Wos auf dn Tisch kimmt, hod Herkunft: Bio und Erzeuger, de mia kennan."
+      },
+      {
+        "title": "Regionalität",
+        "text": "Metzgerei, Brauerei und Gmias aus da Region statt anonyme Großmärkte."
+      },
+      {
+        "title": "Handwerk & Tradition",
+        "text": "Festzelt-Kultur mit Wurzln: vom Steckerlfisch bis zur Blasmusik – echt statt Kulisse."
+      },
+      {
+        "title": "Zammanhoit",
+        "text": "Mia feian mit eich, ned nur fia eich – verlässli bis zur letztn Maß."
+      }
+    ],
+    "partners_title": "Unsare Erzeuger & Partna",
+    "partners_text": "Logos und Nam unsara regionalen Partna foign in Kürze – Partnerschaftsanfragen willkommen.",
+    "signature": "– Florian, da Maurerwirt",
+    "recipe_title": "Rezept fia a guads Fest",
+    "recipe_items": [
+      "A große Portion Herzbluat",
+      "Regionale Zutaten, frisch vom Erzeuger",
+      "A Schuss Blasmusik",
+      "Vui Platz fia Freind & Familie",
+      "A Prise Wahnsinn",
+      "Unendlich vui scheene Momente"
+    ],
+    "recipe_note": "Ois vermengn, mit Liabe servian – fertig is eicha Fest.",
+    "cta": "Event ofrogn"
+  }
+}

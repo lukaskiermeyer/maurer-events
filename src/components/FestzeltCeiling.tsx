@@ -109,7 +109,7 @@ const SWAGS = (() => {
 // Giebel + Markise + Fluchtpunkt-Streben + pendelnde Banner. Der Eltern-
 // Container muss relative + overflow-hidden sein und den Inhalt per
 // pt-[280px] md:pt-[400px] lg:pt-[480px] unter der Decke beginnen lassen.
-export default function FestzeltCeiling({ banners = true }: { banners?: boolean }) {
+export default function FestzeltCeiling({ banners = true, compact = false }: { banners?: boolean; compact?: boolean }) {
   const uid = useId().replace(/:/g, "");
   const awningId = `scalloped-awning-${uid}`;
   const beamFadeId = `beam-fade-${uid}`;
@@ -128,7 +128,7 @@ export default function FestzeltCeiling({ banners = true }: { banners?: boolean 
       </svg>
 
       {/* Fluchtpunkt-Streben (Perspective Beams) */}
-      <div className="absolute top-0 left-0 w-full h-[400px] md:h-[600px] z-0 pointer-events-none overflow-hidden">
+      <div className={`absolute left-0 w-full ${compact ? "top-[96px] h-[260px] md:h-[360px]" : "top-0 h-[400px] md:h-[600px]"} z-0 pointer-events-none overflow-hidden`}>
         <div className="absolute inset-0 bg-[#F9F7F3] opacity-30"></div>
 
         <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" className="opacity-90">
@@ -186,14 +186,14 @@ export default function FestzeltCeiling({ banners = true }: { banners?: boolean 
       </div>
 
       {banners && (
-        <div className="absolute top-0 left-0 w-full h-[400px] md:h-[600px] z-10 pointer-events-none">
-          <FestzeltBanner position="left" />
-          <FestzeltBanner position="right" />
+        <div className={`absolute left-0 w-full ${compact ? "top-[96px] h-[260px] md:h-[380px]" : "top-0 h-[400px] md:h-[600px]"} z-10 pointer-events-none`}>
+          <FestzeltBanner position="left" compact={compact} />
+          <FestzeltBanner position="right" compact={compact} />
         </div>
       )}
 
       {/* Dach-Struktur (Giebel & Markise) */}
-      <div className="absolute top-0 left-0 w-full h-[150px] md:h-[250px] z-20 pointer-events-none drop-shadow-2xl">
+      <div className={`absolute left-0 w-full ${compact ? "top-[96px] h-[100px] md:h-[140px]" : "top-0 h-[150px] md:h-[250px]"} z-20 pointer-events-none drop-shadow-2xl`}>
         <div
           className="absolute inset-0 bg-accent-green"
           style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 50%, 50% 25%, 0% 50%)' }}

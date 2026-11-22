@@ -1,18 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Link } from "@/i18n/routing";
 import { attachSignedContract } from "@/app/actions/contracts";
 import DropZone from "@/components/ui/DropZone";
 
 export default function ContractSign({
   contractId,
+  signatureMode,
   status,
   signedFileUrl,
+  missingDocs = [],
 }: {
   contractId: string;
   signatureMode: "text" | "handwritten";
   status: string;
   signedFileUrl: string | null;
+  missingDocs?: string[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
@@ -123,10 +127,22 @@ export default function ContractSign({
     );
   }
 
+  if (missingDocs.length > 0) {
+    return (
+      <div className="no-print bg-amber-50 border border-amber-300 rounded-2xl p-5">
+        <p className="font-bold text-amber-800">Noch fehlen Pflichtdokumente</p>
+        <p className="text-sm text-base-dark/70 mt-1">Bevor du den Vertrag unterschreiben kannst, lade bitte diese Dokumente im Onboarding hoch:</p>
+        <ul className="list-disc pl-5 text-sm mt-2 space-y-1">{missingDocs.map(doc => <li key={doc} className="font-bold">{doc}</li>)}</ul>
+        <Link href="/team/onboarding" className="inline-block mt-3 bg-base-dark text-white px-5 py-3 rounded-xl font-bold">Zu den Dokumenten</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="no-print bg-white border border-border-light rounded-2xl p-5 space-y-6">
       <h2 className="font-display font-bold text-xl">Vertrag unterschreiben</h2>
 
+      {signatureMode !== "handwritten" && (
       <div className="space-y-3">
         <p className="text-sm font-bold">Option 1: Unterschrift mit Stift/Stylus (digital)</p>
         <canvas
@@ -144,9 +160,10 @@ export default function ContractSign({
           <button type="button" onClick={submitCanvas} disabled={busy || !hasSignature} className="bg-accent-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50">{busy ? "Wird gespeichert…" : "Digital unterschreiben"}</button>
         </div>
       </div>
+      )}
 
       <div className="space-y-3 pt-4 border-t border-border-light">
-        <p className="text-sm font-bold">Option 2: Ausdrucken, unterschreiben, einscannen und hochladen</p>
+        <p className="text-sm font-bold">{signatureMode === "handwritten" ? "Unterschreiben: Ausdrucken, unterschreiben, einscannen und hochladen (verpflichtend)" : "Option 2 (optional): Ausdrucken, unterschreiben, einscannen und hochladen"}</p>
         <p className="text-sm text-base-dark/70">Drucke den Vertrag aus, unterschreibe ihn handschriftlich und lade die unterschriebene Seite als PDF oder Foto hoch.</p>
         <button type="button" onClick={() => window.print()} className="bg-base-dark text-white px-6 py-3 rounded-xl font-bold">Vertrag drucken</button>
         <form onSubmit={uploadSigned} className="space-y-3">

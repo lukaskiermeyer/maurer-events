@@ -6,9 +6,10 @@ import { saveMyOnboarding } from "@/app/actions/staff";
 import { deleteMyDocument } from "@/app/actions/staff";
 import { PRIVACY_VERSION } from "@/lib/privacy-version";
 import { DOCUMENT_KIND_LABELS, docInfoFor, resolveRequiredDocs } from "@/lib/required-documents";
+import { useDialog } from "@/components/ui/Dialog";
 
 type OnboardingInitial = {
-  firstName: string; lastName: string; phone: string; birthDate: string; street: string; zip: string; city: string;
+  firstName: string; lastName: string; phone: string; birthDate: string; street: string; houseNumber: string; zip: string; city: string;
   employmentType: string; taxId: string; taxClass: string; childAllowances: number; socialSecurity: string;
   healthInsurance: string; iban: string; bic: string; entryDate: string;
 };
@@ -37,6 +38,7 @@ const ERROR_FIELD_PATTERNS: Array<[FieldErrorKey, string[]]> = [
   ["phone", ["telefon"]],
   ["birthDate", ["geburtsdatum"]],
   ["street", ["straße"]],
+  ["houseNumber", ["hausnummer"]],
   ["zip", ["plz"]],
   ["city", ["ort"]],
   ["entryDate", ["eintrittsdatum"]],
@@ -100,9 +102,10 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
   const [uploadingKind, setUploadingKind] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState<string | null>(null);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const dialog = useDialog();
 
-  const checklist = resolveRequiredDocs(requiredDocuments, documents);
-  const doneCount = checklist.filter(doc => doc.state === "done").length;
+  const checklist = resolveRequiredDocs(requiredDocuments, documents, { minijobTemplateActive: !!minijob });
+  const doneCount = checklist.filter(doc => doc.state === "done" || doc.state === "skipped").length;
 
   const update = <K extends keyof OnboardingInitial>(key: K, value: OnboardingInitial[K]) => {
     setForm(current => ({ ...current, [key]: value }));
@@ -227,13 +230,15 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
             <Field field="birthDate" label="Geburtsdatum (TT.MM.JJJJ)" error={fieldErrors.birthDate}>
               <input autoComplete="bday" inputMode="numeric" placeholder="z. B. 15.03.1995" data-field="birthDate" aria-invalid={!!fieldErrors.birthDate} value={isoToDe(form.birthDate)} onChange={event => update("birthDate", deToIso(formatDeDateInput(event.target.value)))} className={fieldCls("birthDate")} />
             </Field>
-            <div className="sm:col-span-2">
-              <Field field="street" label="Straße" error={fieldErrors.street}>
-                <input autoComplete="address-line1" data-field="street" aria-invalid={!!fieldErrors.street} value={form.street} onChange={event => update("street", event.target.value)} className={fieldCls("street")} />
-              </Field>
-            </div>
+            <Field field="street" label="Straße" error={fieldErrors.street}>
+              <input autoComplete="address-line1" placeholder="z. B. Hauptstraße" data-field="street" aria-invalid={!!fieldErrors.street} value={form.street} onChange={event => update("street", event.target.value)} className={fieldCls("street")} />
+            </Field>
+            <Field field="houseNumber" label="Hausnummer" error={fieldErrors.houseNumber}>
+              <input autoComplete="address-line2" placeholder="z. B. 12a" data-field="houseNumber" aria-invalid={!!fieldErrors.houseNumber} value={form.houseNumber} onChange={event => update("houseNumber", event.target.value)} className={fieldCls("houseNumber")} />
+            </Field>
             <Field field="zip" label="PLZ" error={fieldErrors.zip}>
               <input autoComplete="postal-code" inputMode="numeric" pattern="[0-9]*" maxLength={5} placeholder="z. B. 12345" data-field="zip" aria-invalid={!!fieldErrors.zip} value={form.zip} onChange={event => update("zip", event.target.value)} className={fieldCls("zip")} />
+              <p className="mt-1 text-xs text-base-dark/50">5 Ziffern.</p>
             </Field>
             <Field field="city" label="Ort" error={fieldErrors.city}>
               <input autoComplete="address-level2" data-field="city" aria-invalid={!!fieldErrors.city} value={form.city} onChange={event => update("city", event.target.value)} className={fieldCls("city")} />
@@ -245,34 +250,39 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
           <h2 className="font-display font-bold text-xl mb-3">Beschäftigung & Lohn</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field field="employmentType" label="Beschäftigungsart" error={fieldErrors.employmentType}>
-              <select data-field="employmentType" aria-invalid={!!fieldErrors.employmentType} value="short_term" onChange={event => update("employmentType", event.target.value)} className={fieldCls("employmentType")} disabled>
-                <option value="short_term">Kurzfristig</option>
-              </select>
+              <div className={`${baseInputCls} border-border-light bg-base-light/60 text-base-dark/80`}>Kurzfristig</div>
               <input type="hidden" name="employmentType" value="short_term" />
             </Field>
             <Field field="entryDate" label="Eintrittsdatum (TT.MM.JJJJ)" error={fieldErrors.entryDate}>
               <input inputMode="numeric" placeholder="z. B. 01.12.2026" data-field="entryDate" aria-invalid={!!fieldErrors.entryDate} value={isoToDe(form.entryDate)} onChange={event => update("entryDate", deToIso(formatDeDateInput(event.target.value)))} className={fieldCls("entryDate")} />
             </Field>
             <Field field="taxId" label="Steuer-ID" error={fieldErrors.taxId}>
-              <input autoComplete="off" inputMode="numeric" data-field="taxId" aria-invalid={!!fieldErrors.taxId} value={form.taxId} onChange={event => update("taxId", event.target.value)} className={fieldCls("taxId")} />
+              <input autoComplete="off" inputMode="numeric" placeholder="z. B. 12345678901" data-field="taxId" aria-invalid={!!fieldErrors.taxId} value={form.taxId} onChange={event => update("taxId", event.target.value)} className={fieldCls("taxId")} />
+              <p className="mt-1 text-xs text-base-dark/50">11 Ziffern, ohne Leerzeichen (z. B. 12345678901).</p>
             </Field>
             <Field field="taxClass" label="Steuerklasse" error={fieldErrors.taxClass}>
-              <input autoComplete="off" data-field="taxClass" aria-invalid={!!fieldErrors.taxClass} value={form.taxClass} onChange={event => update("taxClass", event.target.value)} className={fieldCls("taxClass")} />
+              <input autoComplete="off" placeholder="z. B. 1" data-field="taxClass" aria-invalid={!!fieldErrors.taxClass} value={form.taxClass} onChange={event => update("taxClass", event.target.value)} className={fieldCls("taxClass")} />
+              <p className="mt-1 text-xs text-base-dark/50">Zahl von 1 bis 6.</p>
             </Field>
             <Field field="childAllowances" label="Kinderfreibeträge" error={fieldErrors.childAllowances}>
-              <input autoComplete="off" type="number" min={0} max={20} data-field="childAllowances" aria-invalid={!!fieldErrors.childAllowances} value={form.childAllowances} onChange={event => update("childAllowances", Number(event.target.value))} className={fieldCls("childAllowances")} />
+              <input autoComplete="off" type="number" min={0} max={20} placeholder="0" data-field="childAllowances" aria-invalid={!!fieldErrors.childAllowances} value={form.childAllowances} onChange={event => update("childAllowances", Number(event.target.value))} className={fieldCls("childAllowances")} />
+              <p className="mt-1 text-xs text-base-dark/50">Anzahl der Kinderfreibeträge (0–20).</p>
             </Field>
             <Field field="socialSecurity" label="Sozialversicherungsnummer" error={fieldErrors.socialSecurity}>
-              <input autoComplete="off" inputMode="numeric" data-field="socialSecurity" aria-invalid={!!fieldErrors.socialSecurity} value={form.socialSecurity} onChange={event => update("socialSecurity", event.target.value)} className={fieldCls("socialSecurity")} />
+              <input autoComplete="off" inputMode="numeric" placeholder="z. B. 123456789012" data-field="socialSecurity" aria-invalid={!!fieldErrors.socialSecurity} value={form.socialSecurity} onChange={event => update("socialSecurity", event.target.value)} className={fieldCls("socialSecurity")} />
+              <p className="mt-1 text-xs text-base-dark/50">12 Ziffern der Rentenversicherungsnummer.</p>
             </Field>
             <Field field="healthInsurance" label="Krankenkasse" error={fieldErrors.healthInsurance}>
-              <input autoComplete="off" data-field="healthInsurance" aria-invalid={!!fieldErrors.healthInsurance} value={form.healthInsurance} onChange={event => update("healthInsurance", event.target.value)} className={fieldCls("healthInsurance")} />
+              <input autoComplete="off" placeholder="z. B. AOK Bayern" data-field="healthInsurance" aria-invalid={!!fieldErrors.healthInsurance} value={form.healthInsurance} onChange={event => update("healthInsurance", event.target.value)} className={fieldCls("healthInsurance")} />
+              <p className="mt-1 text-xs text-base-dark/50">Name deiner gesetzlichen Krankenkasse.</p>
             </Field>
             <Field field="iban" label="IBAN" error={fieldErrors.iban}>
               <input autoComplete="off" inputMode="text" placeholder="DE89 3704 0044 0532 0130 00" data-field="iban" aria-invalid={!!fieldErrors.iban} value={form.iban} onChange={event => update("iban", event.target.value)} className={fieldCls("iban")} />
+              <p className="mt-1 text-xs text-base-dark/50">DE + 20 Ziffern (z. B. DE89 3704 0044 0532 0130 00).</p>
             </Field>
             <Field field="bic" label="BIC" error={fieldErrors.bic}>
-              <input autoComplete="off" data-field="bic" aria-invalid={!!fieldErrors.bic} value={form.bic} onChange={event => update("bic", event.target.value)} className={fieldCls("bic")} />
+              <input autoComplete="off" placeholder="z. B. COBADEFFXXX" data-field="bic" aria-invalid={!!fieldErrors.bic} value={form.bic} onChange={event => update("bic", event.target.value)} className={fieldCls("bic")} />
+              <p className="mt-1 text-xs text-base-dark/50">8 oder 11 Zeichen (z. B. COBADEFFXXX).</p>
             </Field>
           </div>
           <p className="text-xs text-base-dark/50 mt-2">Steuer-ID, Sozialversicherungsnummer und IBAN werden verschlüsselt gespeichert.</p>
@@ -308,23 +318,25 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
                 return (
                   <li
                     key={infoKey}
-                    className={`rounded-xl border px-3 py-3 ${doc.state === "done" ? "border-accent-green/40 bg-white" : "border-amber-300 bg-amber-50"}`}
+                    className={`rounded-xl border px-3 py-3 ${doc.state === "done" ? "border-accent-green/40 bg-white" : doc.state === "skipped" ? "border-border-light bg-white" : "border-amber-300 bg-amber-50"}`}
                   >
                     <div className="flex items-center gap-3">
                       <span
                         aria-hidden
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black ${doc.state === "done" ? "bg-accent-green text-white" : "bg-amber-400 text-white"}`}
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black ${doc.state === "done" ? "bg-accent-green text-white" : doc.state === "skipped" ? "bg-base-dark/10 text-base-dark/60" : "bg-amber-400 text-white"}`}
                       >
-                        {doc.state === "done" ? "✓" : "!"}
+                        {doc.state === "done" ? "✓" : doc.state === "skipped" ? "–" : "!"}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold">{doc.label}</p>
                         <p className="text-xs text-base-dark/60">
                           {doc.state === "done"
                             ? "Hochgeladen ✓"
-                            : doc.state === "rejected"
-                              ? "Abgelehnt – bitte erneut hochladen"
-                              : "Fehlt noch – bitte unbedingt hochladen"}
+                            : doc.state === "skipped"
+                              ? "Wird automatisch aus deinen Daten erstellt – aktuell ist keine Vorlage aktiv, kein Upload nötig."
+                              : doc.state === "rejected"
+                                ? "Abgelehnt – bitte erneut hochladen"
+                                : "Fehlt noch – bitte unbedingt hochladen"}
                         </p>
                       </div>
                       <button
@@ -336,12 +348,12 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
                       >
                         i
                       </button>
-                      {doc.state !== "done" && (
+                      {doc.state !== "done" && doc.state !== "skipped" && (
                         <button
                           type="button"
                           onClick={() => pickFile(doc.kind)}
                           disabled={uploading}
-                          className="min-h-10 shrink-0 rounded-lg bg-base-dark px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                          className="min-h-10 shrink-0 rounded-lg bg-base-dark px-3 py-2 text-xs font-bold text-white hover:bg-accent-green/80 disabled:opacity-50"
                         >
                           {uploading ? "⏳ Wird hochgeladen …" : "Datei auswählen"}
                         </button>
@@ -376,7 +388,7 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
                 type="button"
                 onClick={() => pickFile("other")}
                 disabled={uploadingKind === "other"}
-                className="min-h-10 shrink-0 rounded-lg bg-base-dark px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                className="min-h-10 shrink-0 rounded-lg bg-base-dark px-3 py-2 text-xs font-bold text-white hover:bg-accent-green/80 disabled:opacity-50"
               >
                 {uploadingKind === "other" ? "⏳ Wird hochgeladen …" : "Datei auswählen"}
               </button>
@@ -391,7 +403,7 @@ export default function OnboardingForm({ initial, roleName, documents: initialDo
               <div className="flex gap-3">
                 <a href={`/api/team/file?documentId=${document.id}`} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-green underline">Öffnen</a>
                 {document.kind !== "minijob_form" && (
-                  <button type="button" onClick={async () => { if (!confirm("Dokument wirklich löschen?")) return; try { await deleteMyDocument(document.id); setDocuments(current => current.filter(d => d.id !== document.id)); setMessage("Dokument gelöscht."); } catch (e) { setMessage(e instanceof Error ? e.message : "Löschen fehlgeschlagen."); } }} className="font-bold text-red-600">Löschen</button>
+                  <button type="button" onClick={async () => { if (!await dialog.confirm({ title: "Dokument löschen", message: "Dokument wirklich löschen?", danger: true, confirmLabel: "Löschen" })) return; try { await deleteMyDocument(document.id); setDocuments(current => current.filter(d => d.id !== document.id)); setMessage("Dokument gelöscht."); } catch (e) { setMessage(e instanceof Error ? e.message : "Löschen fehlgeschlagen."); } }} className="font-bold text-red-600">Löschen</button>
                 )}
               </div>
             </div>

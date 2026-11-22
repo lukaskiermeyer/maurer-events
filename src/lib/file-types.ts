@@ -1,6 +1,6 @@
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_UPLOAD_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
-export const DOCUMENT_KINDS = new Set(["id_card", "health_certificate", "tax_card", "minijob_form", "driver_license", "other"]);
+export const DOCUMENT_KINDS = new Set(["id_card", "health_certificate", "tax_card", "minijob_form", "driver_license", "work_certificate", "other"]);
 
 export function sniffMime(buffer: Buffer): string | null {
   if (buffer.length >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";

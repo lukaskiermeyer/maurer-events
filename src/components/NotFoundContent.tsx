@@ -23,12 +23,22 @@ export const notFoundCopy = {
     privacy: 'Privacy',
     legal: 'Legal notice',
   },
+  bar: {
+    title: 'Seitn ned gfundn',
+    heading: 'Do bist falsch abgebogn.',
+    description: 'De Seitn gibt’s leider ned oda sie is umzogn. Auf der Startseitn und bei unsere Termin geht’s weida.',
+    home: 'Zur Startseitn',
+    events: 'Termin entdeckn',
+    contact: 'Brauchst Huif? Schreib uns.',
+    privacy: 'Datenschutz',
+    legal: 'Impressum',
+  },
 };
 
 export default function NotFoundContent({ locale }: { locale: string }) {
-  const language = locale === 'en' ? 'en' : 'de';
+  const language = locale === 'en' ? 'en' : locale === 'bar' ? 'bar' : 'de';
   const copy = notFoundCopy[language];
-  const prefix = language === 'en' ? '/en' : '';
+  const prefix = language === 'en' ? '/en' : language === 'bar' ? '/bar' : '';
 
   return (
     <section aria-labelledby="not-found-title" className="mx-auto max-w-[1280px] px-4 sm:px-8 lg:px-16 pt-32 pb-16 sm:pb-24">
@@ -38,7 +48,7 @@ export default function NotFoundContent({ locale }: { locale: string }) {
           <div className="relative flex items-center justify-center gap-1 text-accent-green">
             <span className="font-display text-[6rem] leading-none font-black sm:text-[8rem]">4</span>
             <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-base-light sm:h-40 sm:w-40">
-              <Image src="/maennchen.svg" alt="" width={241} height={205} unoptimized className="h-auto w-28 sm:w-36" />
+              <Image src="/Icon_MaurerGrün.svg" alt="" width={160} height={160} unoptimized className="h-auto w-28 sm:w-36" />
             </div>
             <span className="font-display text-[6rem] leading-none font-black sm:text-[8rem]">4</span>
           </div>
@@ -53,7 +63,7 @@ export default function NotFoundContent({ locale }: { locale: string }) {
           <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-base-dark/70 lg:mx-0 sm:text-lg">{copy.description}</p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <Link href={`${prefix}/`} prefetch={false} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-accent-green px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-base-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-green">
+            <Link href={`${prefix}/`} prefetch={false} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-accent-green px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-green/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-green">
               <Home aria-hidden="true" className="h-4 w-4 shrink-0" />
               {copy.home}
             </Link>

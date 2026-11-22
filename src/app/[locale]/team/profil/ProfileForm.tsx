@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { updateMyProfile } from "@/app/actions/staff";
 
-type Initial = { firstName: string; lastName: string; phone: string; street: string; zip: string; city: string; iban: string; bic: string; taxClass: string; healthInsurance: string };
+type Initial = { firstName: string; lastName: string; phone: string; street: string; houseNumber: string; zip: string; city: string; iban: string; bic: string; taxClass: string; healthInsurance: string };
 
 export default function ProfileForm({ initial }: { initial: Initial }) {
   const [form, setForm] = useState(initial);
@@ -36,6 +36,7 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
           <div><label className="block text-xs font-bold uppercase mb-1">Nachname</label><input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} className={cls} /></div>
           <div><label className="block text-xs font-bold uppercase mb-1">Telefon</label><input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={cls} /></div>
           <div><label className="block text-xs font-bold uppercase mb-1">Straße</label><input value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} className={cls} /></div>
+          <div><label className="block text-xs font-bold uppercase mb-1">Hausnummer</label><input value={form.houseNumber} onChange={e => setForm({ ...form, houseNumber: e.target.value })} className={cls} /></div>
           <div><label className="block text-xs font-bold uppercase mb-1">PLZ</label><input value={form.zip} onChange={e => setForm({ ...form, zip: e.target.value })} className={cls} /></div>
           <div><label className="block text-xs font-bold uppercase mb-1">Ort</label><input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className={cls} /></div>
           <div><label className="block text-xs font-bold uppercase mb-1">IBAN</label><input value={form.iban} onChange={e => setForm({ ...form, iban: e.target.value })} className={cls} /></div>
