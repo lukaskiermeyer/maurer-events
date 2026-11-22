@@ -55,7 +55,7 @@ export default function AdminsSettings() {
       if (!res.ok) { toast.showToast(data?.error || "Einladung fehlgeschlagen.", "error"); return; }
       setInviteResult({ link: data.link, pin: data.pin });
       setInviteEmail("");
-      toast.showToast("Einladung erstellt. PIN jetzt separat durchgeben – nicht in dieselbe Mail!", "warning", 8000);
+      toast.showToast("Einladung erstellt. Link + PIN wurden per Mail versendet.", "success", 8000);
       void load();
     } finally {
       setBusy(false);
@@ -63,7 +63,7 @@ export default function AdminsSettings() {
   };
 
   const mailInvite = async (row: AdminRow) => {
-    const ok = await dialog.confirm({ title: "Einrichtungs-Link mailen", message: `Neuen Einrichtungs-Link an ${row.email} senden? Ein ggf. alter Link wird damit ungültig. Die PIN erscheint danach einmalig hier und muss separat (Telefon/Messenger) durchgegeben werden.`, confirmLabel: "Mail senden" });
+    const ok = await dialog.confirm({ title: "Einrichtungs-Link mailen", message: `Neuen Einrichtungs-Link an ${row.email} senden? Ein ggf. alter Link wird damit ungültig. Link und PIN gehen zusammen per Mail; die PIN erscheint zusätzlich einmalig hier.`, confirmLabel: "Mail senden" });
     if (!ok) return;
     if (!await ensureStepUp()) return;
     setBusy(true);
@@ -71,8 +71,8 @@ export default function AdminsSettings() {
       const res = await fetch("/api/admin/admins/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: row.email }), credentials: "include" });
       const data = await res.json().catch(() => null);
       if (!res.ok) { toast.showToast(data?.error || "Einladung fehlgeschlagen.", "error"); return; }
-      toast.showToast(`Einrichtungs-Link an ${row.email} gesendet (72 h gültig).`, "success", 8000);
-      await dialog.confirm({ title: "PIN einmalig – separat durchgeben", message: `PIN: ${data.pin}\nJetzt per Telefon/Messenger durchgeben – nicht in die Mail.`, confirmLabel: "Verstanden", cancelLabel: "Schließen" });
+      toast.showToast(`Einrichtungs-Link + PIN an ${row.email} gesendet (72 h gültig).`, "success", 8000);
+      await dialog.confirm({ title: "PIN (steht auch in der Mail)", message: `PIN: ${data.pin}\nWurde zusammen mit dem Link per Mail versendet.`, confirmLabel: "Verstanden", cancelLabel: "Schließen" });
       void load();
     } finally {
       setBusy(false);
@@ -168,7 +168,7 @@ export default function AdminsSettings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <form onSubmit={invite} className="bg-white border border-border-light rounded-2xl p-5 shadow-sm space-y-3">
           <h2 className="font-display font-bold text-xl">Admin hinzufügen</h2>
-          <p className="text-sm text-base-dark/60">Erzeugt Einrichtungs-Link und sendet ihn per Mail (72 h gültig). Die PIN erscheint einmalig hier und muss separat (Telefon/anderer Kanal) durchgegeben werden.</p>
+          <p className="text-sm text-base-dark/60">Erzeugt Einrichtungs-Link + PIN und sendet beides per Mail (72 h gültig). Die PIN erscheint zusätzlich einmalig hier.</p>
           <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@domain.de" className="w-full bg-canvas-light border border-border-light rounded-lg p-3 focus:outline-none focus:border-accent-green" />
           <button type="submit" disabled={busy} className="w-full min-h-11 bg-accent-green text-white rounded-xl font-bold disabled:opacity-50">Einladung erstellen</button>
           {inviteResult && (
