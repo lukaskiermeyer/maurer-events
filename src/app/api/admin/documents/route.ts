@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { eventDocuments } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
@@ -93,13 +95,12 @@ export async function POST(request: Request) {
       sizeBytes = optimized.size;
     }
 
-    const translatedTitle = await translateFields({ title });
     const [document] = await db.insert(eventDocuments).values({
       eventId,
       kind,
       title,
-      titleEn: translatedTitle.en.title,
-      titleBar: translatedTitle.bar.title,
+      titleEn: null,
+      titleBar: null,
       fileUrl,
       previewUrl,
       publicId,
@@ -108,6 +109,14 @@ export async function POST(request: Request) {
       isPublic,
       createdBy: staff.email,
     }).returning();
+    // KI-Uebersetzung nicht blockierend: Titel nach der Antwort uebersetzen.
+    after(async () => {
+      try {
+        const t = await translateFields({ title });
+        await db.update(eventDocuments).set({ titleEn: t.en.title, titleBar: t.bar.title }).where(eq(eventDocuments.id, document.id));
+        revalidatePath("/[locale]", "layout");
+      } catch (e) { console.error("Document background translation failed:", e); }
+    });
     revalidatePath("/[locale]", "layout");
     return NextResponse.json({ success: true, document, warning });
   } catch (error) {

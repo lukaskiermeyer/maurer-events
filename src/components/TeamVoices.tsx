@@ -153,7 +153,7 @@ export default function TeamVoices({
             <div className="relative aspect-[21/9] rounded-3xl overflow-hidden border-2 border-black shadow-xl bg-canvas-light">
               {children}
             </div>
-            <p className="font-script text-2xl md:text-3xl text-white/90 text-center mt-6 rotate-[-1deg]">{t("photo_caption")}</p>
+
           </motion.div>
         </div>
       </section>

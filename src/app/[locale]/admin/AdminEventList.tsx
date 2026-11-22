@@ -296,7 +296,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                        const summary = await getEventDeletionSummary(event.id);
                        const parts = [];
                        if (summary.reservations > 0) parts.push(`${summary.reservations} Reservierung(en)`);
-                       if (summary.galleries > 0) parts.push(`${summary.galleries} Galeriebild(er)`);
                        if (summary.waitlists > 0) parts.push(`${summary.waitlists} Wartelisteneintrag/-einträge`);
                        const detail = parts.length ? `\nVerknüpft: ${parts.join(", ")}.` : "";
                        const msg = `Event "${event.title}" wirklich löschen?${detail}\n\nEs wird zuerst nur als gelöscht markiert und kann innerhalb von 7 Tagen wiederhergestellt werden. Danach wird es endgültig gelöscht.`;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { GalleryAlbum, GalleryWithEvent } from '@/types/domain';
+import type { GalleryAlbum, GalleryWithAlbum } from '@/types/domain';
 
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -9,7 +9,7 @@ import ImageWithSkeleton from "./ImageWithSkeleton";
 import { useTranslations, useLocale } from "next-intl";
 import { localized, ui, DATE_TAG } from "@/lib/localize";
 
-export default function GallerySection({ albums, sneakPeek = false, favorites = [] }: { albums?: GalleryAlbum[], sneakPeek?: boolean, favorites?: GalleryWithEvent[] }) {
+export default function GallerySection({ albums, sneakPeek = false, favorites = [] }: { albums?: GalleryAlbum[], sneakPeek?: boolean, favorites?: GalleryWithAlbum[] }) {
   const t = useTranslations("Gallery");
   const locale = useLocale();
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -22,10 +22,8 @@ export default function GallerySection({ albums, sneakPeek = false, favorites = 
     return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
   });
 
-  // Startseite: Nur markierte Alben, maximal 4 (für ein sauberes 2x2 Grid)
-  const visibleAlbums = sneakPeek 
-    ? sortedAlbums.filter(a => a.isFeaturedGallery).slice(0, 4) 
-    : sortedAlbums;
+  // Startseite zeigt die kuratierten Favoriten-Bilder; die Album-Übersicht alle Alben.
+  const visibleAlbums = sortedAlbums;
 
   const Heading = sneakPeek ? motion.h2 : motion.h1;
 
@@ -102,12 +100,12 @@ export default function GallerySection({ albums, sneakPeek = false, favorites = 
                 transition={{ delay: (i % 4) * 0.1 }}
               >
                 <Link
-                  href={fav.event ? `/galerie/${fav.event.id}` : "/galerie"}
+                  href={fav.album ? `/galerie/${fav.album.id}` : "/galerie"}
                   className="group block relative overflow-hidden rounded-2xl border border-border-light shadow-sm bg-base-light aspect-square transition-all hover:shadow-lg hover:-translate-y-1"
                 >
                   <ImageWithSkeleton
                     src={fav.gallery.imageUrl}
-                    alt={fav.event?.title ?? "Galeriebild"}
+                    alt={fav.album?.title ?? "Galeriebild"}
                     sizes="(max-width: 639px) 50vw, 25vw"
                     className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"

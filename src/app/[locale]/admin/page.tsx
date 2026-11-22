@@ -1,6 +1,6 @@
 import { getAllEvents, getAdminStats } from "@/app/actions/events";
 import { getCareerContent } from "@/app/actions/career";
-import { getAllGalleryImages } from "@/app/actions/gallery";
+import { getAllGalleryImages, getAdminGalleryAlbums } from "@/app/actions/gallery";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
@@ -16,11 +16,13 @@ export default async function AdminPage() {
   let events = [];
   let stats = null;
   let galleryImages = [];
+  let albums = [];
   let loadFailed = false;
   try {
     events = await getAllEvents();
     stats = await getAdminStats();
     galleryImages = await getAllGalleryImages();
+    albums = await getAdminGalleryAlbums();
   } catch {
     loadFailed = true;
     console.error("Admin overview unavailable");
@@ -44,7 +46,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} initialGallery={galleryImages} />
+        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} albums={albums} initialGallery={galleryImages} />
       </div>
     </div>
   );

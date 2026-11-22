@@ -8,7 +8,7 @@ import DropZone from "@/components/ui/DropZone";
 import { Link } from "@/i18n/routing";
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import Image from "next/image";
-import { updateEvent } from "@/app/actions/events";
+import { updateEvent, translateEvent } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { createTable, deleteTable, generateTentLayout, toggleTableVip } from "@/app/actions/tables";
@@ -24,7 +24,7 @@ function stringToColor(str: string) {
   return `hsl(${hue}, 70%, 85%)`;
 }
 
-import { removeGalleryImage, addGalleryImage } from "@/app/actions/gallery";
+import { removeGalleryImage, addGalleryImage, getOrCreateEventAlbum } from "@/app/actions/gallery";
 import { notifyWaitlistEntry, removeWaitlistEntry } from "@/app/actions/waitlist";
 import { findCustomersNearEvent, sendEventInvitations } from "@/app/actions/eventInvitations";
 import { updateEventSettings } from "@/app/actions/eventSettings";
@@ -59,6 +59,22 @@ interface EventDetailProps {
   stripeEnabled?: boolean;
 }
 
+function TranslationField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) {
+  const filled = value.trim().length > 0;
+  const inputClass = "w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green text-sm";
+  return (
+    <div>
+      <label className="block text-xs font-bold mb-1 opacity-70">
+        {label}{" "}
+        <span className={filled ? "text-accent-green" : "text-amber-600"}>{filled ? "✓ gefüllt" : "· leer"}</span>
+      </label>
+      {multiline
+        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={4} className={inputClass} />
+        : <input type="text" value={value} onChange={e => onChange(e.target.value)} className={inputClass} />}
+    </div>
+  );
+}
+
 export default function EventDetailDashboard({ event, initialReservations, initialTables, tentSettings, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], stripeEnabled = false }: EventDetailProps) {
   const toast = useToast();
   const dialog = useDialog();
@@ -66,6 +82,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [tableMode, setTableMode] = useState<"edit" | "assign">("assign");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [taxStatus, setTaxStatus] = useState<TaxStatus>(initialTaxStatus);
   const [selectedResId, setSelectedResId] = useState<string | null>(null);
   const [selectedBulkIds, setSelectedBulkIds] = useState<string[]>([]);
@@ -101,7 +118,13 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     reservationNote: event.reservationNote || "",
     maxCapacity: event.maxCapacity || 0,
     walkInReserve: event.walkInReserve || 0,
-    isPublished: event.isPublished ?? true
+    isPublished: event.isPublished ?? true,
+    titleEn: event.titleEn || "",
+    titleBar: event.titleBar || "",
+    locationEn: event.locationEn || "",
+    locationBar: event.locationBar || "",
+    descriptionEn: event.descriptionEn || "",
+    descriptionBar: event.descriptionBar || ""
   });
 
   const [file, setFile] = useState<File | null>(null);
@@ -306,6 +329,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(false);
   };
 
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    try {
+      const translations = await translateEvent(event.id, false);
+      setFormData(prev => ({ ...prev, ...translations }));
+      toast.showToast("Leere Übersetzungen wurden per KI gefüllt.", "success");
+    } catch {
+      toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error");
+    }
+    setIsTranslating(false);
+  };
+
   const handleStatusChange = async (id: string, status: string) => {
     setIsUpdating(true);
     const res = await updateReservationStatus(id, status);
@@ -361,6 +396,8 @@ export default function EventDetailDashboard({ event, initialReservations, initi
 
     setIsUpdating(true);
     try {
+      // Bilder hängen am Album dieses Festes; Album wird bei Bedarf angelegt.
+      const album = await getOrCreateEventAlbum(event.id);
       if (galleryFiles.length > 0) {
         // Upload multiple files in parallel
         await Promise.all(
@@ -369,17 +406,18 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             uploadData.append("file", file);
             const res = await uploadImage(uploadData);
             if (res.success) {
-              await addGalleryImage(event.id, res.url);
+              await addGalleryImage(album.id, res.url);
             }
           })
         );
       } else if (galleryUrl) {
         // Fallback for single external URL
-        await addGalleryImage(event.id, galleryUrl);
+        await addGalleryImage(album.id, galleryUrl);
       }
 
       setGalleryFiles([]);
       setGalleryUrl("");
+      router.refresh();
     } catch {
       toast.showToast("Bildupload fehlgeschlagen. Prüfe die Dateigröße (max. 10 MB) und das Format (JPG, PNG, WebP).", "error");
     }
@@ -732,6 +770,27 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                  placeholder="Event-Beschreibung..."
                  collapsedByDefault={false}
                />
+              <details className="bg-base-light border border-border-light rounded-lg p-4">
+                <summary className="cursor-pointer text-sm font-bold select-none">Übersetzungen (EN / Bairisch)</summary>
+                <div className="mt-3 space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-xs opacity-60 max-w-sm">Leere Felder werden beim Speichern automatisch per KI gefüllt. Ausgefüllte Felder bleiben erhalten (manuelle Korrektur). „Jetzt übersetzen“ füllt nur leere Felder des gespeicherten Stands.</p>
+                    <button type="button" onClick={handleTranslate} disabled={isTranslating} className="shrink-0 bg-accent-green text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-accent-green/80 disabled:opacity-50 transition-colors">
+                      {isTranslating ? "Übersetzt…" : "Jetzt übersetzen"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TranslationField label="Titel (EN)" value={formData.titleEn} onChange={v => setFormData({ ...formData, titleEn: v })} />
+                    <TranslationField label="Titel (Bairisch)" value={formData.titleBar} onChange={v => setFormData({ ...formData, titleBar: v })} />
+                    <TranslationField label="Ort (EN)" value={formData.locationEn} onChange={v => setFormData({ ...formData, locationEn: v })} />
+                    <TranslationField label="Ort (Bairisch)" value={formData.locationBar} onChange={v => setFormData({ ...formData, locationBar: v })} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TranslationField label="Beschreibung (EN)" value={formData.descriptionEn} onChange={v => setFormData({ ...formData, descriptionEn: v })} multiline />
+                    <TranslationField label="Beschreibung (Bairisch)" value={formData.descriptionBar} onChange={v => setFormData({ ...formData, descriptionBar: v })} multiline />
+                  </div>
+                </div>
+              </details>
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <div

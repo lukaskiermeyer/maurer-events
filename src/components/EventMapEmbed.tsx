@@ -38,6 +38,7 @@ export default function EventMapEmbed({
   zip,
   title,
   locale,
+  height = 200,
 }: {
   mapUrl?: string | null;
   embedMapUrl?: string | null;
@@ -45,6 +46,7 @@ export default function EventMapEmbed({
   zip?: string | null;
   title: string;
   locale: string;
+  height?: number;
 }) {
   const [consented, setConsented] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -104,7 +106,7 @@ export default function EventMapEmbed({
             key={embedSrc}
             src={embedSrc}
             width="100%"
-            height="200"
+            height={height}
             style={{ border: 0 }}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
@@ -112,7 +114,7 @@ export default function EventMapEmbed({
             allowFullScreen
           />
         ) : (
-          <div className="h-[200px] bg-canvas-light flex flex-col items-center justify-center text-center px-6 gap-3">
+          <div className="bg-canvas-light flex flex-col items-center justify-center text-center px-6 gap-3" style={{ height }}>
             <svg className="w-8 h-8 text-accent-wood" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -140,7 +142,7 @@ export default function EventMapEmbed({
         rel="noopener noreferrer"
         className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-accent-green hover:underline"
       >
-        In Google Maps öffnen
+        {ui(locale, { de: "In Google Maps öffnen", en: "Open in Google Maps", bar: "In Google Maps aufmachn" })}
       </a>
       {mounted && consented && (
         <button

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { assertBookingWindow, bookingInstant, DEFAULT_PACKAGES, DEFAULT_TIMES, DEFAULT_TABLE_GUESTS } from '@/lib/reservation-policy';
 import { useLocale, useTranslations } from "next-intl";
+import { ui } from "@/lib/localize";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { getTables, getBookedTableIds } from "@/app/actions/tables";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -410,7 +411,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    Zurück
+                    {t('back')}
                   </button>
                 ) : <div/>}
 
@@ -420,7 +421,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                     disabled={!canProceed()}
                     className="ml-auto px-10 py-4 bg-accent-green text-white hover:bg-accent-green/80 transition-colors rounded-xl font-black uppercase tracking-widest disabled:opacity-30 flex items-center gap-2"
                   >
-                    Weiter
+                    {t('next')}
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -463,7 +464,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
         <div className="fixed z-50 bottom-0 left-0 right-0 bg-white border-t border-border-light p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:hidden">
           <div className="flex gap-3 max-w-[1400px] mx-auto">
             {currentStep > 1 && (
-              <button onClick={handleBack} aria-label="Zurück" className="w-14 shrink-0 flex items-center justify-center border border-border-light active:bg-canvas-light transition-colors rounded-xl font-bold">
+              <button onClick={handleBack} aria-label={t('back')} className="w-14 shrink-0 flex items-center justify-center border border-border-light active:bg-canvas-light transition-colors rounded-xl font-bold">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -476,7 +477,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                 disabled={!canProceed()}
                 className="flex-1 bg-accent-green text-white font-black uppercase tracking-widest py-4 rounded-xl disabled:opacity-30 flex justify-center items-center gap-2 active:scale-95 transition-all"
               >
-                Weiter
+                {t('next')}
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -510,7 +511,7 @@ export default function ReservationSection({ initialEvents, initialSelectedEvent
                 </div>
                 <h3 className="text-3xl font-black mb-2">{t('waitlist_success').split('!')[0]}!</h3>
                 <p className="text-base-dark/70 mb-8">{t('waitlist_success').split('!')[1]}</p>
-                <button onClick={() => {setIsWaitlistMode(false); setWaitlistSuccess(false);}} className="bg-base-dark text-white px-6 py-3 rounded-xl font-bold">Schließen</button>
+                <button onClick={() => {setIsWaitlistMode(false); setWaitlistSuccess(false);}} className="bg-base-dark text-white px-6 py-3 rounded-xl font-bold">{ui(locale, { de: "Schließen", en: "Close", bar: "Zuamacha" })}</button>
               </div>
             ) : (
               <form onSubmit={handleWaitlist} className="space-y-6">

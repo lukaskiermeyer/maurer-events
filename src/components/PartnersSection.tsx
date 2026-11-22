@@ -5,29 +5,43 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
-export type PartnerLogo = { name: string; src: string };
+export type PartnerLogo = { name: string; src: string; href?: string };
 
 // Platzhalter, solange keine Logos in public/partners/ liegen.
 const PLACEHOLDER_COUNT = 6;
 
 function PartnerCircle({ logo, placeholderLabel, index, reduced }: { logo?: PartnerLogo; placeholderLabel: string; index: number; reduced: boolean }) {
+  const image = logo && (
+    <Image
+      src={logo.src}
+      alt={logo.name}
+      width={160}
+      height={160}
+      sizes="(max-width: 768px) 112px, 144px"
+      className="w-[70%] h-[70%] object-contain"
+    />
+  );
+
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, scale: 0.7, y: 24 }}
       whileInView={{ opacity: 1, scale: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.5, delay: index * 0.08, ease: "easeOut" }}
-      className="shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-full bg-white border border-border-light shadow-sm flex items-center justify-center overflow-hidden"
+      className={`shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-full bg-white border border-border-light shadow-sm flex items-center justify-center overflow-hidden${logo?.href ? " transition-[scale,box-shadow] duration-300 hover:scale-105 hover:shadow-md" : ""}`}
     >
       {logo ? (
-        <Image
-          src={logo.src}
-          alt={logo.name}
-          width={160}
-          height={160}
-          sizes="(max-width: 768px) 112px, 144px"
-          className="w-[70%] h-[70%] object-contain"
-        />
+        logo.href ? (
+          <a
+            href={logo.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${logo.name} – Website öffnen`}
+            className="w-full h-full flex items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-green"
+          >
+            {image}
+          </a>
+        ) : image
       ) : (
         <div className="w-full h-full rounded-full border border-border-light flex flex-col items-center justify-center gap-2 text-base-dark/40 px-3 text-center">
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

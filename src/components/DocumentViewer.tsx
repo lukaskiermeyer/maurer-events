@@ -84,11 +84,11 @@ export default function DocumentViewer({
 
         {documents.length > 1 && (
           <div className="flex items-center justify-center gap-3 mt-3">
-            <button type="button" onClick={() => setIndex(current => Math.max(0, current - 1))} disabled={index === 0} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label="Zurück">
+            <button type="button" onClick={() => setIndex(current => Math.max(0, current - 1))} disabled={index === 0} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label={ui(locale, { de: "Zurück", en: "Back", bar: "Zruck" })}>
               ←
             </button>
             <span className="text-white/70 text-sm font-bold">{index + 1} / {documents.length}</span>
-            <button type="button" onClick={() => setIndex(current => Math.min(documents.length - 1, current + 1))} disabled={index === documents.length - 1} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label="Weiter">
+            <button type="button" onClick={() => setIndex(current => Math.min(documents.length - 1, current + 1))} disabled={index === documents.length - 1} className="w-11 h-11 rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors" aria-label={ui(locale, { de: "Weiter", en: "Next", bar: "Weita" })}>
               →
             </button>
           </div>

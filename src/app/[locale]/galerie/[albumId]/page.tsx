@@ -1,30 +1,26 @@
-import { db } from "@/db";
-import { events } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { getGalleryImages } from "@/app/actions/gallery";
-import { getEventById } from "@/app/actions/events";
+import { getGalleryAlbumById, getGalleryImages } from "@/app/actions/gallery";
 import GalleryGrid from "@/components/GalleryGrid";
 import { Link } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import type { Metadata } from 'next';
 
 import { getTranslations } from "next-intl/server";
-import { DATE_TAG } from "@/lib/localize";
+import { DATE_TAG, localized } from "@/lib/localize";
 
 export const revalidate = 60;
 
-export async function generateMetadata({ params }: { params: Promise<{ eventId: string, locale: string }> }): Promise<Metadata> {
-  const { eventId, locale } = await params;
-  const [event] = await db.select().from(events).where(eq(events.id, eventId));
-  
-  if (!event) return {};
-  
-  const titleText = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const descriptionText = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-  
-  const ogImage = event.imageUrl || "https://maurer-events.com/og-image.jpg";
+export async function generateMetadata({ params }: { params: Promise<{ albumId: string, locale: string }> }): Promise<Metadata> {
+  const { albumId, locale } = await params;
+  const album = await getGalleryAlbumById(albumId);
+
+  if (!album) return {};
+
+  const titleText = localized(album, "title", locale);
+  const descriptionText = localized(album, "description", locale);
+
+  const ogImage = album.coverImageUrl || "https://maurer-events.com/og-image.jpg";
   const title = `${titleText} | MAURER EVENTS Galerie`;
-  
+
   return {
     title,
     description: descriptionText,
@@ -42,25 +38,25 @@ export async function generateMetadata({ params }: { params: Promise<{ eventId: 
   };
 }
 
-export default async function AlbumPage({ params }: { params: Promise<{ eventId: string, locale: string }> }) {
-  const { eventId, locale } = await params;
-  
-  const [t, event, images] = await Promise.all([
+export default async function AlbumPage({ params }: { params: Promise<{ albumId: string, locale: string }> }) {
+  const { albumId, locale } = await params;
+
+  const [t, album, images] = await Promise.all([
     getTranslations("Gallery"),
-    getEventById(eventId),
-    getGalleryImages(eventId)
+    getGalleryAlbumById(albumId),
+    getGalleryImages(albumId)
   ]);
 
-  if (!event) notFound();
+  if (!album) notFound();
 
-  const title = locale === "en" && event.titleEn ? event.titleEn : event.title;
-  const description = locale === "en" && event.descriptionEn ? event.descriptionEn : event.description;
-  const location = locale === "en" && event.locationEn ? event.locationEn : event.location;
+  const title = localized(album, "title", locale);
+  const description = localized(album, "description", locale);
+  const location = localized(album, "location", locale);
 
   return (
     <div className="bg-base-light min-h-screen pt-24 pb-32">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16">
-        
+
         {/* Back Button */}
         <Link href="/galerie" className="inline-flex items-center text-sm font-bold uppercase tracking-wide text-base-dark/50 hover:text-accent-green mb-12 transition-colors">
           <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -75,7 +71,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ eventId:
             {title}
           </h1>
           <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-wider text-base-dark/50 mb-6">
-            <span>{new Date(event.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE')}</span>
+            <span>{new Date(album.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE')}</span>
             <span>•</span>
             <span>{location}</span>
           </div>
@@ -86,7 +82,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ eventId:
 
         {/* Masonry Grid */}
         <GalleryGrid images={images} />
-        
+
       </div>
     </div>
   );

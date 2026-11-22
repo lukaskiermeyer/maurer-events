@@ -19,10 +19,9 @@ test.describe('Disposable local admin acceptance', () => {
       await page.getByRole('button', { name: 'Galerie-Album erstellen', exact: true }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
-      await page.getByRole('button', { name: 'Neues, leeres Album erstellen' }).click();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-      await dialog.getByRole('button', { name: 'Album Speichern' }).scrollIntoViewIfNeeded();
-      await expect(dialog.getByRole('button', { name: 'Album Speichern' })).toBeInViewport();
+      await dialog.getByRole('button', { name: 'Album erstellen', exact: true }).scrollIntoViewIfNeeded();
+      await expect(dialog.getByRole('button', { name: 'Album erstellen', exact: true })).toBeInViewport();
       await page.getByRole('button', { name: 'Dialog schließen' }).click();
       await page.goto(`/admin/events/${process.env.ACCEPTANCE_EVENT_ID}`);
       await page.getByRole('button', { name: 'Warteliste (1)', exact: true }).click();
@@ -40,7 +39,7 @@ test.describe('Disposable local admin acceptance', () => {
   });
 
   test('Gallery actions are accessible by touch and keyboard; VIP change persists', async ({ page, isMobile }, info) => {
-    await page.goto(`/admin/events/${process.env.ACCEPTANCE_ALBUM_ID}`);
+    await page.goto(`/admin/events/${process.env.ACCEPTANCE_EVENT_ID}`);
     await page.getByRole('button', { name: /📸 Galerie/ }).click();
     const removeButtons = page.getByRole('button', { name: 'Bild löschen' });
     await expect(removeButtons).toHaveCount(2);

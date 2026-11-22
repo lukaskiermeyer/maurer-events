@@ -3,7 +3,8 @@
 import type { ReservationEvent } from '@/types/domain';
 
 import { useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { DATE_TAG } from "@/lib/localize";
 
 export default function Step1_EventDate({
   reservableEvents,
@@ -23,6 +24,8 @@ export default function Step1_EventDate({
   windowError?: string;
 }) {
   const t = useTranslations("Reservation");
+  const locale = useLocale();
+  const dateTag = DATE_TAG[locale] ?? 'de-DE';
 
   // Auto-select date when event has no reservableDates (use event.date) or exactly one date
   useEffect(() => {
@@ -30,8 +33,8 @@ export default function Step1_EventDate({
     if (selectedEventObj && (!selectedEventObj.reservableDates || selectedEventObj.reservableDates.length === 0)) {
       // No selectable dates — auto-fill with the event's own date
       if (selectedEventObj.date) {
-        const dateStr = typeof selectedEventObj.date === 'string' 
-          ? selectedEventObj.date.split('T')[0] 
+        const dateStr = typeof selectedEventObj.date === 'string'
+          ? selectedEventObj.date.split('T')[0]
           : new Date(selectedEventObj.date).toISOString().split('T')[0];
         automaticDate = dateStr;
       }
@@ -44,15 +47,15 @@ export default function Step1_EventDate({
   if (reservableEvents.length === 0) {
     return (
       <div className="animate-fade-in">
-        <h3 className="text-2xl font-bold mb-6 text-base-dark">Event & Datum</h3>
+        <h3 className="text-2xl font-bold mb-6 text-base-dark">{t('head_event_date')}</h3>
         <div className="bg-canvas-light border border-border-light rounded-2xl p-10 text-center">
           <div className="w-16 h-16 bg-base-dark/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-base-dark/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <h4 className="text-lg font-bold text-base-dark mb-2">Aktuell keine Events verfügbar</h4>
-          <p className="text-base-dark/60 text-sm">Schau bald wieder vorbei – neue Events werden regelmäßig veröffentlicht.</p>
+          <h4 className="text-lg font-bold text-base-dark mb-2">{t('no_events_title')}</h4>
+          <p className="text-base-dark/60 text-sm">{t('no_events_text')}</p>
         </div>
       </div>
     );
@@ -60,17 +63,17 @@ export default function Step1_EventDate({
 
   return (
     <div className="animate-fade-in">
-      <h3 className="text-2xl font-bold mb-6 text-base-dark">Event & Datum</h3>
-      
+      <h3 className="text-2xl font-bold mb-6 text-base-dark">{t('head_event_date')}</h3>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <label id="event-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('select_event')}</label>
           <div className="grid grid-cols-1 gap-3" role="radiogroup" aria-labelledby="event-label">
             {reservableEvents.map((event) => {
               const dateObj = new Date(event.date);
-              const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+              const dateStr = dateObj.toLocaleDateString(dateTag, { day: '2-digit', month: '2-digit' });
               return (
-                <button 
+                <button
                   key={event.id}
                   onClick={() => setSelectedEvent(event.id)}
                   role="radio"
@@ -88,13 +91,13 @@ export default function Step1_EventDate({
         {/* Date Selection */}
         {selectedEventObj && selectedEventObj.reservableDates?.length > 0 && (
           <div className="animate-fade-in">
-            <label id="date-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Wähle einen Tag</label>
+            <label id="date-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('select_day')}</label>
             <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-labelledby="date-label">
               {selectedEventObj.reservableDates.map((day: string) => {
                 const d = new Date(day);
-                const dayStr = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                const dayStr = d.toLocaleDateString(dateTag, { weekday: 'short', day: '2-digit', month: '2-digit' });
                 return (
-                  <button 
+                  <button
                     key={day}
                     onClick={() => setSelectedDate(day)}
                     role="radio"

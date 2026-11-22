@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 import { Link } from "@/i18n/routing";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { ui } from "@/lib/localize";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [isInHero, setIsInHero] = useState(true);
   const pathname = usePathname();
   const t = useTranslations("Navbar");
+  const locale = useLocale();
 
   const isHome = pathname === "/" || pathname === "/de" || pathname === "/en" || pathname === "/bar";
   // Event-Übersicht und Event-Details haben ebenfalls einen dunklen Hero-Bereich (Festzelt-Decke),
@@ -126,7 +128,7 @@ export default function Navbar() {
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`${transparent ? "text-white" : "text-base-dark hover:text-accent-green"} focus:outline-none transition-colors duration-500`}
-                aria-label="Toggle menu"
+                aria-label={ui(locale, { de: "Menü umschalten", en: "Toggle menu", bar: "Menü umschaltn" })}
                 aria-expanded={isOpen}
               >
                 <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -249,10 +249,11 @@ export async function setupStartTotp(params: {
 export async function setupConfirmTotp(params: {
   tokenId: string;
   rawToken: string;
+  pin?: string | null;
   code: string;
   ctx: FlowContext;
 }): Promise<{ ok: true; recoveryCodes: string[] } | { ok: false; error: string }> {
-  const validation = await validateEnrollmentToken({ rawToken: params.rawToken });
+  const validation = await validateEnrollmentToken({ rawToken: params.rawToken, pin: params.pin });
   if (!validation.ok || !validation.adminId) return { ok: false, error: "Link ungültig oder abgelaufen." };
   const pending = await getPendingTotp(params.tokenId);
   if (!pending) return { ok: false, error: "Einrichtung abgelaufen. Bitte erneut starten." };
@@ -334,8 +335,8 @@ export async function inviteAdmin(params: {
   await audit(params.ctx, "admin.invite.created", params.actorAdminId, admin.id);
   await sendAdminMail(email, "Einladung zum Maurer Events Admin", [
     "Du wurdest als Administrator für Maurer Events eingeladen.",
-    `Bitte innerhalb von 72 Stunden einrichten: ${params.baseUrl}/admin/setup (Link zusätzlich separat erhalten).`,
-    "Die PIN für die Einrichtung erhältst du auf einem separaten Kanal (Telefon/ Messenger) – niemals in dieser Mail.",
+    `Einrichtungs-Link (72 Stunden gültig, einmalig): ${link}`,
+    "Die PIN für die Einrichtung erhältst du auf einem separaten Kanal (Telefon/Messenger) – niemals in dieser Mail.",
   ]);
   return { ok: true, link, pin: token.pin ?? "", expiresAt: token.expiresAt };
 }

@@ -32,14 +32,14 @@ export default function Step3_TimePackage({
 
   return (
     <div className="animate-fade-in">
-      <h3 className="text-2xl font-bold mb-6 text-base-dark">Uhrzeit & Paket</h3>
-      
+      <h3 className="text-2xl font-bold mb-6 text-base-dark">{t('head_time_package')}</h3>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
         <div>
-          <label id="time-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Uhrzeit</label>
+          <label id="time-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('time_label')}</label>
           <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-labelledby="time-label">
             {times.map(time => (
-              <button 
+              <button
                 key={time}
                 onClick={() => setSelectedTime(time)}
                 role="radio"
@@ -53,23 +53,23 @@ export default function Step3_TimePackage({
         </div>
         <div>
           <label className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">
-            Gästezahl {selectedTableObj ? `(Max ${selectedTableObj.capacity})` : ''}
+            {t('guests_label')} {selectedTableObj ? `(Max ${selectedTableObj.capacity})` : ''}
           </label>
           <div className="flex items-center gap-4 bg-white border border-border-light rounded-xl p-2 h-[56px]">
             <button
-              onClick={() => setGuests(Math.max(1, guests - 1))} 
+              onClick={() => setGuests(Math.max(1, guests - 1))}
               disabled={isFullTable || guests <= 1}
               className="w-12 h-12 flex items-center justify-center hover:bg-canvas-light transition-colors rounded-lg text-2xl font-normal text-base-dark disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Gästezahl verringern"
+              aria-label={t('guests_decrease')}
             >
               -
             </button>
             <span className="flex-1 text-center font-bold text-xl text-base-dark" aria-live="polite">{guests}</span>
-            <button 
-              onClick={() => setGuests(Math.min(selectedTableObj?.capacity || 100, guests + 1))} 
+            <button
+              onClick={() => setGuests(Math.min(selectedTableObj?.capacity || 100, guests + 1))}
               disabled={isFullTable || guests >= (selectedTableObj?.capacity || 100)}
               className="w-12 h-12 flex items-center justify-center hover:bg-canvas-light transition-colors rounded-lg text-2xl font-normal text-base-dark disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Gästezahl erhöhen"
+              aria-label={t('guests_increase')}
             >
               +
             </button>
@@ -83,9 +83,9 @@ export default function Step3_TimePackage({
       </div>
 
       <div className="space-y-4" role="radiogroup" aria-labelledby="package-label">
-        <label id="package-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">Konsumations-Paket</label>
+        <label id="package-label" className="block text-sm font-bold uppercase tracking-widest text-accent-green mb-3">{t('package_label')}</label>
         {packages.map(pkg => (
-          <button 
+          <button
             key={pkg.id}
             onClick={() => setSelectedPackage(pkg.id)}
             role="radio"

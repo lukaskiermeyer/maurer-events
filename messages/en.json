@@ -5,23 +5,22 @@
     "services": "Services",
     "events": "Events",
     "karriere": "Careers",
-    "identitaet": "Our Claim",
+    "identitaet": "Our Standards",
     "contact": "Contact",
-    "event_anfragen": "Inquire Event",
+    "event_anfragen": "Request an Event",
     "change_language": "Change language"
   },
   "UeberUns": {
-    "meta_title": "About us – Host & Team",
+    "meta_title": "About Us – Host & Team",
     "eyebrow": "The team behind the festival",
     "headline": "Voices from the team",
     "subline": "Quotes & positive feedback – straight from the festival tent.",
-    "photo_caption": "Your uniform, once you're part of it",
     "prev": "Previous voice",
     "next": "Next voice",
     "voices": [
       {
         "name": "Sepp",
-        "role": "Tap",
+        "role": "Bar & Tap",
         "quote": "I pour faster than guests can get thirsty – and that's exactly how it should be.",
         "spruch": "A beer without foam is like a festival without brass music.",
         "image": "https://i.pravatar.cc/600?u=sepp"
@@ -35,33 +34,33 @@
       },
       {
         "name": "Michi",
-        "role": "Tent setup",
+        "role": "Tent Setup",
         "quote": "From empty field to festival tent in two days – that's our little miracle.",
-        "spruch": "I don't just put up tents, I put up good mood.",
+        "spruch": "I don't just set up tents, I set the mood.",
         "image": "https://i.pravatar.cc/600?u=michi"
       },
       {
         "name": "Anna",
         "role": "Kitchen",
-        "quote": "When the roast pork smells, guests forget their phones for a moment.",
+        "quote": "When the aroma of roast pork fills the air, guests forget their phones for a moment.",
         "spruch": "Love goes through the stomach – with us through the whole hall.",
         "image": "https://i.pravatar.cc/600?u=anna"
       },
       {
         "name": "Resi",
-        "role": "Bar & coffee",
-        "quote": "After the festival is before the festival – and in between there's cake at my place.",
-        "spruch": "Coffee black, costume colourful, mood golden.",
+        "role": "Bar & Coffee",
+        "quote": "One festival ends and the next begins – and in between, there's always cake at my counter.",
+        "spruch": "Coffee black, traditional attire colorful, mood golden.",
         "image": "https://i.pravatar.cc/600?u=resi"
       }
     ]
   },
   "Hero": {
-    "badge": "Est. 2025 · Modern Festivities",
+    "badge": "Est. 2025 · Modern Festival Culture",
     "title_1": "Tradition",
     "title_2": "reimagined.",
     "subtitle": "Experience authentic celebrations with a modern twist. From small village festivals to exclusive event gastronomy – we bring the traditional host into the present.",
-    "cta_primary": "Inquire Event",
+    "cta_primary": "Request an Event",
     "cta_secondary": "View Dates",
     "scroll": "Scroll"
   },
@@ -70,26 +69,29 @@
     "title_2_alt": "Host",
     "title": "Welcome to Maurerwirt!",
     "subtitle": "Bavarian Roots. Modern Celebrations.",
-    "cta": "Inquire an event now",
-    "p1": "I am Florian Maurer – known to many simply as \"Maurerwirt\". With roots in the Halbauer butchery, I learned early on what quality and genuine hospitality mean. Today, I bring this tradition into the modern event world.",
+    "cta": "Request an event now",
+    "p1": "I am Florian Maurer – known to many simply as \"da Maurerwirt\". With roots in the Halbauer butchery, I learned early on what quality and genuine hospitality mean. Today, I bring this tradition into the modern event world.",
     "p2": "Whether it's a traditional folk festival, an elegant company anniversary, or a very personal club party – we combine Bavarian warmth with precise planning and professional equipment.",
     "quote": "“A good party doesn't plan itself, but it should feel like it does.”",
     "p3": "Let's work together to create an event that your guests will remember fondly for a long time.",
     "placeholder_img": "Placeholder: Photo of Florian Maurer",
-    "placeholder_desc": "(Maurerwirt) in Lederhosen, modern setting"
+    "placeholder_desc": "(Maurerwirt) in Lederhosen, modern setting",
+    "hero_greeting": "Servus",
+    "hero_intro": "I'm Florian – to many simply \"da Maurerwirt\". My mission: keep tradition alive, give people a great time and make the most of every festival. We only have one life – and we should celebrate it.",
+    "hero_team": "I do enjoy the spotlight – but without my team nothing here would work. Every helping hand, every laugh, every stein of beer: that's the work of people who put their heart into it. So: thank you to everyone who pitches in."
   },
   "Services": {
     "title": "Our Services",
     "subtitle": "Tailored for every occasion",
-    "cta": "Inquire event",
+    "cta": "Request an event",
     "items": {
       "volksfest": {
         "title": "Folk Festival",
-        "description": "Full festival tents, traditional and party music – the best Bavarian atmosphere."
+        "description": "Packed festival tents, traditional and party music – the finest Bavarian atmosphere."
       },
       "vereinsfest": {
         "title": "Club Anniversary",
-        "description": "A programme for the big ones and the little ones – for club anniversaries from the 5th to the 150th."
+        "description": "A program for young and old alike – for club anniversaries from 5 to 150 years."
       }
     }
   },
@@ -149,7 +151,7 @@
     "btn_submit": "Send Inquiry",
     "btn_submitting": "Sending...",
     "heading_prefix": "Send us an",
-    "heading_accent": "enquiry",
+    "heading_accent": "inquiry",
     "heading_subtitle": "Let's plan something great together.",
     "info_title": "We look forward to your inquiry",
     "info_text": "Still looking for a festival host for your event? Or need support planning it? Send us your non-binding inquiry right here. Let's plan something great together and create genuine, unforgettable experiences.",
@@ -175,6 +177,7 @@
   "Footer": {
     "brand_desc": "We plan, you celebrate. Since 2025, we bring Bavarian tradition and professional event expertise together.",
     "links_title": "Links",
+    "nav_title": "Navigation",
     "contact_title": "Contact",
     "locations_label": "Locations & service area",
     "locations": "Ingolstadt · Eichstätt · Munich",
@@ -182,14 +185,14 @@
     "impressum": "Imprint",
     "agb": "Terms",
     "storno": "Cancellation Policy",
-    "widerruf": "Right of withdrawal",
+    "widerruf": "Right of Withdrawal",
     "datenschutz": "Privacy Policy"
   },
   "Reservation": {
     "title_1_alt": "Reserve",
     "title_2_alt": "Table",
     "title": "Secure your spot",
-    "subtitle": "Guaranteed seats and best service.",
+    "subtitle": "Guaranteed seats and top-notch table service.",
     "step_1": "1. Event & Guests",
     "step_2": "2. Time",
     "step_3": "3. Consumption Packages",
@@ -215,7 +218,42 @@
     "waitlist_title": "Waitlist",
     "waitlist_desc": "Sign up and we will inform you immediately if tables become available due to cancellations.",
     "waitlist_success": "Signed up! We will let you know as soon as a table is available.",
-    "waitlist_submit": "Join for free"
+    "waitlist_submit": "Join for free",
+    "head_event_date": "Event & Date",
+    "no_events_title": "No events available right now",
+    "no_events_text": "Check back soon – new events are published regularly.",
+    "select_day": "Choose a day",
+    "select_table": "Select a table",
+    "not_published_title": "Reservations not yet open",
+    "not_published_text": "Table selection opens on {date}.",
+    "all_booked_title": "All tables are fully booked!",
+    "all_booked_text": "Unfortunately no tables are left for this date. Join the waitlist and we will let you know if a table becomes free.",
+    "waitlist_cta": "Join the waitlist",
+    "pers_abbr": "ppl",
+    "table_title": "{name} ({count} people)",
+    "table_aria": "{name}, {count} people, {status}",
+    "status_free": "free",
+    "status_booked": "booked",
+    "legend_free": "Free",
+    "legend_booked": "Taken",
+    "legend_selected": "Selected",
+    "selected_label": "Selected",
+    "capacity_label": "Capacity",
+    "head_time_package": "Time & Package",
+    "time_label": "Time",
+    "guests_label": "Number of guests",
+    "guests_decrease": "Decrease number of guests",
+    "guests_increase": "Increase number of guests",
+    "package_label": "Consumption package",
+    "head_checkout": "Your details & payment",
+    "err_name": "Please enter at least 2 characters",
+    "err_email": "Please enter a valid email address",
+    "spam_label": "Spam protection",
+    "legal_consent": "By clicking the button you accept our <agb>Terms</agb>, the <storno>Cancellation Policy</storno> and the <privacy>Privacy Policy</privacy>. See also your <widerruf>Right of Withdrawal</widerruf>.",
+    "summary_table": "Table",
+    "vip_surcharge": "VIP surcharge",
+    "service_fee": "Service & booking fee",
+    "total_paren": "(Total: {amount})"
   },
   "BookingConfirmation": {
     "meta_title": "Your booking",
@@ -257,7 +295,7 @@
   "CareersTeaser": {
     "eyebrow": "Careers",
     "cta_positions": "View all positions",
-    "cta_apply": "Apply spontaneously",
+    "cta_apply": "Submit an open application",
     "empty_hint": "No open positions right now – spontaneous applications are always welcome.",
     "cta_row": "Apply now",
     "team_photo_alt": "Our team at the festival",
@@ -275,7 +313,7 @@
     "subtitle": "Voices from the tent, from clubs and from our collaborations.",
     "items": [
       {
-        "quote": "“From the first meeting to the last measure: everything from a single source and absolutely reliable.”",
+        "quote": "“From the first meeting to the last Maß: everything from a single source and absolutely reliable.”",
         "role": "Club chairman, Eichstätt district"
       },
       {
@@ -283,36 +321,36 @@
         "role": "Management, corporate client"
       },
       {
-        "quote": "“Music, atmosphere, organisation: everything simply fits. Again next year!”",
+        "quote": "“Music, atmosphere, organization: everything simply fits. Again next year!”",
         "role": "Folk festival regular"
       }
     ]
   },
   "Sticky": {
-    "label": "Inquire event",
+    "label": "Request an event",
     "aria": "Jump to the inquiry section"
   },
   "Identity": {
     "eyebrow": "Organic · Regional · With heart",
     "title_1": "Our identity.",
-    "title_2": "Our claim.",
-    "intro": "We don't come from the event industry, we come from the inn parlour and the festival tent. You can feel that in every detail: in our kitchen, our service and our music.",
+    "title_2": "Our standards.",
+    "intro": "We don't come from the event industry, we come from the inn parlor and the festival tent. You can feel that in every detail: in our kitchen, our service and our music.",
     "values": [
       {
         "title": "Organic & quality",
-        "text": "What ends up on the table has an origin: preferably organic produce and growers we shake hands with personally."
+        "text": "What ends up on the table has an origin: organic produce and growers we know."
       },
       {
         "title": "Regionality",
-        "text": "Short routes, real value creation: butchery, brewery and vegetables from Upper Bavaria instead of anonymous wholesale markets."
+        "text": "Butchery, brewery and vegetables from the region instead of anonymous wholesale."
       },
       {
         "title": "Craft & tradition",
-        "text": "Festival tent culture with roots: from grilled fish to brass music – genuine instead of staged."
+        "text": "Festival tent culture with roots: from grilled fish on a stick to brass music – genuine instead of staged."
       },
       {
         "title": "Solidarity",
-        "text": "Clubs, families, companies: we celebrate with you, not just for you – reliably from the first idea to the last measure."
+        "text": "We celebrate with you, not just for you – reliably to the last Maß."
       }
     ],
     "partners_title": "Our producers & partners",
@@ -328,6 +366,6 @@
       "Countless beautiful moments"
     ],
     "recipe_note": "Mix everything, serve with love – your festival is ready.",
-    "cta": "Inquire event"
+    "cta": "Request an event"
   }
 }

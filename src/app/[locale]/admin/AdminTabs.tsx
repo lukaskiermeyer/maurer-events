@@ -1,6 +1,6 @@
 "use client";
 
-import type { EventRecord, AdminStats, CareerContent, GalleryWithEvent } from '@/types/domain';
+import type { EventRecord, AdminStats, CareerContent, GalleryWithAlbum, AdminGalleryAlbum } from '@/types/domain';
 
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
@@ -11,20 +11,19 @@ export default function AdminTabs({
   initialEvents,
   stats,
   careerContent,
+  albums = [],
   initialGallery = []
 }: {
   initialEvents: EventRecord[],
   stats?: AdminStats,
   careerContent: CareerContent,
-  initialGallery?: GalleryWithEvent[]
+  albums?: AdminGalleryAlbum[],
+  initialGallery?: GalleryWithAlbum[]
 }) {
   const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career">("dashboard");
 
-  // Type 'event' usually refers to standard reservable/future events
+  // Galerie-Alben sind eigenständig (gallery_albums); Events sind nur noch Feste.
   const futureEvents = initialEvents.filter(e => e.type === 'event');
-  
-  // Type 'gallery' usually refers to past/album events
-  const pastGalleries = initialEvents.filter(e => e.type === 'gallery');
 
   const tabs = [
     { id: "dashboard", label: "Übersicht" },
@@ -168,7 +167,7 @@ export default function AdminTabs({
       )}
       
       {activeTab === "gallery" && (
-        <AdminGalleryTab galleries={pastGalleries} convertibleEvents={futureEvents} initialGallery={initialGallery} />
+        <AdminGalleryTab albums={albums} convertibleEvents={futureEvents} initialGallery={initialGallery} />
       )}
 
       {activeTab === "career" && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from 'next-intl';
+import { ui } from "@/lib/localize";
 import { usePathname, useRouter } from '@/i18n/routing';
 import { useEffect, useRef, useState, useTransition } from 'react';
 
@@ -119,7 +120,7 @@ export default function LanguageSwitcher({ glass = false }: { glass?: boolean })
       {open && (
         <ul
           role="listbox"
-          aria-label="Sprache"
+          aria-label={ui(locale, { de: "Sprache", en: "Language", bar: "Sproch" })}
           className="absolute right-0 mt-2 w-40 overflow-hidden rounded-2xl border border-border-light bg-white shadow-xl z-50"
         >
           {LOCALES.map(entry => (

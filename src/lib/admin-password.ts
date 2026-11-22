@@ -11,7 +11,7 @@ export const ARGON2_PARAMS = {
   hashLength: 32,
 } as const;
 
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 export async function hashPassword(password: string): Promise<string> {
@@ -49,6 +49,18 @@ export function checkPasswordPolicy(password: string): string | null {
   // Nicht abschneiden: zu lange Passwörter werden explizit abgelehnt.
   if (password.length > PASSWORD_MAX_LENGTH) {
     return `Passwort darf höchstens ${PASSWORD_MAX_LENGTH} Zeichen lang sein.`;
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "Passwort muss mindestens einen Großbuchstaben enthalten.";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "Passwort muss mindestens einen Kleinbuchstaben enthalten.";
+  }
+  if (!/[0-9]/.test(password)) {
+    return "Passwort muss mindestens eine Zahl enthalten.";
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return "Passwort muss mindestens ein Sonderzeichen enthalten.";
   }
   return null;
 }

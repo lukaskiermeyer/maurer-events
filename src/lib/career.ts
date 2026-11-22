@@ -163,7 +163,7 @@ export function localizeCareerContent(content: CareerContent, locale: string): C
 }
 
 // Fuellt leere EN/Bar-Felder per KI (einmal eingeben, dann nur drüberlesen).
-// Ohne GEMINI_API_KEY bleibt der Originaltext stehen (Fallback), manuell editierbar.
+// Ohne NIM_API_KEY bleibt der Originaltext stehen (Fallback), manuell editierbar.
 export async function fillCareerTranslations(content: CareerContent): Promise<CareerContent> {
   const scalar = await translateFields({
     headline: content.headline,

@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Purpose = "invite" | "password_reset" | "totp_reset";
+
+// Der Hash wird nach dem Lesen entfernt; sessionStorage hält den Token für
+// Reloads im selben Tab, bis die Einrichtung abgeschlossen ist.
+const SESSION_KEY = "admin-setup-token";
 
 export default function SetupClient() {
   const [token, setToken] = useState("");
@@ -22,10 +26,22 @@ export default function SetupClient() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const tokenConsumed = useRef(false);
+
   useEffect(() => {
+    if (step === "codes" || step === "done-login") window.sessionStorage.removeItem(SESSION_KEY);
+    else if (token) window.sessionStorage.setItem(SESSION_KEY, token);
+  }, [token, step]);
+
+  useEffect(() => {
+    // StrictMode führt Effects doppelt aus: der Hash ist nach dem ersten Lauf
+    // entfernt, der zweite darf den Token nicht mit "" überschreiben.
+    if (tokenConsumed.current) return;
+    tokenConsumed.current = true;
     const match = window.location.hash.match(/token=([^&]+)/);
-    const raw = match ? decodeURIComponent(match[1]) : "";
+    const raw = match ? decodeURIComponent(match[1]) : (window.sessionStorage.getItem(SESSION_KEY) || "");
     window.history.replaceState(null, "", window.location.pathname);
+    if (raw) window.sessionStorage.setItem(SESSION_KEY, raw);
     setToken(raw);
     if (!raw) { setError("Kein Einrichtungs-Link gefunden. Bitte den Link aus der Mail oder dem Terminal verwenden."); return; }
     void validate(raw, null);
@@ -95,7 +111,7 @@ export default function SetupClient() {
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      const data = await post("/api/admin/setup/totp-confirm", { token, code });
+      const data = await post("/api/admin/setup/totp-confirm", { token, pin: pin || null, code });
       setCodes(data.recoveryCodes);
       setStep("codes");
     } catch (e) {
@@ -135,7 +151,7 @@ export default function SetupClient() {
 
         {step === "password" && (
           <form onSubmit={submitPassword} className="space-y-4">
-            <p className="text-sm text-base-dark/70">Mindestens 12 Zeichen. Keine Wiederholung aus bekannten Datenleaks.</p>
+            <p className="text-sm text-base-dark/70">Mindestens 8 Zeichen mit Groß-/Kleinbuchstaben, Zahl und Sonderzeichen. Keine Wiederholung aus bekannten Datenleaks.</p>
             <label className="block text-sm font-bold space-y-1">Neues Passwort
               <span className="flex gap-2">
                 <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 flex-1 bg-canvas-light border border-border-light rounded-lg p-3 focus:outline-none focus:border-accent-green" />
@@ -158,6 +174,7 @@ export default function SetupClient() {
             <p className="text-xs font-mono break-all bg-canvas-light border border-border-light rounded-lg p-2">{secret}</p>
             <input required inputMode="numeric" pattern="\d{6}" value={code} onChange={e => setCode(e.target.value)} placeholder="123456" className="w-full bg-canvas-light border border-border-light rounded-lg p-3 tracking-widest focus:outline-none focus:border-accent-green" />
             <button type="submit" disabled={busy} className="w-full min-h-11 bg-accent-green text-white rounded-xl font-bold disabled:opacity-50">{busy ? "Wird geprüft…" : "Code bestätigen"}</button>
+            <button type="button" disabled={busy} onClick={() => startTotp(token, pin || null)} className="w-full min-h-11 border border-border-light rounded-xl font-bold disabled:opacity-50">Neuen QR-Code erzeugen</button>
           </form>
         )}
 

@@ -25,14 +25,22 @@ export default function UeberUnsHero() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="lg:col-span-7"
           >
-            <p className="font-sans text-sm font-bold uppercase tracking-[0.3em] text-accent-green mb-6">
-              {t("subtitle")}
-            </p>
+            <div className="mb-6">
+              <img
+                src="/Icon_MaurerGrün.svg"
+                alt="Da Maurerwirt"
+                className="w-32 h-32 md:w-48 md:h-48 mb-2 opacity-90"
+                aria-hidden="true"
+              />
+              <p className="font-sans text-sm font-bold uppercase tracking-[0.3em] text-accent-green mb-6">
+                {t("subtitle")}
+              </p>
+            </div>
             <h1 className="font-display font-black text-6xl md:text-8xl leading-[0.95] mb-8">
-              Servus
+              {t('hero_greeting')}
             </h1>
             <p className="font-sans text-xl md:text-2xl text-base-dark/70 max-w-2xl leading-relaxed">
-              Ich bin Florian – für viele einfach "da Maurerwirt". Meine Mission: Tradition aufrecht erhalten, Menschen eine schöne Zeit bescheren und das Beste aus jedem Fest machen. Wir haben nur ein Leben – und das sollten wir feiern.
+              {t('hero_intro')}
             </p>
           </motion.div>
 
@@ -63,7 +71,7 @@ export default function UeberUnsHero() {
           className="max-w-3xl mx-auto text-center mb-16 md:mb-24"
         >
           <p className="font-sans text-xl md:text-2xl text-base-dark/80 leading-relaxed">
-            Ich stehe zwar gerne im Rampenlicht – aber ohne mein Team würde hier gar nichts laufen. Jeder Handgriff, jedes Lachen, jede Maß Bier: das ist das Werk von Menschen, die mit Herz bei der Sache sind. Deshalb: Danke an alle, die mit anpacken.
+            {t('hero_team')}
           </p>
         </motion.div>
 

@@ -62,6 +62,23 @@ export default function AdminsSettings() {
     }
   };
 
+  const mailInvite = async (row: AdminRow) => {
+    const ok = await dialog.confirm({ title: "Einrichtungs-Link mailen", message: `Neuen Einrichtungs-Link an ${row.email} senden? Ein ggf. alter Link wird damit ungültig. Die PIN erscheint danach einmalig hier und muss separat (Telefon/Messenger) durchgegeben werden.`, confirmLabel: "Mail senden" });
+    if (!ok) return;
+    if (!await ensureStepUp()) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/admins/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: row.email }), credentials: "include" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { toast.showToast(data?.error || "Einladung fehlgeschlagen.", "error"); return; }
+      toast.showToast(`Einrichtungs-Link an ${row.email} gesendet (72 h gültig).`, "success", 8000);
+      await dialog.confirm({ title: "PIN einmalig – separat durchgeben", message: `PIN: ${data.pin}\nJetzt per Telefon/Messenger durchgeben – nicht in die Mail.`, confirmLabel: "Verstanden", cancelLabel: "Schließen" });
+      void load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const passwordReset = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!await ensureStepUp()) return;
@@ -133,9 +150,14 @@ export default function AdminsSettings() {
                 <td className="p-3">{row.totpEnrolledAt ? "eingerichtet" : <span className="text-amber-700 font-bold">fehlt</span>}</td>
                 <td className="p-3">{row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString("de-DE") : "—"}</td>
                 <td className="p-3">
-                  {row.status !== "removed" && (
-                    <button type="button" disabled={busy} onClick={() => remove(row)} className="text-xs font-bold text-red-600 underline disabled:opacity-50">Entfernen</button>
-                  )}
+                  <div className="flex flex-wrap gap-3 justify-end">
+                    {row.status === "pending_enrollment" && (
+                      <button type="button" disabled={busy} onClick={() => mailInvite(row)} className="text-xs font-bold text-accent-green underline disabled:opacity-50">Einrichtungs-Link mailen</button>
+                    )}
+                    {row.status !== "removed" && (
+                      <button type="button" disabled={busy} onClick={() => remove(row)} className="text-xs font-bold text-red-600 underline disabled:opacity-50">Entfernen</button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -146,7 +168,7 @@ export default function AdminsSettings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <form onSubmit={invite} className="bg-white border border-border-light rounded-2xl p-5 shadow-sm space-y-3">
           <h2 className="font-display font-bold text-xl">Admin hinzufügen</h2>
-          <p className="text-sm text-base-dark/60">Erzeugt Einladungslink + Mail. Die PIN erscheint einmalig hier und muss separat (Telefon/anderer Kanal) durchgegeben werden.</p>
+          <p className="text-sm text-base-dark/60">Erzeugt Einrichtungs-Link und sendet ihn per Mail (72 h gültig). Die PIN erscheint einmalig hier und muss separat (Telefon/anderer Kanal) durchgegeben werden.</p>
           <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@domain.de" className="w-full bg-canvas-light border border-border-light rounded-lg p-3 focus:outline-none focus:border-accent-green" />
           <button type="submit" disabled={busy} className="w-full min-h-11 bg-accent-green text-white rounded-xl font-bold disabled:opacity-50">Einladung erstellen</button>
           {inviteResult && (

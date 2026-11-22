@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { useLocale } from "next-intl";
+import { ui } from "@/lib/localize";
 
 type ToastType = "success" | "error" | "warning" | "info";
 
@@ -70,6 +72,7 @@ const typeStyles: Record<ToastType, { bg: string; icon: string }> = {
 };
 
 function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) {
+  const locale = useLocale();
   if (toasts.length === 0) return null;
   return (
     <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
@@ -85,7 +88,7 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
             type="button"
             onClick={() => onRemove(toast.id)}
             className="flex-shrink-0 opacity-70 hover:opacity-100 text-lg leading-none"
-            aria-label="Schließen"
+            aria-label={ui(locale, { de: "Schließen", en: "Close", bar: "Zuamacha" })}
           >
             ×
           </button>

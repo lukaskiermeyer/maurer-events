@@ -4,12 +4,56 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { EventDocument } from "@/types/domain";
-import { deleteEventDocument } from "@/app/actions/eventDocuments";
+import { deleteEventDocument, translateEventDocument, updateEventDocumentTranslations } from "@/app/actions/eventDocuments";
 import DropZone from "@/components/ui/DropZone";
 import { useDialog } from "@/components/ui/Dialog";
 
 function kindLabel(kind: string) {
   return kind === "program" ? "Programm" : "Speisekarte";
+}
+
+function DocumentTranslationEditor({ document, onSaved }: { document: EventDocument; onSaved: (d: EventDocument) => void }) {
+  const [titleEn, setTitleEn] = useState(document.titleEn || "");
+  const [titleBar, setTitleBar] = useState(document.titleBar || "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const save = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const en = titleEn.trim() || null; const bar = titleBar.trim() || null;
+      await updateEventDocumentTranslations(document.id, { titleEn: en, titleBar: bar });
+      onSaved({ ...document, titleEn: en, titleBar: bar });
+      setMsg("Gespeichert.");
+    } catch { setMsg("Fehler beim Speichern."); }
+    setBusy(false);
+  };
+  const translate = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const t = await translateEventDocument(document.id);
+      setTitleEn(t.titleEn); setTitleBar(t.titleBar);
+      onSaved({ ...document, titleEn: t.titleEn, titleBar: t.titleBar });
+      setMsg("Leere Felder per KI gefüllt.");
+    } catch { setMsg("Übersetzung fehlgeschlagen."); }
+    setBusy(false);
+  };
+  const complete = Boolean(document.titleEn && document.titleBar);
+  return (
+    <details className="mt-3">
+      <summary className="cursor-pointer text-xs font-bold text-accent-green select-none">
+        Übersetzungen {complete ? "✓ EN/Bar" : "(EN/Bar offen)"}
+      </summary>
+      <div className="mt-2 space-y-2">
+        <input value={titleEn} onChange={e => setTitleEn(e.target.value)} maxLength={150} placeholder="Titel (EN)" className="w-full border border-border-light rounded-lg p-2 text-sm bg-white focus:outline-none focus:border-accent-green" />
+        <input value={titleBar} onChange={e => setTitleBar(e.target.value)} maxLength={150} placeholder="Titel (Bairisch)" className="w-full border border-border-light rounded-lg p-2 text-sm bg-white focus:outline-none focus:border-accent-green" />
+        <div className="flex gap-2">
+          <button type="button" onClick={save} disabled={busy} className="text-xs font-bold bg-base-dark text-white px-3 py-1.5 rounded-lg disabled:opacity-50">Speichern</button>
+          <button type="button" onClick={translate} disabled={busy} className="text-xs font-bold bg-accent-green text-white px-3 py-1.5 rounded-lg disabled:opacity-50">{busy ? "…" : "KI übersetzen"}</button>
+        </div>
+        {msg && <p className="text-xs opacity-60">{msg}</p>}
+      </div>
+    </details>
+  );
 }
 
 export default function EventDocumentsPanel({ eventId, initialDocuments }: { eventId: string; initialDocuments: EventDocument[] }) {
@@ -140,6 +184,7 @@ export default function EventDocumentsPanel({ eventId, initialDocuments }: { eve
                     <button type="button" onClick={() => remove(document)} disabled={busy} className="text-red-600 text-sm font-bold hover:underline disabled:opacity-50">Löschen</button>
                   </div>
                   <a href={`/api/documents/${document.id}`} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-bold text-accent-green underline underline-offset-4">Datei öffnen</a>
+                  <DocumentTranslationEditor document={document} onSaved={updated => setDocuments(cur => cur.map(d => d.id === updated.id ? updated : d))} />
                 </div>
               </article>
             ))}

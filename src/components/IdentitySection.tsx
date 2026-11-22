@@ -3,6 +3,7 @@
 import type { SVGProps } from "react";
 
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 
@@ -49,6 +50,7 @@ export default function IdentitySection() {
   const t = useTranslations("Identity");
   const values = t.raw("values") as Value[];
   const recipeItems = t.raw("recipe_items") as string[];
+  const [flipped, setFlipped] = useState<number | null>(null);
 
   return (
     <>
@@ -68,9 +70,10 @@ export default function IdentitySection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="font-script text-6xl md:text-8xl text-accent-green leading-tight mb-8 -rotate-2"
+            className="font-display font-bold text-6xl md:text-8xl text-accent-green leading-tight mb-8 -rotate-2"
           >
-            {t("title_2")}
+            {t("title_2").split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="text-base-dark italic">{t("title_2").split(" ").slice(-1)}</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 24 }}
@@ -102,6 +105,21 @@ export default function IdentitySection() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8 items-center">
             {values.map((value, index) => {
               const Icon = Icons[index % Icons.length];
+              const themes = [
+                { bg: "bg-accent-green", border: "border-accent-green/40", icon: "text-accent-green", iconBg: "bg-accent-green/10" },
+                { bg: "bg-accent-wood", border: "border-accent-wood/40", icon: "text-accent-wood", iconBg: "bg-accent-wood/10" },
+                { bg: "bg-base-dark", border: "border-base-dark/40", icon: "text-base-dark", iconBg: "bg-base-dark/10" },
+                { bg: "bg-accent-green-deep", border: "border-accent-green-deep/40", icon: "text-accent-green-deep", iconBg: "bg-accent-green-deep/10" },
+              ];
+              const theme = themes[index % themes.length];
+              const paperStyle = {
+                backgroundImage:
+                  "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55) 0%, transparent 60%), repeating-radial-gradient(circle at 0 0, rgba(110,80,40,0.05) 0px, rgba(110,80,40,0.05) 1px, transparent 1px, transparent 3px)",
+                backgroundColor: "#f1e9da",
+                boxShadow:
+                  "inset 0 3px 10px rgba(90,60,30,0.12), inset 0 -2px 6px rgba(90,60,30,0.08), 0 14px 32px rgba(0,0,0,0.22)",
+              };
+              const isFlipped = flipped === index;
               return (
                 <motion.div
                   key={value.title}
@@ -109,17 +127,49 @@ export default function IdentitySection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-60px" }}
                   transition={{ duration: 0.6, delay: (index % 4) * 0.12 }}
-                  className={`relative aspect-square rounded-full bg-base-light shadow-2xl flex items-center justify-center p-8 md:p-6 transition-transform duration-500 hover:rotate-0 hover:scale-105 ${COASTER_TILT[index % 4]}`}
+                  className={`relative aspect-square [perspective:1000px] ${COASTER_TILT[index % 4]}`}
                 >
-                  {/* Bierdeckel-Print: doppelter Ring wie ein Aufdruck */}
-                  <div className="absolute inset-3 rounded-full border-2 border-dashed border-accent-green/40 pointer-events-none" />
-                  <div className="absolute inset-5 rounded-full border border-accent-green/20 pointer-events-none" />
-                  <div className="relative text-center flex flex-col items-center gap-3">
-                    <span className="w-12 h-12 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center">
-                      <Icon className="w-6 h-6" />
-                    </span>
-                    <h2 className="font-display font-bold text-lg md:text-xl text-base-dark leading-tight">{value.title}</h2>
-                    <p className="font-sans text-xs md:text-sm text-base-dark/70 leading-snug">{value.text}</p>
+                  <div
+                    onClick={() => setFlipped(isFlipped ? null : index)}
+                    className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] cursor-pointer group ${isFlipped ? "[transform:rotateY(180deg)]" : ""} group-hover:[transform:rotateY(180deg)]`}
+                  >
+                    {/* Vorderseite: Icon + Titel */}
+                    <div
+                      className="absolute inset-0 [backface-visibility:hidden] rounded-full flex items-center justify-center p-6 md:p-8 overflow-hidden"
+                      style={paperStyle}
+                    >
+                      <div className={`absolute inset-4 rounded-full border-4 ${theme.border} pointer-events-none`} />
+                      <div className="relative text-center flex flex-col items-center gap-3 max-w-[75%]">
+                        <span className={`w-12 h-12 rounded-full ${theme.iconBg} ${theme.icon} flex items-center justify-center shrink-0`}>
+                          <Icon className="w-6 h-6" />
+                        </span>
+                        <h2 className="font-display font-bold text-lg md:text-xl text-base-dark leading-tight break-words">{value.title}</h2>
+                      </div>
+                    </div>
+                    {/* Rueckseite: Männchen + Text */}
+                    <div
+                      className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-full flex items-center justify-center p-6 md:p-8 overflow-hidden"
+                      style={paperStyle}
+                    >
+                      <div className={`absolute inset-4 rounded-full border-4 ${theme.border} pointer-events-none`} />
+                      <div className="relative text-center flex flex-col items-center gap-2 max-w-[70%]">
+                        <div
+                          className={`w-14 h-14 md:w-16 md:h-16 ${theme.bg} shrink-0`}
+                          style={{
+                            maskImage: "url(/Icon_MaurerGrün.svg)",
+                            WebkitMaskImage: "url(/Icon_MaurerGrün.svg)",
+                            maskSize: "contain",
+                            WebkitMaskSize: "contain",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskPosition: "center",
+                            WebkitMaskPosition: "center",
+                          }}
+                          aria-hidden="true"
+                        />
+                        <p className="font-sans text-xs md:text-sm text-base-dark leading-snug break-words">{value.text}</p>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -135,7 +185,7 @@ export default function IdentitySection() {
             className="relative max-w-2xl mx-auto mt-16 md:mt-24 bg-base-light shadow-2xl p-8 md:p-12 rotate-[-1.5deg]"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-[#E5DCC5]/80 backdrop-blur-sm rotate-[2deg] shadow-sm" />
-            <h2 className="font-script text-4xl md:text-5xl text-accent-green mb-6 text-center -rotate-1">{t("recipe_title")}</h2>
+            <h2 className="font-subhead text-4xl md:text-5xl text-accent-green mb-6 text-center -rotate-1">{t("recipe_title")}</h2>
             <ul className="space-y-3 max-w-md mx-auto">
               {recipeItems.map((item) => (
                 <li key={item} className="flex items-start gap-3 font-subhead text-lg md:text-xl text-base-dark/80">

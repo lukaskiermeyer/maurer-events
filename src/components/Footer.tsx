@@ -39,7 +39,7 @@ export default function Footer() {
           </div>
           
           <div className="flex flex-col items-start md:items-start text-left">
-            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">Navigation</h4>
+            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("nav_title")}</h4>
             <ul className="space-y-3 md:space-y-4 text-sm font-bold text-white/80">
               <li><Link href="/#about" className="hover:text-white transition-colors">{navT("about")}</Link></li>
               <li><Link href="/#services" className="hover:text-white transition-colors">{navT("services")}</Link></li>

@@ -7,7 +7,7 @@
     "karriere": "Karriere",
     "identitaet": "Unser Anspruch",
     "contact": "Kontakt",
-    "event_anfragen": "Event Anfragen",
+    "event_anfragen": "Event anfragen",
     "change_language": "Sprache wechseln"
   },
   "UeberUns": {
@@ -15,7 +15,6 @@
     "eyebrow": "Das Team hinter dem Fest",
     "headline": "Stimmen aus dem Team",
     "subline": "Zitate & positives Feedback – direkt aus dem Festzelt.",
-    "photo_caption": "Deine Uniform, wenn du dabei bist",
     "prev": "Vorherige Stimme",
     "next": "Nächste Stimme",
     "voices": [
@@ -60,7 +59,7 @@
     "badge": "Est. 2025 · Modernes Festwesen",
     "title_1": "Tradition",
     "title_2": "neu gedacht.",
-    "subtitle": "Erlebe zünftige Feste, modern interpretiert. Vom kleinen Dorffest bis zur exklusiven Eventgastronomie – wir bringen den Wirt von damals in das Heute.",
+    "subtitle": "Erlebe zünftige Feste, modern interpretiert. Vom kleinen Dorffest bis zur exklusiven Eventgastronomie – wir bringen den Wirt von damals ins Heute.",
     "cta_primary": "Event anfragen",
     "cta_secondary": "Termine ansehen",
     "scroll": "Scrollen"
@@ -76,7 +75,10 @@
     "quote": "„Ein gutes Festl plant sich nicht von allein, aber es soll sich so anfühlen.“",
     "p3": "Lass uns gemeinsam ein Event auf die Beine stellen, das deinen Gästen noch lange in bester Erinnerung bleibt.",
     "placeholder_img": "Platzhalter: Foto Florian Maurer",
-    "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting"
+    "placeholder_desc": "(Da Maurerwirt) in Lederhosen, modernes Setting",
+    "hero_greeting": "Servus",
+    "hero_intro": "Ich bin Florian – für viele einfach \"da Maurerwirt\". Meine Mission: Tradition aufrecht erhalten, Menschen eine schöne Zeit bescheren und das Beste aus jedem Fest machen. Wir haben nur ein Leben – und das sollten wir feiern.",
+    "hero_team": "Ich stehe zwar gerne im Rampenlicht – aber ohne mein Team würde hier gar nichts laufen. Jeder Handgriff, jedes Lachen, jede Maß Bier: das ist das Werk von Menschen, die mit Herz bei der Sache sind. Deshalb: Danke an alle, die mit anpacken."
   },
   "Services": {
     "title": "Unsere Dienstleistungen",
@@ -85,7 +87,7 @@
     "items": {
       "volksfest": {
         "title": "Volksfest",
-        "description": "Volle Festzelte, traditionelle und Party Musik – beste bayerische Stimmung."
+        "description": "Volle Festzelte, traditionelle Musik und Partymusik – beste bayerische Stimmung."
       },
       "vereinsfest": {
         "title": "Vereinsjubiläum",
@@ -135,7 +137,7 @@
     "form_success_btn": "Weitere Anfrage senden",
     "label_name": "Name / Firma",
     "placeholder_name": "Max Mustermann",
-    "label_email": "E-Mail Adresse",
+    "label_email": "E-Mail-Adresse",
     "placeholder_email": "max@beispiel.de",
     "label_type": "Art der Veranstaltung",
     "option_default": "Bitte wählen...",
@@ -175,6 +177,7 @@
   "Footer": {
     "brand_desc": "Wir planen, du feierst. Seit 2025 bringen wir bayerische Tradition und professionelle Event-Expertise zusammen.",
     "links_title": "Links",
+    "nav_title": "Navigation",
     "contact_title": "Kontakt",
     "locations_label": "Standorte & Einsatzgebiet",
     "locations": "Ingolstadt · Eichstätt · München",
@@ -215,7 +218,42 @@
     "waitlist_title": "Warteliste",
     "waitlist_desc": "Trage dich ein und wir informieren dich sofort, wenn durch Stornierungen wieder Tische frei werden.",
     "waitlist_success": "Eingetragen! Du stehst jetzt auf der Warteliste und wir melden uns, sobald ein Platz frei wird.",
-    "waitlist_submit": "Kostenlos eintragen"
+    "waitlist_submit": "Kostenlos eintragen",
+    "head_event_date": "Event & Datum",
+    "no_events_title": "Aktuell keine Events verfügbar",
+    "no_events_text": "Schau bald wieder vorbei – neue Events werden regelmäßig veröffentlicht.",
+    "select_day": "Wähle einen Tag",
+    "select_table": "Tisch auswählen",
+    "not_published_title": "Reservierungen noch nicht freigeschaltet",
+    "not_published_text": "Die Tischauswahl öffnet sich am {date}.",
+    "all_booked_title": "Alle Tische sind ausgebucht!",
+    "all_booked_text": "Für dieses Datum sind leider keine Tische mehr verfügbar. Trage dich in die Warteliste ein, und wir melden uns, falls ein Tisch frei wird.",
+    "waitlist_cta": "Auf die Warteliste",
+    "pers_abbr": "Pers.",
+    "table_title": "{name} ({count} Personen)",
+    "table_aria": "{name}, {count} Personen, {status}",
+    "status_free": "frei",
+    "status_booked": "belegt",
+    "legend_free": "Frei",
+    "legend_booked": "Belegt",
+    "legend_selected": "Gewählt",
+    "selected_label": "Ausgewählt",
+    "capacity_label": "Kapazität",
+    "head_time_package": "Uhrzeit & Paket",
+    "time_label": "Uhrzeit",
+    "guests_label": "Gästezahl",
+    "guests_decrease": "Gästezahl verringern",
+    "guests_increase": "Gästezahl erhöhen",
+    "package_label": "Konsumations-Paket",
+    "head_checkout": "Deine Daten & Bezahlung",
+    "err_name": "Bitte mindestens 2 Zeichen eingeben",
+    "err_email": "Bitte eine gültige E-Mail-Adresse eingeben",
+    "spam_label": "Spamschutz",
+    "legal_consent": "Mit dem Klick auf den Button akzeptierst du unsere <agb>AGB</agb>, die <storno>Stornobedingungen</storno> und die <privacy>Datenschutzerklärung</privacy>. Hinweise zum <widerruf>Widerrufsrecht</widerruf>.",
+    "summary_table": "Tisch",
+    "vip_surcharge": "VIP Aufpreis",
+    "service_fee": "Service- & Buchungsgebühr",
+    "total_paren": "(Gesamt: {amount})"
   },
   "BookingConfirmation": {
     "meta_title": "Deine Buchung",
@@ -300,11 +338,11 @@
     "values": [
       {
         "title": "Bio & Qualität",
-        "text": "Was auf den Tisch kommt, hat Herkunft: bevorzugt Bio-Ware und Erzeuger, denen wir persönlich die Hand geben."
+        "text": "Was auf den Tisch kommt, hat Herkunft: Bio und Erzeuger, die wir kennen."
       },
       {
         "title": "Regionalität",
-        "text": "Kurze Wege, echte Wertschöpfung: Metzgerei, Brauerei und Gemüse aus Oberbayern statt anonymer Großmärkte."
+        "text": "Metzgerei, Brauerei und Gemüse aus der Region statt anonymer Großmärkte."
       },
       {
         "title": "Handwerk & Tradition",
@@ -312,7 +350,7 @@
       },
       {
         "title": "Zusammenhalt",
-        "text": "Vereine, Familien, Firmen: Wir feiern mit euch, nicht nur für euch – verlässlich von der ersten Idee bis zur letzten Maß."
+        "text": "Wir feiern mit euch, nicht nur für euch – verlässlich bis zur letzten Maß."
       }
     ],
     "partners_title": "Unsere Erzeuger & Partner",

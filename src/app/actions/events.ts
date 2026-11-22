@@ -2,8 +2,9 @@
 
 import { db } from "@/db";
 import { events, eventSettings } from "@/db/schema";
-import { eq, asc, and, isNull, isNotNull, desc, count, inArray, gte } from "drizzle-orm";
+import { eq, asc, and, isNull, isNotNull, desc, count, inArray } from "drizzle-orm";
 import { revalidatePath, revalidateTag, unstable_noStore as noStore, unstable_cache } from "next/cache";
+import { after } from "next/server";
 import { translateFields } from "@/lib/translate";
 import { requireAdmin } from "@/lib/auth";
 import { assertEventUpdate, validateEventUpdate } from '@/lib/event-policy';
@@ -32,8 +33,13 @@ export async function createEvent(data: {
   minimumConsumption?: number;
   walkInReserve?: number;
   publishTablesAt?: Date;
-  type?: string;
   isPublished?: boolean;
+  titleEn?: string | null;
+  titleBar?: string | null;
+  locationEn?: string | null;
+  locationBar?: string | null;
+  descriptionEn?: string | null;
+  descriptionBar?: string | null;
 }) {
   await requireAdmin();
   const reservationMode = data.reservationMode || 'none';
@@ -45,16 +51,9 @@ export async function createEvent(data: {
     reservable,
     reservationMode,
     reservationEmail,
-    type: data.type as 'event' | 'gallery',
     minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption)
   });
   if (data.maxCapacity > 0 && data.walkInReserve > data.maxCapacity) throw new Error('Walk-in-Reserve überschreitet die Kapazität.');
-  const translated = await translateFields({
-    title: data.title,
-    location: data.location,
-    description: data.description,
-  });
-
   let createdId: string | undefined;
   await db.transaction(async tx => {
   const [newEvent] = await tx.insert(events).values({
@@ -79,14 +78,13 @@ export async function createEvent(data: {
     minimumConsumption: data.minimumConsumption === undefined ? 5000 : moneyCents(data.minimumConsumption),
     walkInReserve: data.walkInReserve || 0,
     publishTablesAt: data.publishTablesAt,
-    type: data.type || 'event',
     isPublished: data.isPublished ?? true,
-    titleEn: translated.en.title,
-    locationEn: translated.en.location,
-    descriptionEn: translated.en.description,
-    titleBar: translated.bar.title,
-    locationBar: translated.bar.location,
-    descriptionBar: translated.bar.description
+    titleEn: data.titleEn ?? null,
+    locationEn: data.locationEn ?? null,
+    descriptionEn: data.descriptionEn ?? null,
+    titleBar: data.titleBar ?? null,
+    locationBar: data.locationBar ?? null,
+    descriptionBar: data.descriptionBar ?? null
   }).returning({ id: events.id });
 
   await tx.insert(eventSettings).values({ eventId: newEvent.id });
@@ -94,6 +92,12 @@ export async function createEvent(data: {
   });
 
   revalidatePath("/");
+
+  // KI-Uebersetzung nicht blockierend: leere EN/Bar-Felder nach der Antwort fuellen.
+  if (createdId) {
+    const newId = createdId;
+    after(async () => { try { await fillEventTranslations(newId, false); } catch (e) { console.error('Background translation failed:', e); } });
+  }
 
   return createdId;
   revalidatePath("/termine/mit-reservierung");
@@ -115,19 +119,8 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
     }
   }
 
-  // If any of the translatable fields changed, re-translate them
-  if (data.title !== undefined || data.location !== undefined || data.description !== undefined) {
-    const translated = await translateFields({
-      title: data.title,
-      location: data.location,
-      description: data.description,
-    });
-
-    if (data.title !== undefined) { updates.titleEn = translated.en.title; updates.titleBar = translated.bar.title; }
-    if (data.location !== undefined) { updates.locationEn = translated.en.location; updates.locationBar = translated.bar.location; }
-    if (data.description !== undefined) { updates.descriptionEn = translated.en.description; updates.descriptionBar = translated.bar.description; }
-  }
-
+  // Manuelle EN/Bar-Werte aus data werden direkt persistiert (oben gespreizt).
+  // Leere EN/Bar-Felder werden nach der Antwort nicht blockierend per KI gefuellt.
   await db.transaction(async tx => {
     await lockLayout(tx);
     const event = await lockEvent(tx, id);
@@ -138,6 +131,57 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
   revalidateTag("events", "max");
+
+  after(async () => { try { await fillEventTranslations(id, false); } catch (e) { console.error('Background translation failed:', e); } });
+}
+
+// Fuellt leere EN/Bar-Felder eines Events per KI (nur leere, ausser force=true).
+// Manuell gepflegte Uebersetzungen bleiben erhalten. Fail-open: ohne Key oder bei
+// Fehlern liefert translateFields den Originaltext, das Feld wird nicht erzwungen.
+const EVENT_TRANSLATABLE = [
+  { src: 'title', en: 'titleEn', bar: 'titleBar' },
+  { src: 'location', en: 'locationEn', bar: 'locationBar' },
+  { src: 'description', en: 'descriptionEn', bar: 'descriptionBar' },
+] as const;
+
+async function fillEventTranslations(id: string, force: boolean) {
+  const [ev] = await db.select().from(events).where(eq(events.id, id));
+  if (!ev) return null;
+  const updates: Partial<typeof events.$inferInsert> = {};
+  for (const { src, en, bar } of EVENT_TRANSLATABLE) {
+    const enVal = ev[en]; const barVal = ev[bar];
+    const enEmpty = !enVal || !enVal.trim();
+    const barEmpty = !barVal || !barVal.trim();
+    if (!force && !enEmpty && !barEmpty) continue;
+    const source = ev[src];
+    if (!source || !source.trim()) continue;
+    const t = await translateFields({ [src]: source });
+    if (force || enEmpty) updates[en] = t.en[src];
+    if (force || barEmpty) updates[bar] = t.bar[src];
+  }
+  if (Object.keys(updates).length > 0) {
+    await db.update(events).set(updates).where(eq(events.id, id));
+    revalidatePath("/");
+    revalidatePath("/termine");
+    revalidateTag("events", "max");
+  }
+  return {
+    titleEn: updates.titleEn ?? ev.titleEn ?? '',
+    titleBar: updates.titleBar ?? ev.titleBar ?? '',
+    locationEn: updates.locationEn ?? ev.locationEn ?? '',
+    locationBar: updates.locationBar ?? ev.locationBar ?? '',
+    descriptionEn: updates.descriptionEn ?? ev.descriptionEn ?? '',
+    descriptionBar: updates.descriptionBar ?? ev.descriptionBar ?? '',
+  };
+}
+
+// On-Demand-Uebersetzung fuer den Admin-Button "Jetzt uebersetzen" (force=true
+// ueberschreibt auch bereits gefuellte Felder, sonst nur leere).
+export async function translateEvent(id: string, force = false) {
+  await requireAdmin(); uuid(id);
+  const result = await fillEventTranslations(id, force);
+  if (!result) throw new Error('Event nicht gefunden.');
+  return result;
 }
 
 export async function deleteEvent(id: string) {
@@ -160,15 +204,15 @@ export async function deleteEvent(id: string) {
 export async function getEventDeletionSummary(id: string) {
   await requireAdmin();
   uuid(id);
-  const { reservations, galleries, waitlists } = await import("@/db/schema");
-  const [[resRow], [galRow], [waitRow]] = await Promise.all([
+  // Galerie-Alben sind eigenständig: beim Event-Löschen bleibt das Album erhalten
+  // (event_id -> null), daher werden Galeriebilder hier nicht mehr mitgezählt.
+  const { reservations, waitlists } = await import("@/db/schema");
+  const [[resRow], [waitRow]] = await Promise.all([
     db.select({ count: count() }).from(reservations).where(eq(reservations.eventId, id)),
-    db.select({ count: count() }).from(galleries).where(eq(galleries.eventId, id)),
     db.select({ count: count() }).from(waitlists).where(eq(waitlists.eventId, id)),
   ]);
   return {
     reservations: Number(resRow?.count ?? 0),
-    galleries: Number(galRow?.count ?? 0),
     waitlists: Number(waitRow?.count ?? 0),
   };
 }
@@ -337,16 +381,3 @@ export async function getAdminStats() {
   };
 }
 
-export async function convertEventToGallery(id: string) {
-  await requireAdmin();
-  await db.update(events).set({ type: 'gallery' }).where(eq(events.id, id));
-  revalidatePath("/admin");
-}
-
-export async function toggleFeaturedGallery(id: string, isFeatured: boolean) {
-  await requireAdmin();
-  await db.update(events).set({ isFeaturedGallery: isFeatured }).where(eq(events.id, id));
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidateTag("events", "max");
-}

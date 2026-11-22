@@ -51,8 +51,8 @@ export const events = pgTable('events', {
   minimumConsumption: integer('minimum_consumption').default(5000), // Deprecated: unused for pricing, the package price is authoritative. Drop in a later migration.
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
-  type: text('type').default('event').notNull(), // 'event' or 'gallery'
-  isFeaturedGallery: boolean('is_featured_gallery').default(false).notNull(), // To feature on homepage
+  type: text('type').default('event').notNull(), // Deprecated: nur noch 'event'; Galerie ist eigenständig (gallery_albums). Spalte später entfernen.
+  isFeaturedGallery: boolean('is_featured_gallery').default(false).notNull(), // Deprecated: ungenutzt, Startseite kuratiert über galleries.is_favorite. Spalte später entfernen.
   isPublished: boolean('is_published').default(true).notNull(), // Whether the event is visible on the public site
   deletedAt: timestamp('deleted_at'), // Soft delete timestamp
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -476,9 +476,38 @@ export const vouchers = pgTable('vouchers', {
   };
 });
 
+// Eigenständige Galerie-Alben (Rückblick vergangener Feste), entkoppelt von events.
+// eventId = optionale Herkunft: das Album gehört zu diesem Fest (Uploads im Event-Tab
+// landen dort). Gelöschte Events setzen den Link auf null, das Album bleibt erhalten.
+export const galleryAlbums = pgTable('gallery_albums', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  titleEn: text('title_en'),
+  titleBar: text('title_bar'),
+  date: timestamp('date').notNull(),
+  location: text('location').notNull(),
+  locationEn: text('location_en'),
+  locationBar: text('location_bar'),
+  description: text('description').notNull(),
+  descriptionEn: text('description_en'),
+  descriptionBar: text('description_bar'),
+  coverImageUrl: text('cover_image_url'),
+  coverPublicId: text('cover_public_id'),
+  // Manuelle Reihenfolge (Admin ↑/↓) = Anzeige auf /galerie; Gleichstand: Datum absteigend.
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'), // Soft delete timestamp
+}, (table) => {
+  return {
+    eventIdx: index('gallery_album_event_idx').on(table.eventId),
+  };
+});
+
 export const galleries = pgTable('galleries', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventId: uuid('event_id').references(() => events.id, { onDelete: 'restrict' }), // optional: null = not linked to a fest
+  albumId: uuid('album_id').references(() => galleryAlbums.id, { onDelete: 'cascade' }), // null = Bilder-Pool ohne Album
   imageUrl: text('image_url').notNull(),
   publicId: text('public_id'),
   // Kuratierte "Best of"-Auswahl fuer die Startseite (max 8), mit Reihenfolge.
@@ -487,7 +516,7 @@ export const galleries = pgTable('galleries', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => {
   return {
-    eventIdIdx: index('gal_event_id_idx').on(table.eventId),
+    albumIdIdx: index('gal_album_id_idx').on(table.albumId),
   };
 });
 

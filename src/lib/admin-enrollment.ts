@@ -78,13 +78,17 @@ export async function validateEnrollmentToken(params: {
 
   if (row.pinHash) {
     const pinNorm = normalizeCrockford(params.pin || "");
+    // Nur echte PIN-Eingaben zählen als Versuch: Seiten-Loads (ohne PIN) und
+    // erfolgreiche Validates verbrennen sonst das 5-Versuche-Budget des Wizards.
+    if (!pinNorm) return { ok: false, reason: "bad_pin" };
     const pinHash = hmacSha256(pepper(), pinNorm);
     const match = timingSafeEqualHex(pinHash, row.pinHash);
-    await db.update(adminEnrollmentTokens)
-      .set({ pinAttempts: row.pinAttempts + 1 })
-      .where(eq(adminEnrollmentTokens.id, row.id));
     if (!match) {
-      if (row.pinAttempts + 1 >= 5) {
+      const attempts = row.pinAttempts + 1;
+      await db.update(adminEnrollmentTokens)
+        .set({ pinAttempts: attempts })
+        .where(eq(adminEnrollmentTokens.id, row.id));
+      if (attempts >= 5) {
         await db.update(adminEnrollmentTokens).set({ consumedAt: new Date() }).where(eq(adminEnrollmentTokens.id, row.id));
       }
       return { ok: false, reason: "bad_pin" };

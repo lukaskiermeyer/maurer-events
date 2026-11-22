@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div className="bg-base-light min-h-screen pt-24 pb-32 animate-pulse">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16">
-        
+
         {/* Back Button Skeleton */}
         <div className="w-40 h-6 bg-base-dark/10 rounded-full mb-12" />
 
@@ -27,8 +27,8 @@ export default function Loading() {
         {/* Masonry Grid Skeleton */}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {[...Array(12)].map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className="bg-base-dark/5 rounded-2xl w-full"
               style={{
                 height: `${240 + (i * 53) % 160}px`
@@ -36,7 +36,7 @@ export default function Loading() {
             />
           ))}
         </div>
-        
+
       </div>
     </div>
   );

@@ -25,6 +25,15 @@ export const revalidate = 60;
 
 // Partnerlogos werden ohne Code-Änderung aufgenommen: jede Bilddatei in
 // public/partners/ erscheint als Kreis in der Partner-Sektion.
+// Offizielle Websites der Partner (Stand 2026-11-22 verifiziert); Key = Dateiname ohne Endung.
+const PARTNER_WEBSITES: Record<string, string> = {
+  "Giesinger-Bräu": "https://giesinger-braeu.de",
+  "Griesmüllers-Altstadtbrauerei": "https://griesmueller.de",
+  "Metzgerei-Halbauer": "https://www.metzgerei-halbauer.de",
+  "Schwarzbräu": "https://www.schwarzbraeu.de",
+  "Yankee-&-Kraut": "https://yankeeundkraut.de",
+};
+
 function readPartnerLogos(): PartnerLogo[] {
   try {
     const dir = path.join(process.cwd(), "public", "partners");
@@ -33,10 +42,14 @@ function readPartnerLogos(): PartnerLogo[] {
       .readdirSync(dir)
       .filter(file => /\.(png|jpe?g|svg|webp)$/i.test(file))
       .sort()
-      .map(file => ({
-        name: file.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
-        src: `/partners/${file}`,
-      }));
+      .map(file => {
+        const base = file.replace(/\.[^.]+$/, "");
+        return {
+          name: base.replace(/[-_]+/g, " "),
+          src: `/partners/${file}`,
+          href: PARTNER_WEBSITES[base],
+        };
+      });
   } catch {
     return [];
   }
