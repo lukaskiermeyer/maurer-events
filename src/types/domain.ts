@@ -3,6 +3,7 @@ import type { getAdminStats } from '@/app/actions/events';
 import type { getReservationsByEvent } from '@/app/actions/reservations';
 import type { getPublicEventSettings } from '@/app/actions/eventSettings';
 import type { getAllGalleryImages, getGalleryAlbums, getAdminGalleryAlbums } from '@/app/actions/gallery';
+import type { getAdminTeamMembers } from '@/app/actions/team';
 
 export type EventRecord = typeof events.$inferSelect;
 export type TableRecord = typeof tables.$inferSelect;
@@ -64,6 +65,7 @@ export type PublicEventSettings = NonNullable<Awaited<ReturnType<typeof getPubli
 export type GalleryAlbum = Awaited<ReturnType<typeof getGalleryAlbums>>[number];
 export type AdminGalleryAlbum = Awaited<ReturnType<typeof getAdminGalleryAlbums>>[number];
 export type GalleryWithAlbum = Awaited<ReturnType<typeof getAllGalleryImages>>[number];
+export type TeamMember = Awaited<ReturnType<typeof getAdminTeamMembers>>[number];
 export type ReservationEvent = Omit<EventRecord, 'date' | 'publishTablesAt'> & {
   date: Date | string;
   publishTablesAt: Date | string | null;

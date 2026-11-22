@@ -1,6 +1,7 @@
 import { getAllEvents, getAdminStats } from "@/app/actions/events";
 import { getCareerContent } from "@/app/actions/career";
 import { getAllGalleryImages, getAdminGalleryAlbums } from "@/app/actions/gallery";
+import { getAdminTeamMembers } from "@/app/actions/team";
 import AdminTabs from "./AdminTabs";
 import { Link } from "@/i18n/routing";
 
@@ -30,6 +31,7 @@ export default async function AdminPage() {
 
   // Karriere-Inhalte dürfen die Übersicht nicht blockieren.
   const careerContent = await getCareerContent().catch(() => DEFAULT_CAREER_CONTENT);
+  const teamMembers = await getAdminTeamMembers().catch(() => []);
 
   return (
     <div className="min-h-screen bg-base-light pb-12">
@@ -46,7 +48,7 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} albums={albums} initialGallery={galleryImages} />
+        <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} albums={albums} initialGallery={galleryImages} teamMembers={teamMembers} />
       </div>
     </div>
   );

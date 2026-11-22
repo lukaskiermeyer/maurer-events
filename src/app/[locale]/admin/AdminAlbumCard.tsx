@@ -21,6 +21,7 @@ export default function AdminAlbumCard({
   canMoveUp,
   canMoveDown,
   onMoveAlbum,
+  saved,
   images,
   favoriteIndex,
   expanded,
@@ -37,6 +38,7 @@ export default function AdminAlbumCard({
   canMoveUp: boolean;
   canMoveDown: boolean;
   onMoveAlbum: (albumId: string, dir: -1 | 1) => Promise<void>;
+  saved: boolean;
   images: GalleryImage[];
   favoriteIndex: Map<string, number>;
   expanded: boolean;
@@ -137,7 +139,13 @@ export default function AdminAlbumCard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xs font-bold opacity-50 min-w-6 text-center" title="Position in der Galerie-Reihenfolge">{position}</span>
+          {saved ? (
+            <span className="w-6 h-6 rounded-full bg-accent-green text-white flex items-center justify-center" title="Gespeichert" aria-label="Gespeichert">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            </span>
+          ) : (
+            <span className="text-xs font-bold opacity-50 min-w-6 text-center" title="Position in der Galerie-Reihenfolge">{position}</span>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onMoveAlbum(album.id, -1); }}
             disabled={!canMoveUp}

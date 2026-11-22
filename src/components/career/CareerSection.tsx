@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { Turnstile } from '@marsidev/react-turnstile';
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 
 import { submitApplication } from "@/app/actions/career";
 import DropZone from "@/components/ui/DropZone";
@@ -28,7 +28,6 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export default function CareerSection({ content, children }: { content: CareerContent; children?: React.ReactNode }) {
-  const t = useTranslations("CareersTeaser");
   const locale = useLocale();
   const [position, setPosition] = useState('Initiativbewerbung');
   const [file, setFile] = useState<File | null>(null);
@@ -62,6 +61,7 @@ export default function CareerSection({ content, children }: { content: CareerCo
     err_robot: ui(locale, { de: "Bitte bestätige, dass du kein Roboter bist.", en: "Please confirm that you are not a robot.", bar: "Bitt bestätige, dass du koa Roboter bist." }),
     err_read: ui(locale, { de: "Der Anhang konnte nicht gelesen werden.", en: "The attachment could not be read.", bar: "Da Ohang hod ned gleesn werdn kinna." }),
     err_send: ui(locale, { de: "Bewerbung konnte nicht gesendet werden.", en: "The application could not be sent.", bar: "Bewerbung hod ned gschickt werdn kinna." }),
+    outfit_alt: ui(locale, { de: "Arbeitsoutfit von Maurer Events: schwarze Cap, schwarzes T-Shirt mit Logo und grüne Schürze", en: "Maurer Events work outfit: black cap, black T-shirt with logo and green apron", bar: "Arbeitsoutfit vo Maurer Events: schwarze Kappn, schwarzes T-Shirt mit Logo und grüne Schürzn" }),
   };
 
   const selectPosition = (title: string) => {
@@ -200,7 +200,7 @@ export default function CareerSection({ content, children }: { content: CareerCo
             <div className="shrink-0 w-24 sm:w-28 bg-white border border-border-light rounded-2xl shadow-sm p-2">
               <Image
                 src="/archive/Kleidung.svg"
-                alt="Arbeitsoutfit von Maurer Events: schwarze Cap, schwarzes T-Shirt mit Logo und grüne Schürze"
+                alt={copy.outfit_alt}
                 width={1030}
                 height={1536}
                 sizes="112px"

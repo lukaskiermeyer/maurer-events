@@ -520,6 +520,23 @@ export const galleries = pgTable('galleries', {
   };
 });
 
+// Team-Stimmen für „Über uns" (Name, Position, Zitat + optionales Foto).
+// Name = Eigenname (nicht übersetzt); Position/Zitat dreisprachig via translateFields.
+export const teamMembers = pgTable('team_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  role: text('role').notNull(),
+  roleEn: text('role_en'),
+  roleBar: text('role_bar'),
+  quote: text('quote').notNull(),
+  quoteEn: text('quote_en'),
+  quoteBar: text('quote_bar'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const eventDocuments = pgTable('event_documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),

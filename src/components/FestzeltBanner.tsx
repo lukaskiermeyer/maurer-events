@@ -1,7 +1,9 @@
 "use client";
 
 import { useId } from "react";
+import { useLocale } from "next-intl";
 import { motion, useScroll, useVelocity, useSpring, useTransform } from "framer-motion";
+import { ui } from "@/lib/localize";
 
 // Geometrie 1:1 aus der Druckvorlage public/neu_Bannerflagge_Maurer_V4.* (80 x 200 cm).
 // viewBox-Einheiten = Original-Pixel / 5; Textanker/-größen gegen die Ink-Bboxen der
@@ -17,6 +19,9 @@ interface FestzeltBannerProps {
 }
 
 export default function FestzeltBanner({ position = "right", compact = false }: FestzeltBannerProps) {
+  const locale = useLocale();
+  // Markenname bleibt in allen Sprachen gleich; nur "seit" wird lokalisiert.
+  const bannerLabel = ui(locale, { de: "MAURER EVENTS – seit 2025", en: "MAURER EVENTS – since 2025", bar: "MAURER EVENTS – seit 2025" });
   const figureFilterId = `banner-figure-${useId().replace(/:/g, "")}`;
   const { scrollY } = useScroll();
   const scrollVelocity = useVelocity(scrollY);
@@ -52,7 +57,7 @@ export default function FestzeltBanner({ position = "right", compact = false }: 
       <motion.div
         className="relative w-full z-10 drop-shadow-2xl"
         role="img"
-        aria-label="MAURER EVENTS – seit 2025"
+        aria-label={bannerLabel}
         style={{
           rotate: velocityRotate,
           transformOrigin: "50% 2.13%" // Exakt auf Höhe der Stange (y=-70 von 3290)

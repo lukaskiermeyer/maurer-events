@@ -1,26 +1,29 @@
 "use client";
 
-import type { EventRecord, AdminStats, CareerContent, GalleryWithAlbum, AdminGalleryAlbum } from '@/types/domain';
+import type { EventRecord, AdminStats, CareerContent, GalleryWithAlbum, AdminGalleryAlbum, TeamMember } from '@/types/domain';
 
 import { useState } from "react";
 import AdminEventList from "./AdminEventList";
 import AdminGalleryTab from "./AdminGalleryTab";
 import AdminCareerTab from "./AdminCareerTab";
+import AdminTeamTab from "./AdminTeamTab";
 
 export default function AdminTabs({
   initialEvents,
   stats,
   careerContent,
   albums = [],
-  initialGallery = []
+  initialGallery = [],
+  teamMembers = []
 }: {
   initialEvents: EventRecord[],
   stats?: AdminStats,
   careerContent: CareerContent,
   albums?: AdminGalleryAlbum[],
-  initialGallery?: GalleryWithAlbum[]
+  initialGallery?: GalleryWithAlbum[],
+  teamMembers?: TeamMember[]
 }) {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "events" | "gallery" | "career" | "about">("dashboard");
 
   // Galerie-Alben sind eigenständig (gallery_albums); Events sind nur noch Feste.
   const futureEvents = initialEvents.filter(e => e.type === 'event');
@@ -30,12 +33,13 @@ export default function AdminTabs({
     { id: "events", label: "Veranstaltungen" },
     { id: "gallery", label: "Galerie" },
     { id: "career", label: "Karriere" },
+    { id: "about", label: "Über Uns" },
   ] as const;
 
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 bg-white p-1 rounded-xl border border-border-light shadow-sm w-full sm:w-fit mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -172,6 +176,10 @@ export default function AdminTabs({
 
       {activeTab === "career" && (
         <AdminCareerTab initialContent={careerContent} />
+      )}
+
+      {activeTab === "about" && (
+        <AdminTeamTab initialMembers={teamMembers} />
       )}
     </div>
   );

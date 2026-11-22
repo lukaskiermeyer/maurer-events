@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import UeberUnsHero from "@/components/UeberUnsHero";
-import TeamVoices, { type TeamVoice } from "@/components/TeamVoices";
+import TeamVoices from "@/components/TeamVoices";
 import TeamPhoto from "@/components/TeamPhoto";
+import { getTeamMembers } from "@/app/actions/team";
 import { routing } from "@/i18n/routing";
 
 type Params = { params: Promise<{ locale: string }> };
@@ -19,8 +20,7 @@ export default async function UeberUnsPage({ params }: Params) {
   const { locale } = await params;
   if (!routing.locales.some((language) => language === locale)) notFound();
 
-  const t = await getTranslations({ locale, namespace: "UeberUns" });
-  const voices = t.raw("voices") as TeamVoice[];
+  const voices = await getTeamMembers(locale);
 
   return (
     // pt-24: Abstand unter die fixe Navbar (die Subpage hat keinen eigenen Hero).

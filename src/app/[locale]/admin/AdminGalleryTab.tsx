@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EventRecord, AdminGalleryAlbum, GalleryImage, GalleryWithAlbum } from "@/types/domain";
 import {
   createGalleryAlbum, updateGalleryAlbum, deleteGalleryAlbum, restoreGalleryAlbum,
@@ -40,6 +40,17 @@ export default function AdminGalleryTab({
   const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE });
   const [createCoverFile, setCreateCoverFile] = useState<File | null>(null);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
+  const [savedMark, setSavedMark] = useState<{ kind: "album" | "fav"; id: string } | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
+
+  // Kurzes Speicher-Icon nach Reihenfolge-Änderung (Album oder Favoriten-Foto).
+  const markSaved = (kind: "album" | "fav", id: string) => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    setSavedMark({ kind, id });
+    savedTimer.current = setTimeout(() => setSavedMark(null), 1500);
+  };
 
   // Favoriten (geordnet) + Index-Lookup für die Badges an den Bildern.
   const favorites = useMemo(
@@ -101,6 +112,7 @@ export default function AdminGalleryTab({
         const hit = list.find(x => x.id === i.id);
         return hit ? { ...i, favoriteOrder: hit.favoriteOrder } : i;
       }));
+      markSaved("fav", imageId);
     } catch (e) { toast.showToast(errMsg(e), "error"); }
   };
 
@@ -111,6 +123,7 @@ export default function AdminGalleryTab({
         const hit = list.find(x => x.id === a.id);
         return hit ? { ...a, sortOrder: hit.sortOrder } : a;
       }));
+      markSaved("album", albumId);
     } catch (e) { toast.showToast(errMsg(e), "error"); }
   };
 
@@ -265,7 +278,11 @@ export default function AdminGalleryTab({
               return (
                 <div key={fav.id} className="relative aspect-square rounded-xl overflow-hidden border border-border-light bg-base-light group">
                   <Image src={fav.imageUrl} alt="" fill sizes="12vw" className="object-cover" />
-                  <span className="absolute top-1 left-1 bg-accent-green text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow">{i + 1}</span>
+                  <span className="absolute top-1 left-1 bg-accent-green text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow">
+                    {savedMark?.kind === "fav" && savedMark.id === fav.id ? (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label="Gespeichert"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    ) : i + 1}
+                  </span>
                   <div className="absolute inset-x-0 bottom-0 flex justify-center gap-3 bg-black/55 p-1 text-base">
                     <button onClick={() => handleMoveFavorite(fav.id, -1)} disabled={i === 0} className="text-white disabled:opacity-30 min-w-7" aria-label="Nach vorne" title="Nach vorne">↑</button>
                     <button onClick={() => handleMoveFavorite(fav.id, 1)} disabled={i === favorites.length - 1} className="text-white disabled:opacity-30 min-w-7" aria-label="Nach hinten" title="Nach hinten">↓</button>
@@ -316,6 +333,7 @@ export default function AdminGalleryTab({
             canMoveUp={i > 0}
             canMoveDown={i < sortedAlbums.length - 1}
             onMoveAlbum={handleMoveAlbum}
+            saved={savedMark?.kind === "album" && savedMark.id === album.id}
             images={imagesByAlbum.get(album.id) ?? []}
             favoriteIndex={favoriteIndex}
             expanded={expandedId === album.id}
