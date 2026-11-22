@@ -336,7 +336,8 @@ export async function inviteAdmin(params: {
   await sendAdminMail(email, "Einladung zum Maurer Events Admin", [
     "Du wurdest als Administrator für Maurer Events eingeladen.",
     `Einrichtungs-Link (72 Stunden gültig, einmalig): ${link}`,
-    "Die PIN für die Einrichtung erhältst du auf einem separaten Kanal (Telefon/Messenger) – niemals in dieser Mail.",
+    `Deine Einrichtungs-PIN: ${token.pin ?? ""}`,
+    "Beides zusammen im Wizard eingeben: erst die PIN, dann Passwort setzen und Authenticator einrichten.",
   ]);
   return { ok: true, link, pin: token.pin ?? "", expiresAt: token.expiresAt };
 }

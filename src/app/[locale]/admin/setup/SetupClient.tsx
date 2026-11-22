@@ -143,7 +143,7 @@ export default function SetupClient() {
 
         {step === "pin" && (
           <form onSubmit={submitPin} className="space-y-4">
-            <p className="text-sm text-base-dark/70">Bitte die PIN eingeben, die du auf einem separaten Kanal erhalten hast (nicht in der Mail).</p>
+            <p className="text-sm text-base-dark/70">Bitte die PIN aus der Einrichtungs-Mail eingeben.</p>
             <input required value={pin} onChange={e => setPin(e.target.value)} placeholder="XXXX-XXXX" className="w-full bg-canvas-light border border-border-light rounded-lg p-3 tracking-widest focus:outline-none focus:border-accent-green" />
             <button type="submit" disabled={busy} className="w-full min-h-11 bg-accent-green text-white rounded-xl font-bold disabled:opacity-50">Weiter</button>
           </form>
