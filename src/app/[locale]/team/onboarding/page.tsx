@@ -1,12 +1,13 @@
 import { getMyProfile } from "@/app/actions/staff";
 import { getMyMinijobPreview } from "@/app/actions/document-templates";
 import { decryptField } from "@/lib/secure-fields";
+import { requireStaffMember } from "@/lib/staff-auth";
 import OnboardingForm from "./OnboardingForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {
-  const { member, role, documents, contracts } = await getMyProfile();
+  const [{ member, role, documents, contracts }, privateMember] = await Promise.all([getMyProfile(), requireStaffMember(true)]);
   const minijob = await getMyMinijobPreview().catch(() => null);
   const initial = {
     firstName: member.firstName,
@@ -18,12 +19,12 @@ export default async function OnboardingPage() {
     zip: member.zip || "",
     city: member.city || "",
     employmentType: member.employmentType,
-    taxId: decryptField(member.taxIdEnc) || "",
+    taxId: decryptField(privateMember.taxIdEnc) || "",
     taxClass: member.taxClass || "",
     childAllowances: member.childAllowances,
-    socialSecurity: decryptField(member.socialSecurityEnc) || "",
+    socialSecurity: decryptField(privateMember.socialSecurityEnc) || "",
     healthInsurance: member.healthInsurance || "",
-    iban: decryptField(member.ibanEnc) || "",
+    iban: decryptField(privateMember.ibanEnc) || "",
     bic: member.bic || "",
     entryDate: member.entryDate ? new Date(member.entryDate).toISOString().slice(0, 10) : "",
   };

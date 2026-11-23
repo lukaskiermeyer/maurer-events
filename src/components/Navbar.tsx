@@ -192,13 +192,13 @@ export default function Navbar() {
                     {t("event_anfragen")}
                   </Link>
                 ) : (
-                  <a
+                  <Link
                     href="/#contact"
                     onClick={() => setIsOpen(false)}
                     className="block w-full text-center mt-6 px-6 py-4 bg-accent-wood text-white rounded-xl font-display font-bold shadow-md"
                   >
                     {t("event_anfragen")}
-                  </a>
+                  </Link>
                 )}
               </div>
             </motion.div>

@@ -1,8 +1,7 @@
 import { db } from '@/db';
 import { adminRecoveryCodes } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { randomCrockford, formatCrockford, hmacSha256, pepper, sha256Hex } from './admin-crypto';
-import { randomToken } from './admin-crypto';
+import { randomCrockford, formatCrockford, hmacSha256, pepper } from './admin-crypto';
 
 export function generateRecoveryCodes(count = 10): string[] {
   const codes: string[] = [];
@@ -34,14 +33,11 @@ export async function storeRecoveryCodes(adminId: string, codes: string[]): Prom
 export async function consumeRecoveryCode(adminId: string, code: string): Promise<boolean> {
   const normalized = code.replace(/-/g, '').toUpperCase();
   const hash = hmacSha256(pepper(), normalized);
-  const rows = await db.select().from(adminRecoveryCodes)
-    .where(and(eq(adminRecoveryCodes.adminId, adminId), eq(adminRecoveryCodes.codeHash, hash), isNull(adminRecoveryCodes.consumedAt)));
-  const row = rows[0];
-  if (!row) return false;
-  await db.update(adminRecoveryCodes)
+  const rows = await db.update(adminRecoveryCodes)
     .set({ consumedAt: new Date() })
-    .where(eq(adminRecoveryCodes.id, row.id));
-  return true;
+    .where(and(eq(adminRecoveryCodes.adminId, adminId), eq(adminRecoveryCodes.codeHash, hash), isNull(adminRecoveryCodes.consumedAt)))
+    .returning({ id: adminRecoveryCodes.id });
+  return rows.length === 1;
 }
 
 export async function countRecoveryCodes(adminId: string): Promise<number> {

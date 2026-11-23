@@ -15,6 +15,7 @@ import { Resend } from "resend";
 import { emailFrom } from "@/lib/email";
 import { renderEmail } from "@/lib/email-template";
 import { escapeHtml } from "@/lib/escape";
+import { safeStaffMember } from "@/lib/staff-privacy";
 
 function int(value: unknown, min: number, max: number, label: string) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) throw new BookingError(`Ungültige ${label}.`);
@@ -34,7 +35,7 @@ export async function getStaffingData(eventId: string) {
     db.select().from(staffAvailability).where(eq(staffAvailability.eventId, eventId)).orderBy(asc(staffAvailability.date), asc(staffAvailability.startTime)),
     db.select().from(staffAssignments).where(eq(staffAssignments.eventId, eventId)).orderBy(asc(staffAssignments.date), asc(staffAssignments.startTime)),
   ]);
-  return { event, roles, team, rules, requirements, availability, assignments };
+  return { event, roles, team: team.map(row => ({ ...row, member: safeStaffMember(row.member) })), rules, requirements, availability, assignments };
 }
 
 export async function saveStaffingRule(roleId: string, data: { guestsPerStaff: number; minStaff: number; fixedStaff: number; maxHoursPerDay: number; minRestHours: number; minAge: number; active?: boolean }) {
@@ -276,7 +277,7 @@ export async function getMyStaffing() {
     db.select().from(staffAssignments).where(eq(staffAssignments.staffId, member.id)).orderBy(asc(staffAssignments.date), asc(staffAssignments.startTime)),
     db.select().from(staffRoles).orderBy(asc(staffRoles.name)),
   ]);
-  return { member, upcoming, availability, assignments, roles };
+  return { member: safeStaffMember(member), upcoming, availability, assignments, roles };
 }
 
 export async function getMyOpenShifts() {
@@ -284,7 +285,7 @@ export async function getMyOpenShifts() {
   const today = new Date();
   const upcoming = await db.select().from(events).where(and(gte(events.date, today), isNull(events.deletedAt), eq(events.type, "event"))).orderBy(asc(events.date));
   const eventIds = upcoming.map(e => e.id);
-  if (eventIds.length === 0) return { member, offers: [] };
+  if (eventIds.length === 0) return { member: safeStaffMember(member), offers: [] };
   const requirements = await db.select().from(eventStaffRequirements).where(inArray(eventStaffRequirements.eventId, eventIds)).orderBy(asc(eventStaffRequirements.date), asc(eventStaffRequirements.startTime));
   const assignments = await db.select().from(staffAssignments).where(inArray(staffAssignments.eventId, eventIds));
   const roles = await db.select().from(staffRoles);
@@ -308,7 +309,7 @@ export async function getMyOpenShifts() {
     const conflict = assignments.some(a => a.staffId === member.id && !(a.eventId === req.eventId && a.roleId === req.roleId && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && a.startTime === req.startTime && a.endTime === req.endTime) && new Date(a.date).toISOString().slice(0,10) === new Date(req.date).toISOString().slice(0,10) && shiftOverlaps(a.startTime, a.endTime, req.startTime, req.endTime) && a.status !== "declined");
     offers.push({ requirement: req, event, role, assigned, remaining, alreadySignedUp, conflict });
   }
-  return { member, offers };
+  return { member: safeStaffMember(member), offers };
 }
 
 export async function signUpForShift(requirementId: string) {

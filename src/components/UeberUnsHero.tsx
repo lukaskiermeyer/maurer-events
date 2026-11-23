@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 
@@ -26,9 +27,11 @@ export default function UeberUnsHero() {
             className="lg:col-span-7"
           >
             <div className="mb-6">
-              <img
+              <Image
                 src="/Icon_MaurerGrün.svg"
-                alt="Da Maurerwirt"
+                alt=""
+                width={192}
+                height={192}
                 className="w-32 h-32 md:w-48 md:h-48 mb-2 opacity-90"
                 aria-hidden="true"
               />

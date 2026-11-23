@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { adminPasskeySessions, adminUsers } from '@/db/schema';
-import { eq, and, gt, isNull, lt, or } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { randomToken, hashToken, ipHash as ipHashFn } from './admin-crypto';
 
 // Login ist jetzt Passwort + TOTP: längere Sessions als beim Passkey-Tap.

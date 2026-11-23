@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@/db";
 import { vereinsRadar } from "@/db/schema";
 import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { csvCell } from "@/lib/csv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,14 +37,7 @@ const CSV_COLUMNS = [
   "wirtStatus", "wirtNotiz", "wiedervorlage", "discoveredAt", "lastSeenAt",
 ];
 
-function csvEscape(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  let str = Array.isArray(value) ? value.join("|") : String(value);
-  if (str.includes('"') || str.includes(",") || str.includes("\n") || str.includes("\r")) {
-    str = '"' + str.replace(/"/g, '""') + '"';
-  }
-  return str;
-}
+
 
 export async function GET(request: Request) {
   const expected = expectedToken();
@@ -102,7 +96,7 @@ export async function GET(request: Request) {
     const header = CSV_COLUMNS.join(",");
     const lines = [header];
     for (const row of items) {
-      lines.push(CSV_COLUMNS.map((c) => csvEscape((row as Record<string, unknown>)[c])).join(","));
+      lines.push(CSV_COLUMNS.map((c) => csvCell((row as Record<string, unknown>)[c])).join(","));
     }
     const csv = "\uFEFF" + lines.join("\r\n") + "\r\n";
     return new NextResponse(csv, {

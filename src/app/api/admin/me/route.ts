@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getAdminSession } from '@/lib/admin-session';
 import { hmacSha256 } from '@/lib/admin-crypto';

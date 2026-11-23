@@ -95,6 +95,8 @@ export async function createEvent(data: {
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
   revalidateTag("events", "max");
+  revalidateTag("event-documents", "max");
+  revalidateTag("gallery", "max");
 
   // KI-Uebersetzung nicht blockierend: leere EN/Bar-Felder nach der Antwort fuellen.
   if (createdId) {
@@ -131,6 +133,8 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
   revalidatePath("/termine/mit-reservierung");
   revalidatePath("/termine/ohne-reservierung");
   revalidateTag("events", "max");
+  revalidateTag("event-documents", "max");
+  revalidateTag("gallery", "max");
 
   after(async () => { try { await fillEventTranslations(id, false); } catch (e) { console.error('Background translation failed:', e); } });
 }
@@ -164,6 +168,8 @@ async function fillEventTranslations(id: string, force: boolean) {
     revalidatePath("/");
     revalidatePath("/termine");
     revalidateTag("events", "max");
+  revalidateTag("event-documents", "max");
+  revalidateTag("gallery", "max");
   }
   return {
     titleEn: updates.titleEn ?? ev.titleEn ?? '',
@@ -199,6 +205,8 @@ export async function deleteEvent(id: string) {
   revalidatePath("/termine/ohne-reservierung");
   revalidatePath("/admin");
   revalidateTag("events", "max");
+  revalidateTag("event-documents", "max");
+  revalidateTag("gallery", "max");
 }
 
 export async function getEventDeletionSummary(id: string) {
@@ -226,6 +234,8 @@ export async function restoreEvent(id: string) {
   revalidatePath("/termine/ohne-reservierung");
   revalidatePath("/admin");
   revalidateTag("events", "max");
+  revalidateTag("event-documents", "max");
+  revalidateTag("gallery", "max");
 }
 
 export async function getDeletedEvents() {
@@ -253,6 +263,7 @@ export const getEventById = unstable_cache(
 );
 
 export async function getAllEvents() {
+  await requireAdmin();
   return await db.select().from(events).where(isNull(events.deletedAt)).orderBy(asc(events.date));
 }
 export async function getAdminStats() {

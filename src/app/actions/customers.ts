@@ -7,6 +7,7 @@ import { customerImports, customers, events, reservations, tables } from "@/db/s
 import { requireAdmin } from "@/lib/auth";
 import { BookingError, uuid } from "@/lib/reservation-policy";
 import { normalizeEmail, normalizeName, normalizePhone, type MappedCustomerRow } from "@/lib/customer-import";
+import { csvCell } from "@/lib/csv";
 
 export interface CustomerInput {
   displayName?: string;
@@ -186,7 +187,7 @@ export async function exportCustomersCsv(filters: CustomerListFilters = {}) {
     const cells = [
       c.displayName, c.company, c.email, c.phone, c.street, c.zip, c.city, c.source,
       c.marketingConsent ? "ja" : "nein", (c.tags || []).join("|"), c.notes, c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : "",
-    ].map(value => `"${String(value ?? "").replace(/"/g, '""')}"`);
+    ].map(value => csvCell(value, ";"));
     lines.push(cells.join(";"));
   }
   return lines.join("\n");

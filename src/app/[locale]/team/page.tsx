@@ -9,7 +9,7 @@ export default async function TeamDashboard() {
   const { offers } = await getMyOpenShifts().catch(() => ({ offers: [] }));
   const contract = contracts[0];
   const hasPersonalData = !!(member.street && member.city && member.birthDate);
-  const hasPayrollData = !!(member.taxIdEnc && member.socialSecurityEnc && member.ibanEnc);
+  const hasPayrollData = member.hasTaxId && member.hasSocialSecurity && member.hasIban;
   const hasContract = !!contract;
   const signedContract = contract?.status === "signed" || contract?.status === "verified";
   const items = [

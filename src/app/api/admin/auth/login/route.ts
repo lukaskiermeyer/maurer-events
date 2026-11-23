@@ -4,6 +4,7 @@ import { timingSafeEqualHex } from "@/lib/admin-crypto";
 import { loginWithPassword, tryTrustedDevice, flowError } from "@/lib/admin-auth-flow";
 import { createAdminSession } from "@/lib/admin-session";
 import { rotateTrustedDevice } from "@/lib/admin-mfa";
+import { boundedJson, bodyError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,8 @@ async function ctx() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as { email?: string; password?: string; csrf?: string } | null;
+  const body = await boundedJson<{ email?: string; password?: string; csrf?: string } | null>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const cookieStore = await cookies();
   const csrfCookie = cookieStore.get("adm_csrf")?.value || "";
   if (!body?.csrf || !csrfCookie || !timingSafeEqualHex(Buffer.from(body.csrf, "utf8").toString("hex"), Buffer.from(csrfCookie, "utf8").toString("hex"))) {

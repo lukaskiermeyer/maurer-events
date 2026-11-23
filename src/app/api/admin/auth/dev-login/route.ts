@@ -7,7 +7,7 @@ import { isAdminEmailWithDb } from '@/lib/admin-identity';
 export const runtime = 'nodejs';
 
 export async function GET() {
-  if (process.env.NODE_ENV !== 'development') {
+  if (process.env.NODE_ENV !== 'development' || process.env.ALLOW_DEV_LOGIN !== 'true') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   const email = (process.env.ADMIN_EMAILS || 'servus@maurer-events.com').split(',')[0].trim().toLowerCase();

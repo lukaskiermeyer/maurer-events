@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { contracts, staffDocuments } from "@/db/schema";
-import { staffSession as adminSession } from "@/lib/staff-access";
+import { requireAdmin } from "@/lib/auth";
 import { staffSession as memberSession } from "@/lib/staff-auth";
 import { UUID_PATTERN } from "@/lib/reservation-policy";
 
@@ -11,9 +11,8 @@ export const runtime = "nodejs";
 
 async function authorizedStaffId() {
   const store = await cookies();
-  const adminToken = store.get("admin_token")?.value;
-  const admin = await adminSession(db, adminToken).catch(() => null);
-  if (admin?.role === "admin") return { isAdmin: true, staffId: null as string | null };
+  const isAdmin = await requireAdmin().then(() => true).catch(() => false);
+  if (isAdmin) return { isAdmin: true, staffId: null as string | null };
   const staffToken = store.get("staff_token")?.value;
   const member = await memberSession(staffToken).catch(() => null);
   if (member) return { isAdmin: false, staffId: member.member.id as string };
@@ -49,9 +48,11 @@ export async function GET(request: Request) {
   // SSRF-Schutz: nur Cloudinary-URLs abrufen
   let target: URL;
   try { target = new URL(cloudinaryUrl); } catch { return NextResponse.json({ error: "Ungültiger Speicher-Link." }, { status: 400 }); }
-  if (target.hostname !== "res.cloudinary.com") return NextResponse.json({ error: "Ungültiger Speicher-Link." }, { status: 400 });
+  if (target.protocol !== "https:" || target.hostname !== "res.cloudinary.com" || target.username || target.password || (target.port && target.port !== "443")) {
+    return NextResponse.json({ error: "Ungültiger Speicher-Link." }, { status: 400 });
+  }
 
-  const upstream = await fetch(target.toString());
+  const upstream = await fetch(target, { redirect: "error", cache: "no-store" });
   if (!upstream.ok || !upstream.body) return NextResponse.json({ error: "Datei konnte nicht geladen werden." }, { status: upstream.status || 502 });
   const contentType = upstream.headers.get("content-type") || mimeType;
   const disposition = target.pathname.split("/").pop() || "datei";

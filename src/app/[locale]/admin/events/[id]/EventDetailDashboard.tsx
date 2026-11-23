@@ -30,6 +30,7 @@ import EventDocumentsPanel from '@/components/admin/EventDocumentsPanel';
 import { ADMIN_TRANSITIONS } from '@/lib/reservation-policy';
 import { resolveReservationMode } from '@/lib/reservation-mode';
 import { formatEuroCents, packageTax, type TaxStatus } from '@/lib/pricing';
+import { csvCell } from '@/lib/csv';
 import type { CustomerRecord } from '@/types/domain';
 
 type DashboardTab = "overview" | "reservations" | "tables" | "documents" | "settings" | "waitlist" | "team" | "gallery" | "invitations";
@@ -432,20 +433,19 @@ export default function EventDetailDashboard({ event, initialReservations, initi
       return matchesSearch && matchesStatus && matchesTable;
     });
 
-    const csvContent = [
+    const csvRows = [
       ["Name", "Email", "Personen", "Tisch", "Status", "Betrag (€)", "Datum"],
-      ...rows.map((r) => {
-        return [
-          `"${r.reservation.guestName}"`,
-          `"${r.reservation.email}"`,
-          r.reservation.guestCount,
-          `"${tableDisplayName(r.reservation)}"`,
-          `"${r.reservation.status}"`,
-          (r.reservation.amountTotal / 100).toFixed(2),
-          `"${new Date(r.reservation.reservationDate).toLocaleDateString('de-DE')}"`
-        ].join(",");
-      })
-    ].join("\n");
+      ...rows.map((r) => [
+        r.reservation.guestName,
+        r.reservation.email,
+        r.reservation.guestCount,
+        tableDisplayName(r.reservation),
+        r.reservation.status,
+        (r.reservation.amountTotal / 100).toFixed(2),
+        new Date(r.reservation.reservationDate).toLocaleDateString('de-DE'),
+      ]),
+    ];
+    const csvContent = "\uFEFF" + csvRows.map(row => row.map(value => csvCell(value)).join(",")).join("\r\n") + "\r\n";
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

@@ -12,7 +12,7 @@ import { generateTotpSecret, totpCode, verifyTotp } from '../src/lib/totp';
 import { enableTotp, consumeRecoveryCodeForAdmin, setPasswordHash } from '../src/lib/admin-mfa';
 import { createEnrollmentToken, validateEnrollmentToken, consumeEnrollmentToken, setPendingTotp, getPendingTotp } from '../src/lib/admin-enrollment';
 import { createMfaPending, consumeMfaPending } from '../src/lib/admin-mfa-pending';
-import { loginWithPassword, completeTotpLogin, setupSetPassword, consumePasswordReset, removeAdmin, resetTotpForAdmin, markStepUp } from '../src/lib/admin-auth-flow';
+import { loginWithPassword, completeTotpLogin, setupSetPassword, removeAdmin, resetTotpForAdmin, markStepUp } from '../src/lib/admin-auth-flow';
 import { createAdminSession, getAdminSession, revokeAllAdminSessions } from '../src/lib/admin-session';
 
 const client = postgres(process.env.DATABASE_URL!, { max: 2, prepare: false });
@@ -49,7 +49,6 @@ async function main() {
     const token = await createEnrollmentToken({ adminId: admin.id, purpose: 'password_reset', createdVia: 'cli' });
     const set = await setupSetPassword({ tokenId: token.tokenId, rawToken: token.rawToken, password: 'neues-passwort-1234', ctx: CTX });
     assert.equal(set.ok, true);
-    await consumePasswordReset({ tokenId: token.tokenId, ctx: CTX });
     const [after] = await db.select({ enc: adminUsers.totpSecretEnc }).from(adminUsers).where(eq(adminUsers.id, admin.id));
     assert.deepEqual(after.enc, before.enc);
     const login = await loginWithPassword({ email: EMAIL, password: 'neues-passwort-1234', ctx: CTX });
@@ -61,7 +60,6 @@ async function main() {
     const session = await createAdminSession({ adminId: admin.id });
     const token = await createEnrollmentToken({ adminId: admin.id, purpose: 'password_reset', createdVia: 'cli' });
     await setupSetPassword({ tokenId: token.tokenId, rawToken: token.rawToken, password: 'weiteres-passwort-1234', ctx: CTX });
-    await consumePasswordReset({ tokenId: token.tokenId, ctx: CTX });
     assert.equal(await getAdminSession(session.token), null);
   });
 

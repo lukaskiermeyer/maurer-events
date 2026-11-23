@@ -17,7 +17,7 @@ export default function TeamLoginPage() {
     setError("");
     try {
       const result = await staffLogin({ email, password });
-      if (!result.success) { setError(result.error || "Anmeldung fehlgeschlagen."); return; }
+      if (!result.success) { setError("error" in result ? result.error : "Anmeldung fehlgeschlagen."); return; }
       router.replace("/team");
       router.refresh();
     } finally {

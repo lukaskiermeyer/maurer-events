@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { requireAdminStepUp } from '@/lib/auth';
 import { inviteAdmin, flowError } from '@/lib/admin-auth-flow';
+import { boundedJson, bodyError } from '@/lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,8 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Frische TOTP-Bestätigung erforderlich.' }, { status: 403 });
   }
-  const body = await request.json().catch(() => null) as { email?: string } | null;
+  const body = await boundedJson<{ email?: string } | null>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const h = await headers();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
   const result = await inviteAdmin({

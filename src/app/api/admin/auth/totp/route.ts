@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import { timingSafeEqualHex } from "@/lib/admin-crypto";
 import { completeTotpLogin, csrfTokenFor, flowError } from "@/lib/admin-auth-flow";
+import { boundedJson, bodyError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as { code?: string; trustDevice?: boolean; csrf?: string } | null;
+  const body = await boundedJson<{ code?: string; trustDevice?: boolean; csrf?: string } | null>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const cookieStore = await cookies();
   const mfaToken = cookieStore.get("__Host-adm_mfa")?.value;
   if (!mfaToken) return NextResponse.json({ error: "Bitte zuerst mit E-Mail und Passwort anmelden." }, { status: 401 });

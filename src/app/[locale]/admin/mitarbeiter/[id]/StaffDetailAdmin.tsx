@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import type { ContractRecord, StaffDocumentRecord, StaffRecord, StaffRole } from "@/types/domain";
+import type { ContractRecord, StaffDocumentRecord, StaffRole } from "@/types/domain";
 import { DOCUMENT_KIND_LABELS } from "@/lib/required-documents";
 import { getStaffErasureStatus, updateStaffAdmin, anonymizeStaffForErasure, eraseDeletableStaffData, deleteStaffHardDev, verifyStaffDocument } from "@/app/actions/staff";
 import { verifyContract, deleteContract } from "@/app/actions/contracts";
 import { useDialog } from "@/components/ui/Dialog";
+import type { SafeStaffMember } from "@/lib/staff-privacy";
 
-type Detail = { member: StaffRecord; role: StaffRole | null; documents: StaffDocumentRecord[]; contracts: ContractRecord[] };
+type Detail = { member: SafeStaffMember; role: StaffRole | null; documents: StaffDocumentRecord[]; contracts: ContractRecord[] };
 
 const CONTRACT_STATUS_LABELS: Record<string, string> = {
   pending: "Offen",

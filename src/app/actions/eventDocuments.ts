@@ -14,7 +14,7 @@ export const getPublicEventDocuments = unstable_cache(async (eventId: string): P
   uuid(eventId);
   return db.select({ document: eventDocuments }).from(eventDocuments)
     .innerJoin(events, eq(events.id, eventDocuments.eventId))
-    .where(and(eq(eventDocuments.eventId, eventId), eq(eventDocuments.isPublic, true), isNull(events.deletedAt)))
+    .where(and(eq(eventDocuments.eventId, eventId), eq(eventDocuments.isPublic, true), isNull(events.deletedAt), eq(events.isPublished, true)))
     .orderBy(asc(eventDocuments.kind), asc(eventDocuments.sortOrder), asc(eventDocuments.createdAt))
     .then(rows => rows.map(row => row.document));
 }, ['public-event-documents'], { revalidate: 3600, tags: ['event-documents'] });
@@ -22,7 +22,7 @@ export const getPublicEventDocuments = unstable_cache(async (eventId: string): P
 export const getPublicEventDocumentsForEvents = unstable_cache(async (): Promise<Record<string, EventDocument[]>> => {
   const rows = await db.select({ document: eventDocuments }).from(eventDocuments)
     .innerJoin(events, eq(events.id, eventDocuments.eventId))
-    .where(and(eq(eventDocuments.isPublic, true), isNull(events.deletedAt)))
+    .where(and(eq(eventDocuments.isPublic, true), isNull(events.deletedAt), eq(events.isPublished, true)))
     .orderBy(asc(eventDocuments.kind), asc(eventDocuments.sortOrder), asc(eventDocuments.createdAt));
   return rows.reduce<Record<string, EventDocument[]>>((map, row) => {
     (map[row.document.eventId] ||= []).push(row.document);

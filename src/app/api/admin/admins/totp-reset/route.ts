@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { adminUsers } from '@/db/schema';
 import { requireAdminStepUp } from '@/lib/auth';
 import { resetTotpForAdmin, flowError } from '@/lib/admin-auth-flow';
+import { boundedJson, bodyError } from '@/lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +16,8 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Frische TOTP-Bestätigung erforderlich.' }, { status: 403 });
   }
-  const body = await request.json().catch(() => null) as { email?: string } | null;
+  const body = await boundedJson<{ email?: string } | null>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const email = String(body?.email || '').trim().toLowerCase();
   const [target] = await db.select().from(adminUsers).where(sql`lower(trim(${adminUsers.email})) = ${email}`);
   if (!target) return NextResponse.json({ error: 'Admin nicht gefunden.' }, { status: 404 });
