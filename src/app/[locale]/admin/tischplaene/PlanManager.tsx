@@ -7,9 +7,9 @@ import { PlanCanvas, type DrawPreset, type PlanTool } from "@/components/admin/p
 import NumField from "@/components/admin/plan/NumField";
 import { savePlanPreset, deletePlanPreset, duplicatePlanPreset, getPlanPresets } from "@/app/actions/plans";
 import {
-  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DOOR_WIDTHS, applyNumbering, computeMeasureReport, descendantIds,
+  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DIM_CATEGORIES, DOOR_WIDTHS, applyNumbering, computeMeasureReport, descendantIds,
   garniturFootprint, highestGroupAt, isAncestorOf, moveGroup, parentOf, planRows, planTables, rowBlockGeometry, sortedRows, tableLabel, tablesOfRow,
-  type NumberingOptions, type NumberingScheme, type PlanElement, type PlanLayout, type PlanTable, type RowSpec,
+  type DimCategory, type NumberingOptions, type NumberingScheme, type PlanElement, type PlanLayout, type PlanTable, type RowSpec,
 } from "@/lib/plan-types";
 import type { Measurement } from "@/components/admin/plan/PlanCanvas";
 import type { PlanPresetRecord } from "@/types/domain";
@@ -359,6 +359,11 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   };
 
   const report = useMemo(() => computeMeasureReport(layout, mins), [layout, mins]);
+  const activeDims = layout.printDims ?? DIM_CATEGORIES.map(c => c.key);
+  const togglePrintDim = (key: DimCategory) => commit(l => {
+    const current = l.printDims ?? DIM_CATEGORIES.map(c => c.key);
+    return { ...l, printDims: current.includes(key) ? current.filter(k => k !== key) : [...current, key] };
+  });
   const zoneGroups = useMemo(() => {
     const ids = [...new Set(tables.map(t => t.areaId ?? 'frei'))];
     return ids.map((id, idx) => {
@@ -746,6 +751,18 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                     {report.violations.map(v => <p key={v}>{v}</p>)}
                   </div>
                 )}
+              </div>
+              <div className="rounded-xl border border-border-light p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maße für den Druckplan</p>
+                <div className="grid grid-cols-1 gap-1 text-sm font-bold">
+                  {DIM_CATEGORIES.map(c => (
+                    <label key={c.key} className="flex items-center gap-2">
+                      <input type="checkbox" checked={activeDims.includes(c.key)} onChange={() => togglePrintDim(c.key)} className="h-4 w-4 accent-accent-green" />
+                      {c.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs opacity-60">Nur angehakte Maß-Kategorien erscheinen im Druckplan und in der Maß-Ansicht des Plans.</p>
               </div>
               <button type="button" onClick={save} disabled={saveState === "saving"} className="min-h-11 w-full rounded-xl bg-accent-green font-black text-white disabled:opacity-50">{saveState === "saving" ? "Speichert…" : "Plan speichern"}</button>
               <button type="button" onClick={() => gotoStep(6)} className="min-h-11 w-full rounded-xl border border-border-light font-bold">Weiter zu „Bearbeiten“</button>

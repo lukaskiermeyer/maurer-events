@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { events, reservations, tables } from '@/db/schema';
+import { events, reservations } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
 import { BookingError, calendarDate, cleanTime, guestDetails, uuid } from '@/lib/reservation-policy';
 import { verifyTurnstile } from '@/lib/turnstile';
@@ -12,6 +12,7 @@ import { takeRateLimit } from '@/lib/rate-limit';
 import { lockEvent, lockLayout } from '@/lib/reservation-db';
 import { reservationAdmin } from '@/lib/reservation-admin';
 import { ensureCustomerForReservation, linkReservationCustomer } from '@/lib/customers';
+import { resolveTableName } from '@/lib/reservation-table';
 import {
   sendReservationConfirmation,
   sendReservationDecline,
@@ -154,12 +155,10 @@ export async function confirmReservationRequest(
     if (result.reservation.customerId !== customer.id) {
       await linkReservationCustomer(db, result.reservation.id, customer.id);
     }
-    const [table] = result.reservation.tableId
-      ? await db.select({ name: tables.name }).from(tables).where(eq(tables.id, result.reservation.tableId))
-      : [];
+    const tableName = await resolveTableName(result.reservation);
     const warning = await sendReservationConfirmation({
       ...emailData(result.event, result.reservation),
-      tableName: table?.name || null,
+      tableName,
       priceCents: result.reservation.agreedPriceCents,
     });
     revalidatePath('/[locale]/admin', 'layout');

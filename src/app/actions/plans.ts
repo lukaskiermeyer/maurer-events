@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { db } from "@/db";
 import { planPresets, events, reservations, tables } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -98,7 +99,7 @@ export async function getEventPlan(eventId: string) {
 export async function assignPlanTable(reservationId: string, planTableId: string | null) {
   await requireAdmin();
   uuid(reservationId);
-  const [reservation] = await db.select({ id: reservations.id, eventId: reservations.eventId }).from(reservations).where(eq(reservations.id, reservationId));
+  const [reservation] = await db.select({ id: reservations.id, eventId: reservations.eventId, planTableId: reservations.planTableId, tableId: reservations.tableId, qrCodeText: reservations.qrCodeText }).from(reservations).where(eq(reservations.id, reservationId));
   if (!reservation) throw new Error('Reservierung nicht gefunden.');
 
   let legacyTableId: string | null = null;
@@ -113,7 +114,15 @@ export async function assignPlanTable(reservationId: string, planTableId: string
       legacyTableId = legacy?.id ?? null;
     }
   }
-  await db.update(reservations).set({ planTableId, tableId: legacyTableId, updatedAt: new Date() }).where(eq(reservations.id, reservationId));
+  // Tischwechsel: altes Ticket (QR + eingefrorene Mail) ungültig machen, damit
+  // die neue Bestätigung den richtigen Tisch trägt und als ToDo erscheint.
+  const changed = reservation.planTableId !== planTableId || reservation.tableId !== legacyTableId;
+  await db.update(reservations).set({
+    planTableId,
+    tableId: legacyTableId,
+    updatedAt: new Date(),
+    ...(changed ? { qrCodeText: reservation.qrCodeText ? randomUUID() : null, ticketEmailPayload: null, ticketSentAt: null } : {}),
+  }).where(eq(reservations.id, reservationId));
   const warning = planTableId ? await deliverTicket(reservationId) : undefined;
   revalidatePath('/[locale]/admin', 'layout');
   return { success: true, warning };

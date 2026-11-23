@@ -9,7 +9,7 @@ import { getReservationsByEvent } from "@/app/actions/reservations";
 import { getCustomers } from "@/app/actions/customers";
 import { getTentSettings } from "@/app/actions/settings";
 import { getEventPlan } from "@/app/actions/plans";
-import { buildOccupancy, planTables } from "@/lib/plan-types";
+import { buildOccupancy, planTables, tableLabel } from "@/lib/plan-types";
 import { PlanStaticSvg } from "@/components/admin/plan/PlanCanvas";
 import { Link } from "@/i18n/routing";
 import StaffHeader from "@/components/admin/StaffHeader";
@@ -66,6 +66,13 @@ export default async function TablePlanPage({
   });
   const totalTables = planLayout ? planTables(planLayout).length : tables.length;
   const reservedCount = occupancy ? Object.values(occupancy).filter(o => o.kind === "reserved").length : visibleReservations.length;
+  // Belegungsliste neben dem Plan statt Namen unter den Tischen (keine Überlappung)
+  const occupancyEntries = planLayout && occupancy
+    ? planTables(planLayout).flatMap(t => {
+      const occ = occupancy[t.id];
+      return occ && occ.kind === "reserved" ? [{ label: tableLabel(planLayout, t), occ }] : [];
+    })
+    : [];
   const dateLabel = new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("de-DE", {
     weekday: "long",
     day: "2-digit",
@@ -78,7 +85,7 @@ export default async function TablePlanPage({
   ]);
 
   return (
-    <div className="min-h-screen bg-base-light pb-10">
+    <div className="plan-page-wrap min-h-screen bg-base-light pb-10">
       <div className="no-print"><StaffHeader /></div>
       <main className="plan-page max-w-[1400px] mx-auto px-4 pt-6">
         <div className="no-print flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -138,7 +145,7 @@ export default async function TablePlanPage({
           ))}
         </div>
 
-        <section className="bg-white border border-border-light rounded-2xl p-4 sm:p-6 print:border-0 print:rounded-none print:p-0">
+        <section className="plan-sheet bg-white border border-border-light rounded-2xl p-4 sm:p-6 print:border-0 print:rounded-none print:p-0">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3 min-w-0">
               <Image src="/LogoFinalGrün_MaurerEvents.svg" alt="Maurer Events" width={162} height={76} className="h-8 w-auto object-contain" />
@@ -165,7 +172,25 @@ export default async function TablePlanPage({
                 Das gewählte Preset enthält noch keine Tische. Bitte im Tischplan-Editor ergänzen.
               </div>
             ) : (
-              <PlanStaticSvg layout={planLayout} occupancy={mode === "setup" ? undefined : occupancy ?? undefined} showNames={mode === "internal"} showDims={dimsOn} neutral={mode === "setup"} className="plan-svg w-full h-auto" />
+              <div className="plan-row flex flex-col gap-4 items-start lg:flex-row">
+                <PlanStaticSvg layout={planLayout} occupancy={mode === "setup" ? undefined : occupancy ?? undefined} showDims={dimsOn} neutral={mode === "setup"} className="plan-svg w-full h-auto min-w-0 flex-1" />
+                {mode === "internal" && (
+                  <aside className="plan-occupancy w-full shrink-0 rounded-xl border border-border-light bg-canvas-light p-3 text-xs lg:w-72">
+                    <p className="mb-2 font-bold uppercase tracking-widest opacity-60">Belegung</p>
+                    {occupancyEntries.length === 0 ? (
+                      <p className="opacity-60">Noch keine belegten Tische an diesem Tag.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {occupancyEntries.map(e => (
+                          <li key={e.label} className="break-inside-avoid">
+                            <span className="font-bold">{e.label}</span> · {e.occ.names?.join(", ")} ({e.occ.guests} P.)
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </aside>
+                )}
+              </div>
             )
           ) : tables.length === 0 ? (
             <div className="bg-canvas-light border border-border-light rounded-xl p-10 text-center text-base-dark/60">
@@ -213,8 +238,16 @@ export default async function TablePlanPage({
         @media print {
           html, body { background: #fff !important; }
           nav, header, footer, .no-print { display: none !important; }
+          .plan-page-wrap { min-height: 0 !important; padding: 0 !important; }
           .plan-page { max-width: none !important; padding: 0 !important; margin: 0 !important; }
-          .plan-svg { max-height: 250mm; }
+          /* Genau eine A3-Seite: Plan bekommt eine feste Max-Höhe in mm statt
+             Flex-Shrinking (Chrome-Druck shränkt Flex-SVGs nicht zuverlässig). */
+          .plan-sheet { break-inside: avoid; page-break-inside: avoid; }
+          .plan-row { display: flex; flex-direction: row; gap: 4mm; align-items: flex-start; }
+          .plan-row .plan-svg { flex: 1 1 auto; min-width: 0; width: auto; height: auto; max-height: 234mm !important; }
+          .plan-occupancy { width: 78mm; max-height: 234mm; overflow: hidden; columns: 2; column-gap: 4mm; font-size: 7.5pt; border: 0; background: none; padding: 0; border-radius: 0; }
+          .plan-occupancy ul { margin: 0; padding: 0; list-style: none; }
+          .plan-occupancy li { margin: 0 0 1.5mm; break-inside: avoid; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>

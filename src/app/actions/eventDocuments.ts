@@ -54,14 +54,19 @@ export async function deleteEventDocument(id: string) {
 
 // Manuelle EN/Bar-Titel eines Dokuments setzen (leer = null, damit die KI sie
 // spaeter fuellen kann). Laengenbegrenzung wie beim Upload (150 Zeichen).
-export async function updateEventDocumentTranslations(id: string, data: { titleEn?: string | null; titleBar?: string | null }) {
+export async function updateEventDocumentTranslations(id: string, data: { title?: string; titleEn?: string | null; titleBar?: string | null }) {
   await requireAdmin();
   uuid(id);
   const titleEn = data.titleEn ?? null;
   const titleBar = data.titleBar ?? null;
   if (titleEn !== null && (typeof titleEn !== "string" || titleEn.length > 150)) throw new Error("Ungültiger Titel (EN).");
   if (titleBar !== null && (typeof titleBar !== "string" || titleBar.length > 150)) throw new Error("Ungültiger Titel (Bairisch).");
-  await db.update(eventDocuments).set({ titleEn, titleBar }).where(eq(eventDocuments.id, id));
+  const updates: { title?: string; titleEn: string | null; titleBar: string | null } = { titleEn, titleBar };
+  if (data.title !== undefined) {
+    if (!data.title.trim() || data.title.length > 150) throw new Error("Ungültiger Titel.");
+    updates.title = data.title.trim();
+  }
+  await db.update(eventDocuments).set(updates).where(eq(eventDocuments.id, id));
   revalidateTag("event-documents", "max");
   revalidatePath("/[locale]", "layout");
   return { success: true };

@@ -55,14 +55,6 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/admin/events/${eventData.id}/tischplan`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Tischplan</Link>
-            <Link href={`/admin/events/${eventData.id}/zettel`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Zettel</Link>
-            <Link href={`/admin/events/${eventData.id}/personal`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Personal</Link>
-            {process.env.STRIPE_SECRET_KEY ? (
-            <Link href={`/admin/events/${eventData.id}/gutscheine`} className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark rounded-xl font-bold hover:border-accent-green transition-colors">Gutscheine</Link>
-          ) : (
-            <span className="min-h-12 inline-flex items-center px-5 bg-white border border-border-light text-base-dark/40 rounded-xl font-bold cursor-not-allowed" title="Stripe nicht konfiguriert">Gutscheine</span>
-          )}
             <Link href={`/admin/events/${eventData.id}/scanner`} className="min-h-12 inline-flex items-center px-5 bg-accent-green text-white rounded-xl font-bold">Einlass starten</Link>
           </div>
         </div>

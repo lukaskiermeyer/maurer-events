@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { TeamMember } from "@/types/domain";
 import { createTeamMember, updateTeamMember, deleteTeamMember, moveTeamMember } from "@/app/actions/team";
 import { uploadImage } from "@/lib/client-image-upload";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
 
-const EMPTY_FORM = { name: "", role: "", quote: "", imageUrl: "" };
+const EMPTY_FORM = { name: "", role: "", quote: "", imageUrl: "", roleEn: "", roleBar: "", quoteEn: "", quoteBar: "" };
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Unbekannter Fehler");
 
 type MemberForm = typeof EMPTY_FORM;
@@ -23,22 +25,45 @@ function MemberFields({
   onPhoto: (file: File) => void;
   uploading: boolean;
 }) {
+  const toast = useToast();
+  const [translating, setTranslating] = useState(false);
+  const locValues: LocValues = {
+    role: { de: value.role, en: value.roleEn, bar: value.roleBar },
+    quote: { de: value.quote, en: value.quoteEn, bar: value.quoteBar },
+  };
+  const handleLocChange = (key: string, lang: Lang, v: string) => {
+    const suffix = lang === "de" ? "" : lang === "en" ? "En" : "Bar";
+    onChange({ ...value, [`${key}${suffix}`]: v });
+  };
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const t = await translateTextsNow({ role: value.role, quote: value.quote });
+      onChange({
+        ...value,
+        roleEn: t.en.role ?? value.roleEn, roleBar: t.bar.role ?? value.roleBar,
+        quoteEn: t.en.quote ?? value.quoteEn, quoteBar: t.bar.quote ?? value.quoteBar,
+      });
+      toast.showToast("KI-Übersetzungen eingetragen – bitte prüfen und speichern.", "success");
+    } catch { toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error"); }
+    setTranslating(false);
+  };
   return (
     <div className="space-y-3 bg-base-light/50 p-4 rounded-xl">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-bold mb-1 opacity-70">Name</label>
-          <input type="text" value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
-        </div>
-        <div>
-          <label className="block text-xs font-bold mb-1 opacity-70">Position</label>
-          <input type="text" value={value.role} onChange={e => onChange({ ...value, role: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
-        </div>
-      </div>
       <div>
-        <label className="block text-xs font-bold mb-1 opacity-70">Zitat (Rückseite der Karte)</label>
-        <textarea value={value.quote} onChange={e => onChange({ ...value, quote: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm min-h-[60px]" />
+        <label className="block text-xs font-bold mb-1 opacity-70">Name</label>
+        <input type="text" value={value.name} onChange={e => onChange({ ...value, name: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
       </div>
+      <LocalizedFields
+        fields={[
+          { key: "role", label: "Position" },
+          { key: "quote", label: "Zitat (Rückseite der Karte)", multiline: true, rows: 3 },
+        ]}
+        values={locValues}
+        onChange={handleLocChange}
+        onTranslate={handleTranslate}
+        translating={translating}
+      />
       <div className="flex flex-wrap items-center gap-3">
         {value.imageUrl ? (
           <span className="relative w-16 h-16 rounded-xl overflow-hidden border border-border-light shrink-0">
@@ -113,7 +138,7 @@ export default function AdminTeamTab({ initialMembers }: { initialMembers: TeamM
 
   const startEdit = (m: TeamMember) => {
     setEditingId(m.id);
-    setForm({ name: m.name, role: m.role, quote: m.quote, imageUrl: m.imageUrl || "" });
+    setForm({ name: m.name, role: m.role, quote: m.quote, imageUrl: m.imageUrl || "", roleEn: m.roleEn || "", roleBar: m.roleBar || "", quoteEn: m.quoteEn || "", quoteBar: m.quoteBar || "" });
   };
 
   const handleSave = async (id: string) => {
@@ -123,7 +148,7 @@ export default function AdminTeamTab({ initialMembers }: { initialMembers: TeamM
     }
     setSaving(true);
     try {
-      const row = await updateTeamMember(id, { name: form.name, role: form.role, quote: form.quote, imageUrl: form.imageUrl || null });
+      const row = await updateTeamMember(id, { name: form.name, role: form.role, quote: form.quote, imageUrl: form.imageUrl || null, roleEn: form.roleEn, roleBar: form.roleBar, quoteEn: form.quoteEn, quoteBar: form.quoteBar });
       patch(row);
       setEditingId(null);
       markSaved(id);
@@ -139,7 +164,7 @@ export default function AdminTeamTab({ initialMembers }: { initialMembers: TeamM
     }
     setSaving(true);
     try {
-      const row = await createTeamMember({ name: createForm.name, role: createForm.role, quote: createForm.quote, imageUrl: createForm.imageUrl || null });
+      const row = await createTeamMember({ name: createForm.name, role: createForm.role, quote: createForm.quote, imageUrl: createForm.imageUrl || null, roleEn: createForm.roleEn, roleBar: createForm.roleBar, quoteEn: createForm.quoteEn, quoteBar: createForm.quoteBar });
       setMembers(prev => [...prev, row]);
       setCreateForm({ ...EMPTY_FORM });
       setCreateOpen(false);

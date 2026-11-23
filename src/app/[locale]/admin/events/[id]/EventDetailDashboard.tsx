@@ -6,9 +6,10 @@ import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
 import DropZone from "@/components/ui/DropZone";
 import { Link } from "@/i18n/routing";
-import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import Image from "next/image";
-import { updateEvent, translateEvent } from "@/app/actions/events";
+import { updateEvent } from "@/app/actions/events";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import { uploadImage } from "@/lib/client-image-upload";
 import { assignTableToReservation, updateReservationStatus, createManualReservation } from "@/app/actions/reservations";
 import { assignPlanTable } from "@/app/actions/plans";
@@ -58,22 +59,6 @@ interface EventDetailProps {
   stripeEnabled?: boolean;
   planPreset?: PlanPresetRecord | null;
   planPresets?: PlanPresetRecord[];
-}
-
-function TranslationField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) {
-  const filled = value.trim().length > 0;
-  const inputClass = "w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green text-sm";
-  return (
-    <div>
-      <label className="block text-xs font-bold mb-1 opacity-70">
-        {label}{" "}
-        <span className={filled ? "text-accent-green" : "text-amber-600"}>{filled ? "✓ gefüllt" : "· leer"}</span>
-      </label>
-      {multiline
-        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={4} className={inputClass} />
-        : <input type="text" value={value} onChange={e => onChange(e.target.value)} className={inputClass} />}
-    </div>
-  );
 }
 
 export default function EventDetailDashboard({ event, initialReservations, initialTables, initialGallery = [], initialWaitlist = [], initialEventSettings, initialPackagePresets = [], taxStatus: initialTaxStatus = 'standard', initialDocuments = [], scannerGrants = [], stripeEnabled = false, planPreset = null, planPresets = [] }: EventDetailProps) {
@@ -326,12 +311,26 @@ export default function EventDetailDashboard({ event, initialReservations, initi
     setIsUpdating(false);
   };
 
+  const eventLocValues: LocValues = {
+    title: { de: formData.title, en: formData.titleEn, bar: formData.titleBar },
+    location: { de: formData.location, en: formData.locationEn, bar: formData.locationBar },
+    description: { de: formData.description, en: formData.descriptionEn, bar: formData.descriptionBar },
+  };
+  const handleEventLocChange = (key: string, lang: Lang, value: string) => {
+    const suffix = lang === "de" ? "" : lang === "en" ? "En" : "Bar";
+    setFormData(prev => ({ ...prev, [`${key}${suffix}`]: value }));
+  };
   const handleTranslate = async () => {
     setIsTranslating(true);
     try {
-      const translations = await translateEvent(event.id, false);
-      setFormData(prev => ({ ...prev, ...translations }));
-      toast.showToast("Leere Übersetzungen wurden per KI gefüllt.", "success");
+      const t = await translateTextsNow({ title: formData.title, location: formData.location, description: formData.description });
+      setFormData(prev => ({
+        ...prev,
+        titleEn: t.en.title ?? prev.titleEn, titleBar: t.bar.title ?? prev.titleBar,
+        locationEn: t.en.location ?? prev.locationEn, locationBar: t.bar.location ?? prev.locationBar,
+        descriptionEn: t.en.description ?? prev.descriptionEn, descriptionBar: t.bar.description ?? prev.descriptionBar,
+      }));
+      toast.showToast("KI-Übersetzungen eingetragen – bitte prüfen und speichern.", "success");
     } catch {
       toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error");
     }
@@ -542,6 +541,7 @@ export default function EventDetailDashboard({ event, initialReservations, initi
           ...(event.type === 'event' ? [
             { key: 'reservations', label: `Gäste & Anfragen${requestCount ? ` (${requestCount} offen)` : ''}` },
             { key: 'tables', label: 'Tisch & Zelt' },
+            { key: 'slips', label: 'Tischzettel', href: `/admin/events/${event.id}/zettel` },
             { key: 'documents', label: `Dokumente (${initialDocuments.length})` },
             { key: 'waitlist', label: `Warteliste (${initialWaitlist.length})` },
             { key: 'invitations', label: 'Kunden einladen' },
@@ -549,15 +549,28 @@ export default function EventDetailDashboard({ event, initialReservations, initi
             { key: 'gallery', label: `📸 Galerie (${initialGallery.length})` },
           ] as const),
           { key: 'settings', label: 'Event & Buchung' },
+          ...(event.type === 'event' ? [
+            { key: 'personal', label: 'Personal', href: `/admin/events/${event.id}/personal` },
+          ] as const : []),
         ] as const).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            aria-pressed={activeTab === tab.key}
-            className={`px-4 sm:px-5 py-3.5 min-h-12 font-bold font-sans text-sm transition-colors ${activeTab === tab.key ? "bg-accent-green text-white" : "text-base-dark hover:bg-canvas-light"}`}
-          >
-            {tab.label}
-          </button>
+          'href' in tab && tab.href ? (
+            <a
+              key={tab.key}
+              href={tab.href}
+              className="px-4 sm:px-5 py-3.5 min-h-12 inline-flex items-center font-bold font-sans text-sm transition-colors text-base-dark hover:bg-canvas-light"
+            >
+              {tab.label} ↗
+            </a>
+          ) : (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as DashboardTab)}
+              aria-pressed={activeTab === tab.key}
+              className={`px-4 sm:px-5 py-3.5 min-h-12 font-bold font-sans text-sm transition-colors ${activeTab === tab.key ? "bg-accent-green text-white" : "text-base-dark hover:bg-canvas-light"}`}
+            >
+              {tab.label}
+            </button>
+          )
         ))}
       </div>
 
@@ -628,10 +641,6 @@ export default function EventDetailDashboard({ event, initialReservations, initi
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl font-display font-bold mb-6">Event Details anpassen</h2>
             <form onSubmit={handleEventUpdate} className="space-y-4 font-sans">
-              <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
-                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Start-Datum</label>
@@ -643,41 +652,20 @@ export default function EventDetailDashboard({ event, initialReservations, initi
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Ort *</label>
-                <input required type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Schwaig" />
-              </div>
-              <div>
                 <label className="block text-sm font-bold mb-1 opacity-70">PLZ *</label>
                 <input required type="text" inputMode="numeric" pattern="[0-9]*" maxLength={5} value={formData.zip} onChange={e => setFormData({...formData, zip: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. 93149" />
               </div>
-              <MarkdownEditor
-                 label="Beschreibung"
-                 value={formData.description}
-                 onChange={value => setFormData({ ...formData, description: value })}
-                 placeholder="Event-Beschreibung..."
-                 collapsedByDefault={false}
-               />
-              <details className="bg-base-light border border-border-light rounded-lg p-4">
-                <summary className="cursor-pointer text-sm font-bold select-none">Übersetzungen (EN / Bairisch)</summary>
-                <div className="mt-3 space-y-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <p className="text-xs opacity-60 max-w-sm">Leere Felder werden beim Speichern automatisch per KI gefüllt. Ausgefüllte Felder bleiben erhalten (manuelle Korrektur). „Jetzt übersetzen“ füllt nur leere Felder des gespeicherten Stands.</p>
-                    <button type="button" onClick={handleTranslate} disabled={isTranslating} className="shrink-0 bg-accent-green text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-accent-green/80 disabled:opacity-50 transition-colors">
-                      {isTranslating ? "Übersetzt…" : "Jetzt übersetzen"}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <TranslationField label="Titel (EN)" value={formData.titleEn} onChange={v => setFormData({ ...formData, titleEn: v })} />
-                    <TranslationField label="Titel (Bairisch)" value={formData.titleBar} onChange={v => setFormData({ ...formData, titleBar: v })} />
-                    <TranslationField label="Ort (EN)" value={formData.locationEn} onChange={v => setFormData({ ...formData, locationEn: v })} />
-                    <TranslationField label="Ort (Bairisch)" value={formData.locationBar} onChange={v => setFormData({ ...formData, locationBar: v })} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <TranslationField label="Beschreibung (EN)" value={formData.descriptionEn} onChange={v => setFormData({ ...formData, descriptionEn: v })} multiline />
-                    <TranslationField label="Beschreibung (Bairisch)" value={formData.descriptionBar} onChange={v => setFormData({ ...formData, descriptionBar: v })} multiline />
-                  </div>
-                </div>
-              </details>
+              <LocalizedFields
+                fields={[
+                  { key: "title", label: "Titel" },
+                  { key: "location", label: "Ort" },
+                  { key: "description", label: "Beschreibung", markdown: true },
+                ]}
+                values={eventLocValues}
+                onChange={handleEventLocChange}
+                onTranslate={handleTranslate}
+                translating={isTranslating}
+              />
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Neues Bild hochladen (Optional)</label>
                 <div

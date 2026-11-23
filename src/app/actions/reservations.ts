@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { reservations, events, tables } from "@/db/schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { reservations, events, tables, customers } from "@/db/schema";
+import { eq, desc, and, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { reservationAdmin } from "@/lib/reservation-admin";
 import { deliverTicket } from "@/lib/ticket-delivery";
@@ -115,4 +115,84 @@ export async function markSlipsPrinted(eventId: string, reservationIds: string[]
   ));
   revalidatePath('/[locale]/admin', 'layout');
   return { success: true };
+}
+
+// Reservierung festschreiben (confirmed) und optional Bestätigungs-Mail senden.
+// Ohne Mail (oder bei Versandfehler) bleibt ticketSentAt null → Warnsignal + ToDo.
+export async function finalizeReservation(reservationId: string, sendEmail = true) {
+  await requireAdmin();
+  uuid(reservationId);
+  await service.status(reservationId, 'confirmed');
+  const warning = sendEmail ? await deliverTicket(reservationId) : undefined;
+  const [row] = await db.select({ ticketSentAt: reservations.ticketSentAt }).from(reservations).where(eq(reservations.id, reservationId));
+  revalidatePath('/[locale]/admin', 'layout');
+  return { success: true, warning, mailSent: Boolean(row?.ticketSentAt) };
+}
+
+export async function sendConfirmationMail(reservationId: string) {
+  await requireAdmin();
+  uuid(reservationId);
+  const warning = await deliverTicket(reservationId);
+  const [row] = await db.select({ ticketSentAt: reservations.ticketSentAt }).from(reservations).where(eq(reservations.id, reservationId));
+  revalidatePath('/[locale]/admin', 'layout');
+  return { success: true, warning, mailSent: Boolean(row?.ticketSentAt) };
+}
+
+// Ticket-PDF + Mail neu erzeugen (z. B. nach Tisch-Korrektur): eingefrorene Mail
+// verwerfen und erneut senden. Der QR-Code bleibt gültig, damit bereits
+// gedruckte Tickets weiter funktionieren.
+export async function reissueTicket(reservationId: string) {
+  await requireAdmin();
+  uuid(reservationId);
+  await db.update(reservations).set({ ticketEmailPayload: null, ticketSentAt: null, updatedAt: new Date() }).where(eq(reservations.id, reservationId));
+  const warning = await deliverTicket(reservationId);
+  const [row] = await db.select({ ticketSentAt: reservations.ticketSentAt }).from(reservations).where(eq(reservations.id, reservationId));
+  revalidatePath('/[locale]/admin', 'layout');
+  return { success: true, warning, mailSent: Boolean(row?.ticketSentAt) };
+}
+
+// Offene ToDos: festgeschriebene Reservierungen, deren Bestätigungs-Mail noch nicht raus ist.
+export async function getOpenMailTodos() {
+  await requireAdmin();
+  const rows = await db.select({
+    id: reservations.id,
+    guestName: reservations.guestName,
+    email: reservations.email,
+    guestCount: reservations.guestCount,
+    reservationDate: reservations.reservationDate,
+    eventId: reservations.eventId,
+    eventTitle: events.title,
+  })
+    .from(reservations)
+    .leftJoin(events, eq(reservations.eventId, events.id))
+    .where(and(eq(reservations.status, 'confirmed'), isNull(reservations.ticketSentAt)))
+    .orderBy(desc(reservations.createdAt))
+    .limit(100);
+  return rows;
+}
+
+// Kunde direkt aus dem Plan-Panel einer Tisch-Reservierung zuordnen:
+// manuelle Buchung anlegen und optional sofort auf einen Plan-Tisch setzen.
+export async function createReservationForCustomer(data: { eventId: string; customerId: string; guestCount: number; reservationDate: string; planTableId?: string | null }) {
+  await requireAdmin();
+  uuid(data.eventId);
+  uuid(data.customerId);
+  const [customer] = await db.select().from(customers).where(and(eq(customers.id, data.customerId), isNull(customers.deletedAt)));
+  if (!customer) throw new Error('Kunde nicht gefunden.');
+  if (!customer.email || !customer.email.trim()) throw new Error('Kunde hat keine E-Mail-Adresse – Reservierung ohne Mail nicht möglich.');
+  const id = crypto.randomUUID();
+  await service.manual({
+    eventId: data.eventId,
+    guestName: customer.displayName,
+    email: customer.email,
+    guestCount: data.guestCount,
+    reservationDate: data.reservationDate,
+    idempotencyKey: id,
+  });
+  if (data.planTableId) {
+    const { assignPlanTable } = await import("./plans");
+    await assignPlanTable(id, data.planTableId);
+  }
+  revalidatePath('/[locale]/admin', 'layout');
+  return { success: true, reservationId: id };
 }

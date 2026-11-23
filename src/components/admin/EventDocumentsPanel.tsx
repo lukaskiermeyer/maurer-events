@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { EventDocument } from "@/types/domain";
-import { deleteEventDocument, translateEventDocument, updateEventDocumentTranslations } from "@/app/actions/eventDocuments";
+import { deleteEventDocument, updateEventDocumentTranslations } from "@/app/actions/eventDocuments";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import DropZone from "@/components/ui/DropZone";
 import { useDialog } from "@/components/ui/Dialog";
 
@@ -13,42 +15,54 @@ function kindLabel(kind: string) {
 }
 
 function DocumentTranslationEditor({ document, onSaved }: { document: EventDocument; onSaved: (d: EventDocument) => void }) {
+  const [titleDe, setTitleDe] = useState(document.title);
   const [titleEn, setTitleEn] = useState(document.titleEn || "");
   const [titleBar, setTitleBar] = useState(document.titleBar || "");
   const [busy, setBusy] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [msg, setMsg] = useState("");
+  const locValues: LocValues = { title: { de: titleDe, en: titleEn, bar: titleBar } };
+  const handleLocChange = (key: string, lang: Lang, v: string) => {
+    if (key !== "title") return;
+    if (lang === "de") setTitleDe(v);
+    else if (lang === "en") setTitleEn(v);
+    else setTitleBar(v);
+  };
   const save = async () => {
     setBusy(true); setMsg("");
     try {
       const en = titleEn.trim() || null; const bar = titleBar.trim() || null;
-      await updateEventDocumentTranslations(document.id, { titleEn: en, titleBar: bar });
-      onSaved({ ...document, titleEn: en, titleBar: bar });
+      await updateEventDocumentTranslations(document.id, { title: titleDe, titleEn: en, titleBar: bar });
+      onSaved({ ...document, title: titleDe.trim(), titleEn: en, titleBar: bar });
       setMsg("Gespeichert.");
     } catch { setMsg("Fehler beim Speichern."); }
     setBusy(false);
   };
   const translate = async () => {
-    setBusy(true); setMsg("");
+    setTranslating(true); setMsg("");
     try {
-      const t = await translateEventDocument(document.id);
-      setTitleEn(t.titleEn); setTitleBar(t.titleBar);
-      onSaved({ ...document, titleEn: t.titleEn, titleBar: t.titleBar });
-      setMsg("Leere Felder per KI gefüllt.");
+      const t = await translateTextsNow({ title: titleDe });
+      setTitleEn(t.en.title ?? titleEn); setTitleBar(t.bar.title ?? titleBar);
+      setMsg("KI-Übersetzungen eingetragen – bitte prüfen und speichern.");
     } catch { setMsg("Übersetzung fehlgeschlagen."); }
-    setBusy(false);
+    setTranslating(false);
   };
-  const complete = Boolean(document.titleEn && document.titleBar);
+  const complete = Boolean(titleEn.trim() && titleBar.trim());
   return (
     <details className="mt-3">
       <summary className="cursor-pointer text-xs font-bold text-accent-green select-none">
-        Übersetzungen {complete ? "✓ EN/Bar" : "(EN/Bar offen)"}
+        Sprachen & Übersetzung {complete ? "✓ EN/Bar" : "(EN/Bar offen)"}
       </summary>
       <div className="mt-2 space-y-2">
-        <input value={titleEn} onChange={e => setTitleEn(e.target.value)} maxLength={150} placeholder="Titel (EN)" className="w-full border border-border-light rounded-lg p-2 text-sm bg-white focus:outline-none focus:border-accent-green" />
-        <input value={titleBar} onChange={e => setTitleBar(e.target.value)} maxLength={150} placeholder="Titel (Bairisch)" className="w-full border border-border-light rounded-lg p-2 text-sm bg-white focus:outline-none focus:border-accent-green" />
+        <LocalizedFields
+          fields={[{ key: "title", label: "Titel" }]}
+          values={locValues}
+          onChange={handleLocChange}
+          onTranslate={translate}
+          translating={translating}
+        />
         <div className="flex gap-2">
           <button type="button" onClick={save} disabled={busy} className="text-xs font-bold bg-base-dark text-white px-3 py-1.5 rounded-lg disabled:opacity-50">Speichern</button>
-          <button type="button" onClick={translate} disabled={busy} className="text-xs font-bold bg-accent-green text-white px-3 py-1.5 rounded-lg disabled:opacity-50">{busy ? "…" : "KI übersetzen"}</button>
         </div>
         {msg && <p className="text-xs opacity-60">{msg}</p>}
       </div>

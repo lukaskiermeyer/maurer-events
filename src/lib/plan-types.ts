@@ -108,6 +108,7 @@ export interface PlanLayout {
   tablePrefix: string;
   nextNumber: number;
   numbering?: NumberingOptions;
+  printDims?: DimCategory[];
   elements: PlanElement[];
 }
 
@@ -502,43 +503,62 @@ export function rowBlockGeometry(spec: RowSpec, ox: number, oy: number) {
 
 export const rowStackVertical = (row: PlanRow) => row.stackVertical ?? row.rotation % 180 !== 0;
 
-export interface Dimension { x1: number; y1: number; x2: number; y2: number; label: string }
+export type DimCategory =
+  | 'zelt' | 'gaenge' | 'reihen-position' | 'reihen-laenge' | 'doppel-innen'
+  | 'buehne' | 'wand' | 'tueren' | 'bereiche' | 'garnitur';
 
-// Maßketten wie im Zelt-Entwurf: Gänge zwischen Reihenblöcken, Bühne→Reihe, Wandabstände.
+export const DIM_CATEGORIES: { key: DimCategory; label: string }[] = [
+  { key: 'zelt', label: 'Zeltmaße (Breite × Höhe)' },
+  { key: 'gaenge', label: 'Gänge zwischen Reihenblöcken' },
+  { key: 'reihen-position', label: 'Reihen-Position ab Zeltkante' },
+  { key: 'reihen-laenge', label: 'Reihenlänge' },
+  { key: 'doppel-innen', label: 'Doppelreihen-Innenabstand' },
+  { key: 'buehne', label: 'Bühne → erste Reihe' },
+  { key: 'wand', label: 'Wandabstände (Tische zur Zeltkante)' },
+  { key: 'tueren', label: 'Türen: Breite + Position ab Ecke' },
+  { key: 'bereiche', label: 'Bereichsmaße (Breite × Tiefe)' },
+  { key: 'garnitur', label: 'Garnitur-Gesamtmaß (Beispiel)' },
+];
+
+export interface Dimension { x1: number; y1: number; x2: number; y2: number; label: string; cat: DimCategory }
+
+// Maßketten wie im Zelt-Entwurf. Welche Kategorien erscheinen, legt der Admin
+// im Editor fest (layout.printDims); ohne Auswahl erscheinen alle.
 export function computeDimensions(layout: PlanLayout): Dimension[] {
+  const enabled = new Set<DimCategory>(layout.printDims ?? DIM_CATEGORIES.map(c => c.key));
   const dims: Dimension[] = [];
+  const push = (cat: DimCategory, d: Omit<Dimension, 'cat'>) => { if (enabled.has(cat)) dims.push({ ...d, cat }); };
   const rows = [...planRows(layout)].sort((a, b) => a.y - b.y || a.x - b.x);
   for (let i = 0; i + 1 < rows.length && dims.length < 30; i++) {
     const a = rows[i], b = rows[i + 1];
     if (!rowStackVertical(a) && !rowStackVertical(b)) {
       const gap = b.y - (a.y + a.h);
-      if (gap > 0) dims.push({ x1: Math.min(a.x, b.x) - 80, y1: a.y + a.h, x2: Math.min(a.x, b.x) - 80, y2: b.y, label: `${Math.round(gap)} cm` });
+      if (gap > 0) push('gaenge', { x1: Math.min(a.x, b.x) - 80, y1: a.y + a.h, x2: Math.min(a.x, b.x) - 80, y2: b.y, label: `${Math.round(gap)} cm` });
     } else if (rowStackVertical(a) && rowStackVertical(b)) {
       const gap = b.x - (a.x + a.w);
-      if (gap > 0) dims.push({ x1: a.x + a.w, y1: Math.min(a.y, b.y) - 80, x2: b.x, y2: Math.min(a.y, b.y) - 80, label: `${Math.round(gap)} cm` });
+      if (gap > 0) push('gaenge', { x1: a.x + a.w, y1: Math.min(a.y, b.y) - 80, x2: b.x, y2: Math.min(a.y, b.y) - 80, label: `${Math.round(gap)} cm` });
     }
   }
-  // Wichtigste Stellen: Zeltmaße, erste Reihen-Länge, erste Garnitur im Gesamtmaß.
-  dims.push({ x1: 0, y1: -60, x2: layout.widthCm, y2: -60, label: `Zelt ${Math.round(layout.widthCm)} cm` });
-  dims.push({ x1: -60, y1: 0, x2: -60, y2: layout.heightCm, label: `Zelt ${Math.round(layout.heightCm)} cm` });
-  if (rows[0]) dims.push({ x1: rows[0].x, y1: rows[0].y + rows[0].h + 50, x2: rows[0].x + rows[0].w, y2: rows[0].y + rows[0].h + 50, label: `Reihe ${Math.round(rows[0].w)} cm` });
+  push('zelt', { x1: 0, y1: -60, x2: layout.widthCm, y2: -60, label: `Zelt ${Math.round(layout.widthCm)} cm` });
+  push('zelt', { x1: -60, y1: 0, x2: -60, y2: layout.heightCm, label: `Zelt ${Math.round(layout.heightCm)} cm` });
+  if (rows[0]) push('reihen-laenge', { x1: rows[0].x, y1: rows[0].y + rows[0].h + 50, x2: rows[0].x + rows[0].w, y2: rows[0].y + rows[0].h + 50, label: `Reihe ${Math.round(rows[0].w)} cm` });
   const t0 = planTables(layout)[0];
-  if (t0) dims.push({ x1: t0.x, y1: t0.y - 40, x2: t0.x + t0.w, y2: t0.y - 40, label: `Garnitur ${Math.round(t0.w)} × ${Math.round(t0.h)} cm` });
+  if (t0) push('garnitur', { x1: t0.x, y1: t0.y - 40, x2: t0.x + t0.w, y2: t0.y - 40, label: `Garnitur ${Math.round(t0.w)} × ${Math.round(t0.h)} cm` });
   const stages = layout.elements.filter(el => el.kind === 'stage');
   for (const s of stages) {
     if (s.kind !== 'stage' || rows.length === 0) continue;
     const below = rows.filter(r => r.y >= s.y + s.h).sort((a, b) => a.y - b.y)[0];
-    if (below) dims.push({ x1: s.x + s.w + 80, y1: s.y + s.h, x2: s.x + s.w + 80, y2: below.y, label: `${Math.round(below.y - (s.y + s.h))} cm` });
+    if (below) push('buehne', { x1: s.x + s.w + 80, y1: s.y + s.h, x2: s.x + s.w + 80, y2: below.y, label: `${Math.round(below.y - (s.y + s.h))} cm` });
   }
   const boundary = layout.elements.find(el => el.kind === 'boundary');
   const tables = planTables(layout);
   if (boundary && boundary.kind === 'boundary' && tables.length > 0) {
     const minX = Math.min(...tables.map(t => t.x)), minY = Math.min(...tables.map(t => t.y));
     const maxX = Math.max(...tables.map(t => t.x + t.w)), maxY = Math.max(...tables.map(t => t.y + t.h));
-    if (minX > boundary.x) dims.push({ x1: boundary.x, y1: minY - 60, x2: minX, y2: minY - 60, label: `${Math.round(minX - boundary.x)} cm` });
-    if (maxX < boundary.x + boundary.w) dims.push({ x1: maxX, y1: minY - 60, x2: boundary.x + boundary.w, y2: minY - 60, label: `${Math.round(boundary.x + boundary.w - maxX)} cm` });
-    if (minY > boundary.y) dims.push({ x1: minX - 60, y1: boundary.y, x2: minX - 60, y2: minY, label: `${Math.round(minY - boundary.y)} cm` });
-    if (maxY < boundary.y + boundary.h) dims.push({ x1: minX - 60, y1: maxY, x2: minX - 60, y2: boundary.y + boundary.h, label: `${Math.round(boundary.y + boundary.h - maxY)} cm` });
+    if (minX > boundary.x) push('wand', { x1: boundary.x, y1: minY - 60, x2: minX, y2: minY - 60, label: `${Math.round(minX - boundary.x)} cm` });
+    if (maxX < boundary.x + boundary.w) push('wand', { x1: maxX, y1: minY - 60, x2: boundary.x + boundary.w, y2: minY - 60, label: `${Math.round(boundary.x + boundary.w - maxX)} cm` });
+    if (minY > boundary.y) push('wand', { x1: minX - 60, y1: boundary.y, x2: minX - 60, y2: minY, label: `${Math.round(minY - boundary.y)} cm` });
+    if (maxY < boundary.y + boundary.h) push('wand', { x1: minX - 60, y1: maxY, x2: minX - 60, y2: boundary.y + boundary.h, label: `${Math.round(boundary.y + boundary.h - maxY)} cm` });
   }
   // Aufbau-Maßketten: jede Reihe ab Zeltkante positionieren, Reihenlänge,
   // Doppelreihen-Innenabstand, Tür-Positionen + Breiten, Bereichsmaße.
@@ -549,38 +569,41 @@ export function computeDimensions(layout: PlanLayout): Dimension[] {
       const start = vert ? r.x : r.y;
       const offset = start - from;
       if (offset > 0) {
-        dims.push(vert
+        push('reihen-position', vert
           ? { x1: from, y1: r.y - 45, x2: start, y2: r.y - 45, label: `${r.label} ${Math.round(offset)} cm` }
           : { x1: r.x - 45, y1: from, x2: r.x - 45, y2: start, label: `${r.label} ${Math.round(offset)} cm` });
       }
       const len = vert ? r.h : r.w;
-      dims.push(vert
+      push('reihen-laenge', vert
         ? { x1: r.x + r.w + 45, y1: r.y, x2: r.x + r.w + 45, y2: r.y + r.h, label: `${Math.round(len)} cm` }
         : { x1: r.x, y1: r.y + r.h + 45, x2: r.x + r.w, y2: r.y + r.h + 45, label: `${Math.round(len)} cm` });
       if (r.spacing?.double && r.spacing.gapInner > 0) {
-        dims.push(vert
+        push('doppel-innen', vert
           ? { x1: r.x - 90, y1: r.y, x2: r.x - 90, y2: r.y + r.spacing.gapInner, label: `innen ${Math.round(r.spacing.gapInner)} cm` }
           : { x1: r.x, y1: r.y - 90, x2: r.x + r.spacing.gapInner, y2: r.y - 90, label: `innen ${Math.round(r.spacing.gapInner)} cm` });
       }
     }
+    let doorIndex = 0;
     for (const d of layout.elements) {
       if (d.kind !== 'door') continue;
+      // Benachbarte Türen versetzt bemaßen, damit sich Labels nicht überlappen
+      const stagger = (doorIndex++ % 2) * 55;
       const width = d.vertical ? d.h : d.w;
       const pos = d.vertical ? d.y - boundary.y : d.x - boundary.x;
-      dims.push(d.vertical
-        ? { x1: d.x - 60, y1: d.y, x2: d.x - 60, y2: d.y + d.h, label: `${Math.round(width)} cm` }
-        : { x1: d.x, y1: d.y - 60, x2: d.x + d.w, y2: d.y - 60, label: `${Math.round(width)} cm` });
+      push('tueren', d.vertical
+        ? { x1: d.x - 60 - stagger, y1: d.y, x2: d.x - 60 - stagger, y2: d.y + d.h, label: `${Math.round(width)} cm` }
+        : { x1: d.x, y1: d.y - 60 - stagger, x2: d.x + d.w, y2: d.y - 60 - stagger, label: `${Math.round(width)} cm` });
       if (pos > 0) {
-        dims.push(d.vertical
-          ? { x1: d.x + d.w + 60, y1: boundary.y, x2: d.x + d.w + 60, y2: d.y, label: `ab Ecke ${Math.round(pos)} cm` }
-          : { x1: boundary.x, y1: d.y + d.h + 60, x2: d.x, y2: d.y + d.h + 60, label: `ab Ecke ${Math.round(pos)} cm` });
+        push('tueren', d.vertical
+          ? { x1: d.x + d.w + 60 + stagger, y1: boundary.y, x2: d.x + d.w + 60 + stagger, y2: d.y, label: `ab Ecke ${Math.round(pos)} cm` }
+          : { x1: boundary.x, y1: d.y + d.h + 60 + stagger, x2: d.x, y2: d.y + d.h + 60 + stagger, label: `ab Ecke ${Math.round(pos)} cm` });
       }
     }
   }
   for (const a of layout.elements) {
     if (a.kind !== 'area') continue;
-    dims.push({ x1: a.x, y1: a.y + a.h + 30, x2: a.x + a.w, y2: a.y + a.h + 30, label: `${a.label || 'Bereich'} ${Math.round(a.w)} cm` });
-    dims.push({ x1: a.x + a.w + 30, y1: a.y, x2: a.x + a.w + 30, y2: a.y + a.h, label: `${Math.round(a.h)} cm` });
+    push('bereiche', { x1: a.x, y1: a.y + a.h + 30, x2: a.x + a.w, y2: a.y + a.h + 30, label: `${a.label || 'Bereich'} ${Math.round(a.w)} cm` });
+    push('bereiche', { x1: a.x + a.w + 30, y1: a.y, x2: a.x + a.w + 30, y2: a.y + a.h, label: `${Math.round(a.h)} cm` });
   }
   return dims;
 }

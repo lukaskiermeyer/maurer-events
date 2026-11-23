@@ -3,8 +3,12 @@
 import { useState } from "react";
 
 import { updateCareerContent } from "@/app/actions/career";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import type { CareerContent, CareerPosition } from "@/types/domain";
 import { useDialog } from "@/components/ui/Dialog";
+
+const locSuffix = (lang: Lang) => (lang === "de" ? "" : lang === "en" ? "En" : "Bar");
 
 function emptyPosition(): CareerPosition {
   return { id: crypto.randomUUID(), title: "Neue Stelle", badge: "", employment: "", description: "", benefits: [] };
@@ -15,7 +19,63 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [translatingKey, setTranslatingKey] = useState<string | null>(null);
   const dialog = useDialog();
+
+  const scalarValues: LocValues = {
+    headline: { de: content.headline, en: content.headlineEn ?? "", bar: content.headlineBar ?? "" },
+    intro: { de: content.intro, en: content.introEn ?? "", bar: content.introBar ?? "" },
+  };
+  const closingValues: LocValues = {
+    closingTitle: { de: content.closingTitle, en: content.closingTitleEn ?? "", bar: content.closingTitleBar ?? "" },
+    closingText: { de: content.closingText, en: content.closingTextEn ?? "", bar: content.closingTextBar ?? "" },
+  };
+  const positionValues = (p: CareerPosition): LocValues => ({
+    title: { de: p.title, en: p.titleEn ?? "", bar: p.titleBar ?? "" },
+    badge: { de: p.badge, en: p.badgeEn ?? "", bar: p.badgeBar ?? "" },
+    employment: { de: p.employment, en: p.employmentEn ?? "", bar: p.employmentBar ?? "" },
+    description: { de: p.description, en: p.descriptionEn ?? "", bar: p.descriptionBar ?? "" },
+    benefits: { de: p.benefits.join("\n"), en: (p.benefitsEn ?? []).join("\n"), bar: (p.benefitsBar ?? []).join("\n") },
+  });
+  const handleScalarChange = (key: string, lang: Lang, v: string) => patch({ [`${key}${locSuffix(lang)}`]: v } as Partial<CareerContent>);
+  const handleClosingChange = handleScalarChange;
+  const handlePositionChange = (id: string, key: string, lang: Lang, v: string) => {
+    const field = `${key}${locSuffix(lang)}`;
+    patchPosition(id, (key === "benefits" ? { [field]: v.split("\n") } : { [field]: v }) as Partial<CareerPosition>);
+  };
+  const translateScalar = async () => {
+    setTranslatingKey("scalar");
+    try {
+      const t = await translateTextsNow({ headline: content.headline, intro: content.intro });
+      patch({
+        headlineEn: t.en.headline ?? content.headlineEn, headlineBar: t.bar.headline ?? content.headlineBar,
+        introEn: t.en.intro ?? content.introEn, introBar: t.bar.intro ?? content.introBar,
+      });
+    } finally { setTranslatingKey(null); }
+  };
+  const translateClosing = async () => {
+    setTranslatingKey("closing");
+    try {
+      const t = await translateTextsNow({ closingTitle: content.closingTitle, closingText: content.closingText });
+      patch({
+        closingTitleEn: t.en.closingTitle ?? content.closingTitleEn, closingTitleBar: t.bar.closingTitle ?? content.closingTitleBar,
+        closingTextEn: t.en.closingText ?? content.closingTextEn, closingTextBar: t.bar.closingText ?? content.closingTextBar,
+      });
+    } finally { setTranslatingKey(null); }
+  };
+  const translatePosition = async (p: CareerPosition) => {
+    setTranslatingKey(p.id);
+    try {
+      const t = await translateTextsNow({ title: p.title, badge: p.badge, employment: p.employment, description: p.description, benefits: p.benefits.join("\n") });
+      patchPosition(p.id, {
+        titleEn: t.en.title ?? p.titleEn, titleBar: t.bar.title ?? p.titleBar,
+        badgeEn: t.en.badge ?? p.badgeEn, badgeBar: t.bar.badge ?? p.badgeBar,
+        employmentEn: t.en.employment ?? p.employmentEn, employmentBar: t.bar.employment ?? p.employmentBar,
+        descriptionEn: t.en.description ?? p.descriptionEn, descriptionBar: t.bar.description ?? p.descriptionBar,
+        benefitsEn: (t.en.benefits ?? p.benefits.join("\n")).split("\n"), benefitsBar: (t.bar.benefits ?? p.benefits.join("\n")).split("\n"),
+      });
+    } finally { setTranslatingKey(null); }
+  };
 
   const patch = (changes: Partial<CareerContent>) => setContent(current => ({ ...current, ...changes }));
 
@@ -60,8 +120,6 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
     }
   };
 
-  const inputClass = "w-full border border-border-light rounded-lg p-3 bg-white focus:outline-none focus:border-accent-green min-h-11";
-
   return (
     <form onSubmit={save} className="animate-fade-in space-y-8">
       <section className="bg-white p-5 sm:p-6 rounded-2xl border border-border-light shadow-sm">
@@ -70,24 +128,16 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
           Was hier steht, erscheint sofort auf <span className="font-bold">/karriere</span>. Bewerbungen kommen per E-Mail an das Kontaktpostfach.
         </p>
 
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="career-headline" className="block text-sm font-bold mb-1 opacity-70">Überschrift</label>
-            <input id="career-headline" value={content.headline} maxLength={200} onChange={event => patch({ headline: event.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="career-headline-en" className="block text-sm font-bold mb-1 opacity-70">Überschrift (Englisch)</label>
-            <input id="career-headline-en" value={content.headlineEn ?? ''} maxLength={200} onChange={event => patch({ headlineEn: event.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="career-intro" className="block text-sm font-bold mb-1 opacity-70">Einleitungstext</label>
-            <textarea id="career-intro" value={content.intro} maxLength={2000} rows={4} onChange={event => patch({ intro: event.target.value })} className={`${inputClass} resize-y`} />
-          </div>
-          <div>
-            <label htmlFor="career-intro-en" className="block text-sm font-bold mb-1 opacity-70">Einleitungstext (Englisch)</label>
-            <textarea id="career-intro-en" value={content.introEn ?? ''} maxLength={2000} rows={4} onChange={event => patch({ introEn: event.target.value })} className={`${inputClass} resize-y`} />
-          </div>
-        </div>
+        <LocalizedFields
+          fields={[
+            { key: "headline", label: "Überschrift" },
+            { key: "intro", label: "Einleitungstext", multiline: true, rows: 4 },
+          ]}
+          values={scalarValues}
+          onChange={handleScalarChange}
+          onTranslate={translateScalar}
+          translating={translatingKey === "scalar"}
+        />
       </section>
 
       <section className="bg-white p-5 sm:p-6 rounded-2xl border border-border-light shadow-sm">
@@ -145,66 +195,19 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
 
                 {isExpanded && (
                   <div className="space-y-3 p-4 pt-0 border-t border-border-light/60">
-                    <div>
-                      <label htmlFor={`title-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Stellenbezeichnung</label>
-                      <input id={`title-${position.id}`} value={position.title} maxLength={120} onChange={event => patchPosition(position.id, { title: event.target.value })} className={inputClass} />
-                    </div>
-                    <div>
-                      <label htmlFor={`title-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Stellenbezeichnung (Englisch)</label>
-                      <input id={`title-en-${position.id}`} value={position.titleEn ?? ''} maxLength={120} onChange={event => patchPosition(position.id, { titleEn: event.target.value })} className={inputClass} />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label htmlFor={`badge-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Hinweis (z. B. Dringend gesucht)</label>
-                        <input id={`badge-${position.id}`} value={position.badge} maxLength={60} onChange={event => patchPosition(position.id, { badge: event.target.value })} className={inputClass} />
-                      </div>
-                      <div>
-                        <label htmlFor={`employment-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Anstellungsart</label>
-                        <input id={`employment-${position.id}`} value={position.employment} maxLength={60} onChange={event => patchPosition(position.id, { employment: event.target.value })} className={inputClass} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label htmlFor={`badge-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Hinweis (Englisch)</label>
-                        <input id={`badge-en-${position.id}`} value={position.badgeEn ?? ''} maxLength={60} onChange={event => patchPosition(position.id, { badgeEn: event.target.value })} className={inputClass} />
-                      </div>
-                      <div>
-                        <label htmlFor={`employment-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Anstellungsart (Englisch)</label>
-                        <input id={`employment-en-${position.id}`} value={position.employmentEn ?? ''} maxLength={60} onChange={event => patchPosition(position.id, { employmentEn: event.target.value })} className={inputClass} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor={`description-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Beschreibung</label>
-                      <textarea id={`description-${position.id}`} value={position.description} maxLength={2000} rows={3} onChange={event => patchPosition(position.id, { description: event.target.value })} className={`${inputClass} resize-y`} />
-                    </div>
-                    <div>
-                      <label htmlFor={`description-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Beschreibung (Englisch)</label>
-                      <textarea id={`description-en-${position.id}`} value={position.descriptionEn ?? ''} maxLength={2000} rows={3} onChange={event => patchPosition(position.id, { descriptionEn: event.target.value })} className={`${inputClass} resize-y`} />
-                    </div>
-
-                    <div>
-                      <label htmlFor={`benefits-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Vorteile (eine Zeile pro Punkt)</label>
-                      <textarea
-                        id={`benefits-${position.id}`}
-                        value={position.benefits.join('\n')}
-                        rows={3}
-                        onChange={event => patchPosition(position.id, { benefits: event.target.value.split('\n') })}
-                        className={`${inputClass} resize-y`}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor={`benefits-en-${position.id}`} className="block text-xs font-bold uppercase mb-1 opacity-70">Vorteile (Englisch, eine Zeile pro Punkt)</label>
-                      <textarea
-                        id={`benefits-en-${position.id}`}
-                        value={(position.benefitsEn ?? []).join('\n')}
-                        rows={3}
-                        onChange={event => patchPosition(position.id, { benefitsEn: event.target.value.split('\n') })}
-                        className={`${inputClass} resize-y`}
-                      />
-                    </div>
+                    <LocalizedFields
+                      fields={[
+                        { key: "title", label: "Stellenbezeichnung" },
+                        { key: "badge", label: "Hinweis (z. B. Dringend gesucht)" },
+                        { key: "employment", label: "Anstellungsart" },
+                        { key: "description", label: "Beschreibung", multiline: true, rows: 3 },
+                        { key: "benefits", label: "Vorteile (eine Zeile pro Punkt)", multiline: true, rows: 3 },
+                      ]}
+                      values={positionValues(position)}
+                      onChange={(key, lang, v) => handlePositionChange(position.id, key, lang, v)}
+                      onTranslate={() => translatePosition(position)}
+                      translating={translatingKey === position.id}
+                    />
                   </div>
                 )}
               </div>
@@ -219,24 +222,16 @@ export default function AdminCareerTab({ initialContent }: { initialContent: Car
 
       <section className="bg-white p-5 sm:p-6 rounded-2xl border border-border-light shadow-sm">
         <h2 className="text-xl font-bold mb-4">Abschluss</h2>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="career-closing-title" className="block text-sm font-bold mb-1 opacity-70">Überschrift</label>
-            <input id="career-closing-title" value={content.closingTitle} maxLength={120} onChange={event => patch({ closingTitle: event.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="career-closing-title-en" className="block text-sm font-bold mb-1 opacity-70">Überschrift (Englisch)</label>
-            <input id="career-closing-title-en" value={content.closingTitleEn ?? ''} maxLength={120} onChange={event => patch({ closingTitleEn: event.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="career-closing-text" className="block text-sm font-bold mb-1 opacity-70">Text</label>
-            <textarea id="career-closing-text" value={content.closingText} maxLength={1000} rows={3} onChange={event => patch({ closingText: event.target.value })} className={`${inputClass} resize-y`} />
-          </div>
-          <div>
-            <label htmlFor="career-closing-text-en" className="block text-sm font-bold mb-1 opacity-70">Text (Englisch)</label>
-            <textarea id="career-closing-text-en" value={content.closingTextEn ?? ''} maxLength={1000} rows={3} onChange={event => patch({ closingTextEn: event.target.value })} className={`${inputClass} resize-y`} />
-          </div>
-        </div>
+        <LocalizedFields
+          fields={[
+            { key: "closingTitle", label: "Überschrift" },
+            { key: "closingText", label: "Text", multiline: true, rows: 3 },
+          ]}
+          values={closingValues}
+          onChange={handleClosingChange}
+          onTranslate={translateClosing}
+          translating={translatingKey === "closing"}
+        />
       </section>
 
       <div className="sticky bottom-0 bg-base-light/95 backdrop-blur border-t border-border-light py-4 -mx-4 px-4">

@@ -6,8 +6,9 @@ import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent, deleteEvent, updateEvent, getEventDeletionSummary, restoreEvent, getDeletedEvents } from "@/app/actions/events";
 import { uploadImage } from "@/lib/client-image-upload";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import { Link } from "@/i18n/routing";
-import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
@@ -25,6 +26,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
   const [deletedEvents, setDeletedEvents] = useState<EventRecord[]>([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [step, setStep] = useState(1);
+  const [translating, setTranslating] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -32,6 +34,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     location: "",
     zip: "",
     description: "",
+    titleEn: "",
+    titleBar: "",
+    locationEn: "",
+    locationBar: "",
+    descriptionEn: "",
+    descriptionBar: "",
     imageUrl: "",
     mapUrl: "",
     link: "/termine/ohne-reservierung",
@@ -77,7 +85,7 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
 
   const resetForm = () => {
     setFormData({
-      title: "", date: "", endDate: "", location: "", zip: "", description: "", imageUrl: "", mapUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: "", isPublished: true
+      title: "", date: "", endDate: "", location: "", zip: "", description: "", titleEn: "", titleBar: "", locationEn: "", locationBar: "", descriptionEn: "", descriptionBar: "", imageUrl: "", mapUrl: "", link: "/termine/ohne-reservierung", reservable: false, allowTableSelection: true, reservationMode: "none", reservationEmail: "servus@maurer-events.com", reservationNote: "", maxCapacity: 0, walkInReserve: 0, reservableDates: [], publishTablesAt: "", isPublished: true
     });
     setFile(null);
     setEditingEvent(null);
@@ -93,6 +101,12 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
       location: event.location || "",
       zip: event.zip || "",
       description: event.description || "",
+      titleEn: event.titleEn || "",
+      titleBar: event.titleBar || "",
+      locationEn: event.locationEn || "",
+      locationBar: event.locationBar || "",
+      descriptionEn: event.descriptionEn || "",
+      descriptionBar: event.descriptionBar || "",
       imageUrl: event.imageUrl || "",
       mapUrl: event.mapUrl || "",
       link: event.link || "/termine/ohne-reservierung",
@@ -110,6 +124,32 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
     setFile(null);
     setStep(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const locValues: LocValues = {
+    title: { de: formData.title, en: formData.titleEn, bar: formData.titleBar },
+    location: { de: formData.location, en: formData.locationEn, bar: formData.locationBar },
+    description: { de: formData.description, en: formData.descriptionEn, bar: formData.descriptionBar },
+  };
+  const handleLocChange = (key: string, lang: Lang, value: string) => {
+    const suffix = lang === "de" ? "" : lang === "en" ? "En" : "Bar";
+    setFormData(prev => ({ ...prev, [`${key}${suffix}`]: value }));
+  };
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const t = await translateTextsNow({ title: formData.title, location: formData.location, description: formData.description });
+      setFormData(prev => ({
+        ...prev,
+        titleEn: t.en.title ?? prev.titleEn, titleBar: t.bar.title ?? prev.titleBar,
+        locationEn: t.en.location ?? prev.locationEn, locationBar: t.bar.location ?? prev.locationBar,
+        descriptionEn: t.en.description ?? prev.descriptionEn, descriptionBar: t.bar.description ?? prev.descriptionBar,
+      }));
+      toast.showToast("KI-Übersetzungen eingetragen – bitte prüfen und speichern.", "success");
+    } catch {
+      toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error");
+    }
+    setTranslating(false);
   };
 
   const validateStep = (s: number): string | null => {
@@ -387,10 +427,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
           {/* Step 1: Grunddaten */}
           {step === 1 && (
             <>
-              <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Titel *</label>
-                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Sommerfest" />
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="min-w-0">
                   <label className="block text-sm font-bold mb-1 opacity-70">Start-Datum *</label>
@@ -401,7 +437,17 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
                   <input type="date" min={formData.date} value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
                 </div>
               </div>
-              <MarkdownEditor label="Beschreibung *" value={formData.description} onChange={value => setFormData({ ...formData, description: value })} placeholder="Kurze Event-Beschreibung..." collapsedByDefault={false} />
+              <LocalizedFields
+                fields={[
+                  { key: "title", label: "Titel *" },
+                  { key: "location", label: "Ort *" },
+                  { key: "description", label: "Beschreibung *", markdown: true },
+                ]}
+                values={locValues}
+                onChange={handleLocChange}
+                onTranslate={handleTranslate}
+                translating={translating}
+              />
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Bild / Flyer</label>
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -468,10 +514,6 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
           {/* Step 2: Ort & Karte */}
           {step === 2 && (
             <>
-              <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Ort *</label>
-                <input required type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Schwaig" />
-              </div>
               <div>
                 <label className="block text-sm font-bold mb-1 opacity-70">PLZ *</label>
                 <input required type="text" inputMode="numeric" pattern="[0-9]*" maxLength={5} value={formData.zip} onChange={e => setFormData({...formData, zip: e.target.value})} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. 93149" />

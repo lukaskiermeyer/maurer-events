@@ -29,11 +29,10 @@ function tableFill(t: PlanTable, occ: TableOccupancy | undefined, edit: boolean,
   }
 }
 
-export function PlanElements({ layout, occupancy, edit = false, showNames = false, neutral = false, selectedIds, onTableClick, onTableDrop }: {
+export function PlanElements({ layout, occupancy, edit = false, neutral = false, selectedIds, onTableClick, onTableDrop }: {
   layout: PlanLayout;
   occupancy?: Record<string, TableOccupancy>;
   edit?: boolean;
-  showNames?: boolean;
   neutral?: boolean;
   selectedIds?: string[];
   onTableClick?: (id: string) => void;
@@ -49,7 +48,7 @@ export function PlanElements({ layout, occupancy, edit = false, showNames = fals
           return (
             <g key={el.id}>
               <rect x={el.x} y={el.y} width={el.w} height={el.h} fill={el.color} stroke={selected ? "#2563EB" : "#00000055"} strokeWidth={selected ? 12 : 4} />
-              {el.label && <text x={el.x + el.w / 2} y={el.y + el.h / 2} textAnchor="middle" dominantBaseline="middle" fontSize={Math.max(60, Math.min(el.w, el.h) / 6)} fontWeight={700} fill={dark ? "#FFFFFF" : "#1A1A1A"} style={{ pointerEvents: "none" }}>{el.label}</text>}
+              {el.label && <text x={el.x + el.w / 2} y={el.y + el.h / 2} textAnchor="middle" dominantBaseline="middle" fontSize={Math.max(24, Math.min(Math.max(60, Math.min(el.w, el.h) / 6), el.w / (Math.max(1, el.label.length) * 0.62)))} fontWeight={700} fill={dark ? "#FFFFFF" : "#1A1A1A"} style={{ pointerEvents: "none" }}>{el.label}</text>}
             </g>
           );
         }
@@ -102,7 +101,13 @@ export function PlanElements({ layout, occupancy, edit = false, showNames = fals
         const fontSize = Math.max(24, Math.min(el.w, el.h) * 0.38);
         const dropProps = onTableDrop ? {
           onDragOver: (e: React.DragEvent) => e.preventDefault(),
-          onDrop: (e: React.DragEvent) => { e.preventDefault(); const rid = e.dataTransfer.getData("text/reservation"); if (rid) onTableDrop(rid, el.id); },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            const rid = e.dataTransfer.getData("text/reservation");
+            if (rid) { onTableDrop(rid, el.id); return; }
+            const cid = e.dataTransfer.getData("text/customer");
+            if (cid) onTableDrop(`customer:${cid}`, el.id);
+          },
         } : {};
         const bench = el.benchDepth ?? 0;
         const inset = bench + (el.benchGap ?? 0);
@@ -134,9 +139,6 @@ export function PlanElements({ layout, occupancy, edit = false, showNames = fals
             {!edit && occ && occ.kind === "reserved" && (
               <text x={el.x + el.w / 2} y={el.y + el.h / 2 + fontSize * 0.6} textAnchor="middle" dominantBaseline="middle" fontSize={fontSize * 0.6} fontWeight={700} fill={c.text} style={{ pointerEvents: "none" }}>{occ.guests} P.</text>
             )}
-            {!edit && showNames && occ?.names?.length ? (
-              <text x={el.x + el.w / 2} y={el.y + el.h + fontSize * 0.55} textAnchor="middle" dominantBaseline="middle" fontSize={fontSize * 0.5} fontWeight={600} fill="#1A1A1A" style={{ pointerEvents: "none" }}>{occ.names.join(", ").slice(0, 40)}</text>
-            ) : null}
             {el.vip && edit && <text x={el.x + el.w / 2} y={el.y - 15} textAnchor="middle" fontSize={40} fontWeight={800} fill="#B45309" style={{ pointerEvents: "none" }}>VIP</text>}
           </g>
         );
@@ -149,24 +151,34 @@ export function PlanElements({ layout, occupancy, edit = false, showNames = fals
 export function PlanDimensions({ layout }: { layout: PlanLayout }) {
   return (
     <g style={{ pointerEvents: "none" }}>
-      {computeDimensions(layout).map((d, i) => (
-        <g key={`dim-${i}`}>
-          <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
-          <line x1={d.x1 - 20} y1={d.y1} x2={d.x1 + 20} y2={d.y1} stroke="#D32F2F" strokeWidth={3} />
-          <line x1={d.x2 - 20} y1={d.y2} x2={d.x2 + 20} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
-          <text x={(d.x1 + d.x2) / 2 + 15} y={(d.y1 + d.y2) / 2} fontSize={42} fontWeight={700} fill="#D32F2F" dominantBaseline="middle">{d.label}</text>
-        </g>
-      ))}
+      {computeDimensions(layout).map((d, i) => {
+        const vertical = d.x1 === d.x2;
+        const mx = (d.x1 + d.x2) / 2;
+        const my = (d.y1 + d.y2) / 2;
+        return (
+          <g key={`dim-${i}`}>
+            <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
+            <line x1={d.x1 - 20} y1={d.y1} x2={d.x1 + 20} y2={d.y1} stroke="#D32F2F" strokeWidth={3} />
+            <line x1={d.x2 - 20} y1={d.y2} x2={d.x2 + 20} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
+            {vertical ? (
+              // Beschriftung entlang der Linie drehen, damit sie nicht über den Planrand hinausläuft
+              <text transform={`translate(${mx - 12} ${my}) rotate(-90)`} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F">{d.label}</text>
+            ) : (
+              <text x={mx} y={my - 12} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F">{d.label}</text>
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }
 
 /** Statischer SVG für Druck (A3) — füllt die viewBox komplett. */
-export function PlanStaticSvg({ layout, occupancy, showNames = false, showDims = false, neutral = false, className }: { layout: PlanLayout; occupancy?: Record<string, TableOccupancy>; showNames?: boolean; showDims?: boolean; neutral?: boolean; className?: string }) {
-  const pad = showDims ? 260 : 40;
+export function PlanStaticSvg({ layout, occupancy, showDims = false, neutral = false, className }: { layout: PlanLayout; occupancy?: Record<string, TableOccupancy>; showDims?: boolean; neutral?: boolean; className?: string }) {
+  const pad = showDims ? 260 : 120;
   return (
     <svg viewBox={`${-pad} ${-pad} ${layout.widthCm + pad * 2} ${layout.heightCm + pad * 2}`} className={className} role="img" aria-label="Tischplan">
-      <PlanElements layout={layout} occupancy={occupancy} showNames={showNames} neutral={neutral} />
+      <PlanElements layout={layout} occupancy={occupancy} neutral={neutral} />
       {showDims && <PlanDimensions layout={layout} />}
     </svg>
   );
@@ -233,8 +245,12 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
     if (!el) return;
     const { clientWidth: cw, clientHeight: ch } = el;
     if (!cw || !ch) return;
-    const zoom = Math.min(cw / layout.widthCm, ch / layout.heightCm) * 0.95;
-    setView({ zoom, x: (cw - layout.widthCm * zoom) / 2, y: (ch - layout.heightCm * zoom) / 2 });
+    // Rand mit einrechnen, damit Maßketten/Labels außerhalb der Zeltfläche nicht abgeschnitten werden
+    const pad = 300;
+    const w = layout.widthCm + pad * 2;
+    const h = layout.heightCm + pad * 2;
+    const zoom = Math.min(cw / w, ch / h) * 0.98;
+    setView({ zoom, x: (cw - w * zoom) / 2 + pad * zoom, y: (ch - h * zoom) / 2 + pad * zoom });
   }, [layout.widthCm, layout.heightCm]);
 
   useEffect(() => {
