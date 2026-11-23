@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -82,4 +82,35 @@ test('Yeseva One wird als kleinere, verlustfreie WOFF2-Datei geladen', async () 
   assert.ok(layout.includes('YesevaOne-Regular.woff2'));
   assert.equal(woff2.subarray(0, 4).toString('ascii'), 'wOF2');
   assert.ok(woff2.byteLength < ttf.byteLength);
+});
+
+test('Startseite wird nicht durch Root-Loading-Overlay verzögert oder verschoben', async () => {
+  await assert.rejects(access('src/app/[locale]/loading.tsx'));
+  const [config, navbar] = await Promise.all([
+    readFile('next.config.mjs', 'utf8'),
+    readFile('src/components/Navbar.tsx', 'utf8'),
+  ]);
+  assert.ok(config.includes('inlineCss: true'));
+  assert.ok(config.includes("formats: ['image/avif', 'image/webp']"));
+  assert.ok(config.includes("key: 'Cross-Origin-Opener-Policy'"));
+  assert.ok(navbar.includes('if (rect.height > 0)'));
+});
+
+test('Datumsformatierung ist zeitzonenunabhängig und Barrierefreiheits-Links sind eindeutig', async () => {
+  const [events, footer, gallery, navbar] = await Promise.all([
+    readFile('src/components/EventsSection.tsx', 'utf8'),
+    readFile('src/components/Footer.tsx', 'utf8'),
+    readFile('src/components/GallerySection.tsx', 'utf8'),
+    readFile('src/components/Navbar.tsx', 'utf8'),
+  ]);
+  assert.ok(events.includes('dateObj.getUTCDate()'));
+  assert.ok(events.includes('dateObj.getUTCMonth()'));
+  assert.ok(events.includes('dateObj.getUTCFullYear()'));
+  assert.ok(events.includes('<span className="sr-only"> – {title}</span>'));
+  assert.ok(footer.includes('new Date().getUTCFullYear()'));
+  assert.ok(footer.includes('href="/ueber-uns"'));
+  assert.ok(!footer.includes('href="/#about"'));
+  assert.ok(gallery.includes("timeZone: 'UTC'"));
+  assert.ok(!navbar.includes('bg-accent-wood text-white'));
+  assert.ok(navbar.includes('bg-[#a86410] text-white'));
 });

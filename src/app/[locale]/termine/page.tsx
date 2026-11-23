@@ -39,9 +39,9 @@ export default async function TermineOverviewPage({ params }: { params: Promise<
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
         {upcomingEvents.map((event) => {
           const dateObj = new Date(event.date);
-          const day = dateObj.getDate().toString().padStart(2, '0');
-          const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
-          const year = dateObj.getFullYear();
+          const day = dateObj.getUTCDate().toString().padStart(2, '0');
+          const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getUTCMonth()];
+          const year = dateObj.getUTCFullYear();
 
           const title = localized(event, "title", locale);
           const description = localized(event, "description", locale);

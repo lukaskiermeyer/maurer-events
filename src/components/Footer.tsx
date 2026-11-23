@@ -41,7 +41,7 @@ export default function Footer() {
           <div className="flex flex-col items-start md:items-start text-left">
             <h3 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("nav_title")}</h3>
             <ul className="space-y-3 md:space-y-4 text-sm font-bold text-white/80">
-              <li><Link href="/#about" className="hover:text-white transition-colors">{navT("about")}</Link></li>
+              <li><Link href="/ueber-uns" className="hover:text-white transition-colors">{navT("about")}</Link></li>
               <li><Link href="/#services" className="hover:text-white transition-colors">{navT("services")}</Link></li>
               <li><Link href="/#events" className="hover:text-white transition-colors">{navT("events")}</Link></li>
               <li><Link href="/karriere" className="hover:text-white transition-colors">{navT("karriere")}</Link></li>
@@ -68,7 +68,7 @@ export default function Footer() {
       <div>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-2 flex flex-col md:flex-row justify-between items-center md:items-center gap-2 md:gap-4">
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left text-xs text-white/70 font-sans font-medium">
-            <p>&copy; {new Date().getFullYear()} {t("rights")}</p>
+            <p>&copy; {new Date().getUTCFullYear()} {t("rights")}</p>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:gap-x-8">
               <Link href="/agb" className="hover:text-white transition-colors">{t("agb")}</Link>
               <Link href="/stornobedingungen" className="hover:text-white transition-colors">{t("storno")}</Link>

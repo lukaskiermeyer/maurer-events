@@ -27,17 +27,17 @@ export default function Navbar() {
   const transparent = isHeroPage && isInHero && !isOpen;
 
   useEffect(() => {
-    // Wenn wir nicht auf einer Hero-Seite sind, zeigen wir die Navbar immer (solid).
-    if (!isHeroPage) {
-      setIsInHero(false);
-      return;
-    }
+    // Wenn wir nicht auf einer Hero-Seite sind, ist transparent bereits false.
+    if (!isHeroPage) return;
 
     const handleScroll = () => {
       // Transparent, solange das Hero noch unter dem Header liegt
       const hero = document.getElementById("start");
       if (hero) {
-        setIsInHero(hero.getBoundingClientRect().bottom > 96);
+        const rect = hero.getBoundingClientRect();
+        if (rect.height > 0) {
+          setIsInHero(rect.bottom > 96);
+        }
       } else {
         // Auf Event-Übersicht/Details gibt es kein #start-Element;
         // glas/polymorph solange der Scroll noch im oberen Bereich liegt.
@@ -121,7 +121,7 @@ export default function Navbar() {
               <LanguageSwitcher glass={transparent} />
               <Link
                 href="/#contact"
-                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-accent-wood text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-accent-wood/80 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-4 py-2.5 xl:px-6 xl:py-3 bg-[#a86410] text-white rounded-full font-display font-bold tracking-wide text-xs xl:text-sm whitespace-nowrap hover:bg-[#8f540d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
                 {t("event_anfragen")}
               </Link>
@@ -187,7 +187,7 @@ export default function Navbar() {
                   <Link
                     href="/#contact"
                     onClick={() => setIsOpen(false)}
-                    className="block w-full text-center mt-6 px-6 py-4 bg-accent-wood text-white rounded-xl font-display font-bold shadow-md"
+                    className="block w-full text-center mt-6 px-6 py-4 bg-[#a86410] text-white rounded-xl font-display font-bold shadow-md"
                   >
                     {t("event_anfragen")}
                   </Link>
@@ -195,7 +195,7 @@ export default function Navbar() {
                   <Link
                     href="/#contact"
                     onClick={() => setIsOpen(false)}
-                    className="block w-full text-center mt-6 px-6 py-4 bg-accent-wood text-white rounded-xl font-display font-bold shadow-md"
+                    className="block w-full text-center mt-6 px-6 py-4 bg-[#a86410] text-white rounded-xl font-display font-bold shadow-md"
                   >
                     {t("event_anfragen")}
                   </Link>
