@@ -503,6 +503,28 @@ export function rowBlockGeometry(spec: RowSpec, ox: number, oy: number) {
 
 export const rowStackVertical = (row: PlanRow) => row.stackVertical ?? row.rotation % 180 !== 0;
 
+// Tatsächliche Ausdehnung des Plans: Vereinigung aller Elemente mit der Zeltfläche.
+// Bereiche außerhalb der Zeltkante (z. B. Biergarten) dürfen nicht abgeschnitten werden.
+export function planBounds(layout: PlanLayout) {
+  let minX = 0, minY = 0, maxX = layout.widthCm, maxY = layout.heightCm;
+  for (const el of layout.elements) {
+    if (el.kind === 'label') {
+      const size = el.size ?? 60;
+      minX = Math.min(minX, el.x);
+      minY = Math.min(minY, el.y - size);
+      maxX = Math.max(maxX, el.x + el.text.length * size * 0.6);
+      maxY = Math.max(maxY, el.y);
+      continue;
+    }
+    minX = Math.min(minX, el.x);
+    minY = Math.min(minY, el.y);
+    maxX = Math.max(maxX, el.x + el.w);
+    maxY = Math.max(maxY, el.y + el.h);
+  }
+  minY -= 60; // Tür-/Zelt-Beschriftungen oberhalb der Kante
+  return { minX, minY, maxX, maxY };
+}
+
 export type DimCategory =
   | 'zelt' | 'gaenge' | 'reihen-position' | 'reihen-laenge' | 'doppel-innen'
   | 'buehne' | 'wand' | 'tueren' | 'bereiche' | 'garnitur';

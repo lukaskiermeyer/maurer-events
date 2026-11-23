@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  computeDimensions, descendantIds, drillDownAt, highestGroupAt, isAncestorOf, nearestWallDoor, rowBlockGeometry, snapCandidates, snapValue, tableLabel,
+  computeDimensions, descendantIds, drillDownAt, highestGroupAt, isAncestorOf, nearestWallDoor, planBounds, rowBlockGeometry, snapCandidates, snapValue, tableLabel,
   type PlanElement, type PlanLayout, type PlanTable, type RowSpec, type TableOccupancy,
 } from "@/lib/plan-types";
 
@@ -176,8 +176,9 @@ export function PlanDimensions({ layout }: { layout: PlanLayout }) {
 /** Statischer SVG für Druck (A3) — füllt die viewBox komplett. */
 export function PlanStaticSvg({ layout, occupancy, showDims = false, neutral = false, className }: { layout: PlanLayout; occupancy?: Record<string, TableOccupancy>; showDims?: boolean; neutral?: boolean; className?: string }) {
   const pad = showDims ? 260 : 120;
+  const b = planBounds(layout);
   return (
-    <svg viewBox={`${-pad} ${-pad} ${layout.widthCm + pad * 2} ${layout.heightCm + pad * 2}`} className={className} role="img" aria-label="Tischplan">
+    <svg viewBox={`${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}`} className={className} role="img" aria-label="Tischplan">
       <PlanElements layout={layout} occupancy={occupancy} neutral={neutral} />
       {showDims && <PlanDimensions layout={layout} />}
     </svg>
@@ -193,7 +194,7 @@ type Drag =
   | { type: "marquee"; startX: number; startY: number; additive: boolean }
   | null;
 
-export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedIds, rowSpec, doorSpec, drawPreset, showDims = false, measurements = [], selectedMeasure = null, onMeasureSelect, onTogglePan, onToggleSelect, onToggleDims, onSelect, onMoveStart, onMoveGroup, onResize, onCreateRect, onCreateDoor, onCreateTable, onPlaceRow, onLabelPoint, onMeasure, onTableClick, onTableDrop }: {
+export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedIds, rowSpec, doorSpec, drawPreset, showDims = false, measurements = [], selectedMeasure = null, onMeasureSelect, onTogglePan, onToggleSelect, onToggleDims, onUndo, onRedo, canUndo = false, canRedo = false, onDuplicate, onDeleteSelected, onSelect, onMoveStart, onMoveGroup, onResize, onCreateRect, onCreateDoor, onCreateTable, onPlaceRow, onLabelPoint, onMeasure, onTableClick, onTableDrop }: {
   layout: PlanLayout;
   mode: "edit" | "view";
   tool?: PlanTool;
@@ -209,6 +210,12 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
   onTogglePan?: () => void;
   onToggleSelect?: () => void;
   onToggleDims?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onDuplicate?: () => void;
+  onDeleteSelected?: () => void;
   onSelect?: (ids: string[]) => void;
   onMoveStart?: () => void;
   onMoveGroup?: (ids: string[], dx: number, dy: number) => void;
@@ -245,12 +252,14 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
     if (!el) return;
     const { clientWidth: cw, clientHeight: ch } = el;
     if (!cw || !ch) return;
-    // Rand mit einrechnen, damit Maßketten/Labels außerhalb der Zeltfläche nicht abgeschnitten werden
+    // Rand + tatsächliche Element-Ausdehnung einrechnen, damit Bereiche außerhalb
+    // der Zeltkante und Maßketten/Labels nicht abgeschnitten werden
     const pad = 300;
-    const w = layout.widthCm + pad * 2;
-    const h = layout.heightCm + pad * 2;
+    const b = planBounds({ ...layoutRef.current, widthCm: layout.widthCm, heightCm: layout.heightCm });
+    const w = b.maxX - b.minX + pad * 2;
+    const h = b.maxY - b.minY + pad * 2;
     const zoom = Math.min(cw / w, ch / h) * 0.98;
-    setView({ zoom, x: (cw - w * zoom) / 2 + pad * zoom, y: (ch - h * zoom) / 2 + pad * zoom });
+    setView({ zoom, x: (cw - w * zoom) / 2 + (pad - b.minX) * zoom, y: (ch - h * zoom) / 2 + (pad - b.minY) * zoom });
   }, [layout.widthCm, layout.heightCm]);
 
   useEffect(() => {
@@ -548,6 +557,18 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
           />
           {draft && <rect x={draft.x} y={draft.y} width={draft.w} height={draft.h} fill="#2563EB22" stroke="#2563EB" strokeWidth={8} strokeDasharray="40 20" />}
           {marquee && <rect x={marquee.x} y={marquee.y} width={marquee.w} height={marquee.h} fill="#2563EB18" stroke="#2563EB" strokeWidth={4 / view.zoom} strokeDasharray="20 12" />}
+          {mode === "edit" && tool === "select" && (selectedIds ?? []).length > 0 && (() => {
+            const ids = new Set((selectedIds ?? []).flatMap(id => [id, ...descendantIds(layout, id)]));
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const id of ids) {
+              const el = layout.elements.find(e => e.id === id);
+              if (!el || el.kind === 'label') continue;
+              minX = Math.min(minX, el.x); minY = Math.min(minY, el.y);
+              maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
+            }
+            if (!Number.isFinite(minX)) return null;
+            return <rect x={minX - 15} y={minY - 15} width={maxX - minX + 30} height={maxY - minY + 30} fill="none" stroke="#2563EB" strokeWidth={3 / view.zoom} strokeDasharray="18 12" style={{ pointerEvents: 'none' }} />;
+          })()}
           {doorGhost && <rect x={doorGhost.rect.x} y={doorGhost.rect.y} width={doorGhost.rect.w} height={doorGhost.rect.h} fill="#1F573255" stroke="#1F5732" strokeWidth={6} strokeDasharray="25 15" />}
           {mode === "edit" && tool === "select" && (selectedIds ?? []).length === 1 && (() => {
             const el = layout.elements.find(e => e.id === (selectedIds ?? [])[0]);
@@ -603,6 +624,14 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
           {draft && <>Fläche: {Math.round(draft.w)} × {Math.round(draft.h)} cm · bei {Math.round(draft.x)} / {Math.round(draft.y)}</>}
           {ghost && rowSpec && <>Reihenblock: {Math.round(rowBlockGeometry(rowSpec, ghost.x, ghost.y).w)} × {Math.round(rowBlockGeometry(rowSpec, ghost.x, ghost.y).h)} cm · bei {Math.round(ghost.x)} / {Math.round(ghost.y)}</>}
           {movePos && !draft && !ghost && <>Position: {Math.round(movePos.x)} / {Math.round(movePos.y)} cm</>}
+        </div>
+      )}
+      {mode === "edit" && (onUndo || onDuplicate) && (
+        <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-xl border border-border-light bg-white/95 p-1 shadow">
+          {onUndo && <button type="button" aria-label="Rückgängig (Ctrl+Z)" title="Rückgängig (Ctrl+Z)" onClick={onUndo} disabled={!canUndo} className="h-9 w-9 rounded-lg font-black hover:bg-canvas-light disabled:opacity-30">↩</button>}
+          {onRedo && <button type="button" aria-label="Wiederholen (Ctrl+Y)" title="Wiederholen (Ctrl+Y)" onClick={onRedo} disabled={!canRedo} className="h-9 w-9 rounded-lg font-black hover:bg-canvas-light disabled:opacity-30">↪</button>}
+          {onDuplicate && <button type="button" aria-label="Auswahl duplizieren (Ctrl+D)" title="Auswahl duplizieren (Ctrl+D)" onClick={onDuplicate} disabled={(selectedIds ?? []).length === 0} className="h-9 w-9 rounded-lg font-black hover:bg-canvas-light disabled:opacity-30">⧉</button>}
+          {onDeleteSelected && <button type="button" aria-label="Auswahl löschen (Entf)" title="Auswahl löschen (Entf)" onClick={onDeleteSelected} disabled={(selectedIds ?? []).length === 0} className="h-9 w-9 rounded-lg font-black text-red-600 hover:bg-red-50 disabled:opacity-30">🗑</button>}
         </div>
       )}
       <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-xl border border-border-light bg-white/95 p-1 shadow">

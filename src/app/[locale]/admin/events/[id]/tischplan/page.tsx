@@ -236,7 +236,9 @@ export default async function TablePlanPage({
       <style>{`
         @page { size: A3 landscape; margin: 8mm; }
         @media print {
-          html, body { background: #fff !important; }
+          html, body { background: #fff !important; height: auto !important; min-height: 0 !important; }
+          /* Layout-Main darf im Druck nicht auf Viewport-Höhe stretchen (leere 2. Seite) */
+          main { flex-grow: 0 !important; min-height: 0 !important; height: auto !important; }
           nav, header, footer, .no-print { display: none !important; }
           .plan-page-wrap { min-height: 0 !important; padding: 0 !important; }
           .plan-page { max-width: none !important; padding: 0 !important; margin: 0 !important; }

@@ -15,15 +15,16 @@ import type { Measurement } from "@/components/admin/plan/PlanCanvas";
 import type { PlanPresetRecord } from "@/types/domain";
 
 type Rect = { x: number; y: number; w: number; h: number };
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 const STEPS: { step: Step; label: string }[] = [
   { step: 1, label: 'Zelt & Bereiche' },
   { step: 2, label: 'Bühne & Marker' },
   { step: 3, label: 'Reihen & Tische' },
-  { step: 4, label: 'Nummerierung' },
-  { step: 5, label: 'Prüfen & Speichern' },
-  { step: 6, label: 'Bearbeiten' },
+  { step: 4, label: 'Maße' },
+  { step: 5, label: 'Nummerierung' },
+  { step: 6, label: 'Prüfen & Speichern' },
+  { step: 7, label: 'Bearbeiten' },
 ];
 
 const SCHEMES: { key: NumberingScheme; label: string; desc: string; example: string }[] = [
@@ -136,7 +137,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     setSelectedIds([]);
     setHistory([]);
     setFuture([]);
-    setStep(p && p.layout.elements.length > 0 ? 6 : 1);
+    setStep(p && p.layout.elements.length > 0 ? 7 : 1);
     setTool("select");
     setDirty(false);
     setSaveState("idle");
@@ -453,7 +454,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
       <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-border-light bg-white p-1" role="tablist" aria-label="Plan-Schritte">
         {STEPS.map(s => (
           <button key={s.step} type="button" role="tab" aria-selected={step === s.step} onClick={() => gotoStep(s.step)} className={`min-h-11 flex-1 whitespace-nowrap rounded-xl px-3 text-sm font-bold transition-colors ${step === s.step ? "bg-accent-green text-white" : "hover:bg-canvas-light"}`}>
-            {s.step === 6 ? s.label : `${s.step} · ${s.label}`}
+            {s.step === 7 ? s.label : `${s.step} · ${s.label}`}
           </button>
         ))}
       </div>
@@ -463,18 +464,10 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
           {step === 1 && (
             <>
               <h3 className="font-display font-bold">Zeltgröße & Bereiche</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm font-bold">
-                <label className="block">Zeltbreite (cm)
-                  <NumField min={100} step={10} value={layout.widthCm} onCommit={n => setTentSize("widthCm", n)} className={field} />
-                </label>
-                <label className="block">Zelthöhe (cm)
-                  <NumField min={100} step={10} value={layout.heightCm} onCommit={n => setTentSize("heightCm", n)} className={field} />
-                </label>
-              </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => { setTool("area"); setDrawPreset(null); }} className={toolBtn(tool === "area")}>Bereich zeichnen</button>
               </div>
-              <p className="text-xs text-base-dark/60">Zeltmaße oben eingeben – die <strong>Zeltgrenze entsteht automatisch</strong> und folgt jeder Maßänderung. Hier nur Bereiche aufziehen (z. B. Biergarten, Schenke); Name und Farbe rechts. Kanten rasten ein – Alt hält Snap aus.</p>
+              <p className="text-xs text-base-dark/60">Zeltmaße stellst du im Step <strong>4 · Maße</strong> ein – die Zeltgrenze entsteht automatisch und folgt jeder Maßänderung. Hier nur Bereiche aufziehen (z. B. Biergarten, Schenke); Name und Farbe rechts. Kanten rasten ein – Alt hält Snap aus.</p>
               <div className="space-y-1">
                 {areas.map(a => a.kind === 'area' && (
                   <button key={a.id} type="button" onClick={() => setSelectedIds([a.id])} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-bold ${selectedIds.includes(a.id) ? "bg-accent-green/10 text-accent-green" : "hover:bg-canvas-light"}`}>
@@ -589,7 +582,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                   <span aria-hidden className="text-xs font-bold opacity-70">{constantsOpen ? "▲" : "▼"}</span>
                 </button>
                 <p className="px-3 pb-3 text-xs font-bold opacity-70">
-                  Garnitur {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).w)} × {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).h)} cm · {rowSpec.capacity} Pers. · Gang {rowSpec.gapRows} cm{rowSpec.double ? " · Doppelreihen" : ""}
+                  {rowSpec.shape === 'rect' ? 'Biergarnitur' : 'Rundtisch'} · {rowSpec.capacity} Pers./Tisch · Maße im Step 4 · Maße
                 </p>
                 {constantsOpen && (
                   <div className="space-y-3 border-t border-border-light p-3">
@@ -603,42 +596,12 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                       <label className="block">Personen/Tisch
                         <NumField min={1} value={rowSpec.capacity} onCommit={n => setRowSpec(s => ({ ...s, capacity: n }))} className={field} />
                       </label>
-                      <label className="block">Tischbreite (Platte, cm)
-                        <NumField min={20} value={rowSpec.tableW} onCommit={n => setRowSpec(s => ({ ...s, tableW: n }))} className={field} />
-                      </label>
-                      <label className="block">Tischtiefe (Platte, cm)
-                        <NumField min={20} value={rowSpec.tableH} onCommit={n => setRowSpec(s => ({ ...s, tableH: n }))} className={field} />
-                      </label>
-                      <label className="block">Banktiefe (cm)
-                        <NumField min={0} value={rowSpec.benchDepth} onCommit={n => setRowSpec(s => ({ ...s, benchDepth: n }))} className={field} />
-                      </label>
-                      <label className="block">Abstand Bank–Tisch (cm)
-                        <NumField min={0} value={rowSpec.benchGap} onCommit={n => setRowSpec(s => ({ ...s, benchGap: n }))} className={field} />
-                      </label>
-                      <label className="block">Abstand Tische (cm)
-                        <NumField min={0} value={rowSpec.gapTables} onCommit={n => setRowSpec(s => ({ ...s, gapTables: n }))} className={field} />
-                      </label>
-                      <label className="block">Gang zwischen Reihen (cm)
-                        <NumField min={0} value={rowSpec.gapRows} onCommit={n => setRowSpec(s => ({ ...s, gapRows: n }))} className={field} />
-                      </label>
                     </div>
-                    <label className="flex items-center gap-2 text-sm font-bold">
-                      <input type="checkbox" checked={rowSpec.double} onChange={e => setRowSpec(s => ({ ...s, double: e.target.checked }))} className="h-4 w-4 accent-accent-green" />
-                      Doppelreihen (Paare mit engem Innenabstand)
-                    </label>
-                    {rowSpec.double && (
-                      <label className="block text-sm font-bold">Innenabstand im Paar (cm)
-                        <NumField min={0} value={rowSpec.gapInner} onCommit={n => setRowSpec(s => ({ ...s, gapInner: n }))} className={field} />
-                      </label>
-                    )}
-                    <p className="rounded-lg bg-canvas-light p-2 text-xs opacity-80">
-                      Gesamtmaß je Garnitur: {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).w)} × {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).h)} cm (Platte + 2 Bänke + Abstände)
-                    </p>
+                    <p className="text-xs opacity-60">Tisch-, Bank- und Gangmaße stellst du zentral im Step <strong>4 · Maße</strong> ein.</p>
                   </div>
                 )}
               </div>
 
-              <button type="button" onClick={() => setShowDims(v => !v)} className={toolBtn(showDims)}>{showDims ? "Maßketten aus" : "Maßketten an"}</button>
               <div className="space-y-1">
                 {rows.map(r => (
                   <button key={r.id} type="button" onClick={() => setSelectedIds([r.id])} className={`flex w-full justify-between rounded-lg px-2 py-1.5 text-left text-sm font-bold ${selectedIds.includes(r.id) ? "bg-accent-green/10 text-accent-green" : "hover:bg-canvas-light"}`}>
@@ -649,6 +612,103 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
             </>
           )}
           {step === 4 && (
+            <>
+              <h3 className="font-display font-bold">Maße</h3>
+              <div className="rounded-xl border border-border-light p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Zeltmaße</p>
+                <div className="grid grid-cols-2 gap-2 text-sm font-bold">
+                  <label className="block">Zeltbreite (cm)
+                    <NumField min={100} step={10} value={layout.widthCm} onCommit={n => setTentSize("widthCm", n)} className={field} />
+                  </label>
+                  <label className="block">Zelthöhe (cm)
+                    <NumField min={100} step={10} value={layout.heightCm} onCommit={n => setTentSize("heightCm", n)} className={field} />
+                  </label>
+                </div>
+                <p className="mt-2 text-xs opacity-60">Die Zeltgrenze entsteht automatisch und folgt jeder Maßänderung.</p>
+              </div>
+
+              <div className="rounded-xl border border-border-light p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Garnitur & Abstände · gelten für alle Blöcke</p>
+                <div className="grid grid-cols-2 gap-2 text-sm font-bold">
+                  <label className="block">Tischbreite (Platte, cm)
+                    <NumField min={20} value={rowSpec.tableW} onCommit={n => setRowSpec(s => ({ ...s, tableW: n }))} className={field} />
+                  </label>
+                  <label className="block">Tischtiefe (Platte, cm)
+                    <NumField min={20} value={rowSpec.tableH} onCommit={n => setRowSpec(s => ({ ...s, tableH: n }))} className={field} />
+                  </label>
+                  <label className="block">Banktiefe (cm)
+                    <NumField min={0} value={rowSpec.benchDepth} onCommit={n => setRowSpec(s => ({ ...s, benchDepth: n }))} className={field} />
+                  </label>
+                  <label className="block">Abstand Bank–Tisch (cm)
+                    <NumField min={0} value={rowSpec.benchGap} onCommit={n => setRowSpec(s => ({ ...s, benchGap: n }))} className={field} />
+                  </label>
+                  <label className="block">Abstand Tische (cm)
+                    <NumField min={0} value={rowSpec.gapTables} onCommit={n => setRowSpec(s => ({ ...s, gapTables: n }))} className={field} />
+                  </label>
+                  <label className="block">Gang zwischen Reihen (cm)
+                    <NumField min={0} value={rowSpec.gapRows} onCommit={n => setRowSpec(s => ({ ...s, gapRows: n }))} className={field} />
+                  </label>
+                </div>
+                <label className="mt-2 flex items-center gap-2 text-sm font-bold">
+                  <input type="checkbox" checked={rowSpec.double} onChange={e => setRowSpec(s => ({ ...s, double: e.target.checked }))} className="h-4 w-4 accent-accent-green" />
+                  Doppelreihen (Paare mit engem Innenabstand)
+                </label>
+                {rowSpec.double && (
+                  <label className="mt-2 block text-sm font-bold">Innenabstand im Paar (cm)
+                    <NumField min={0} value={rowSpec.gapInner} onCommit={n => setRowSpec(s => ({ ...s, gapInner: n }))} className={field} />
+                  </label>
+                )}
+                <p className="mt-2 rounded-lg bg-canvas-light p-2 text-xs opacity-80">
+                  Gesamtmaß je Garnitur: {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).w)} × {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).h)} cm (Platte + 2 Bänke + Abstände)
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-canvas-light p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maß-Report</p>
+                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                  <label className="block">Min. Gang
+                    <NumField min={0} value={mins.aisle} onCommit={n => setMins(m => ({ ...m, aisle: n }))} className={field} />
+                  </label>
+                  <label className="block">Min. Bühne
+                    <NumField min={0} value={mins.stage} onCommit={n => setMins(m => ({ ...m, stage: n }))} className={field} />
+                  </label>
+                  <label className="block">Min. Wand
+                    <NumField min={0} value={mins.wall} onCommit={n => setMins(m => ({ ...m, wall: n }))} className={field} />
+                  </label>
+                  <label className="block">Max. Plätze/Reihe
+                    <NumField min={1} value={mins.maxRowSeats} onCommit={n => setMins(m => ({ ...m, maxRowSeats: n }))} className={field} />
+                  </label>
+                </div>
+                <div className="mt-2 space-y-1 text-xs font-bold">
+                  {report.aisles.map(a => <p key={a.label} className={a.cm < mins.aisle ? "text-red-700" : "opacity-70"}>Gang {a.label}: {a.cm} cm</p>)}
+                  {report.stageDistance !== null && <p className={report.stageDistance < mins.stage ? "text-red-700" : "opacity-70"}>Bühne → nächster Tisch: {report.stageDistance} cm</p>}
+                  {report.wallMargins.map(w => <p key={w.label} className={w.cm < mins.wall ? "text-red-700" : "opacity-70"}>{w.label}: {w.cm} cm</p>)}
+                  {report.aisles.length === 0 && report.stageDistance === null && report.wallMargins.length === 0 && <p className="opacity-60">Noch keine messbaren Abstände (Reihen/Bühne/Zeltgrenze fehlen).</p>}
+                </div>
+                {report.violations.length > 0 && (
+                  <div className="mt-2 space-y-1 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-700">
+                    {report.violations.map(v => <p key={v}>{v}</p>)}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border-light p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maße für den Druckplan</p>
+                <div className="grid grid-cols-1 gap-1 text-sm font-bold">
+                  {DIM_CATEGORIES.map(c => (
+                    <label key={c.key} className="flex items-center gap-2">
+                      <input type="checkbox" checked={activeDims.includes(c.key)} onChange={() => togglePrintDim(c.key)} className="h-4 w-4 accent-accent-green" />
+                      {c.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs opacity-60">Nur angehakte Maß-Kategorien erscheinen im Druckplan und in der Maß-Ansicht des Plans.</p>
+              </div>
+
+              <button type="button" onClick={() => setShowDims(v => !v)} className={toolBtn(showDims)}>{showDims ? "Maßketten aus" : "Maßketten an"}</button>
+            </>
+          )}
+          {step === 5 && (
             <>
               <h3 className="font-display font-bold">Nummerierung</h3>
               <div className="space-y-2">
@@ -713,7 +773,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               <p className="text-xs text-base-dark/60">Jede physische Garnitur erhält eine eigene Nummer (auch zusammengestellte). Reihen werden nach Position sortiert, Tische innerhalb der Reihe entlang ihrer Achse; freie Tische kommen danach.</p>
             </>
           )}
-          {step === 5 && (
+          {step === 6 && (
             <>
               <h3 className="font-display font-bold">Prüfen & Speichern</h3>
               <div className="rounded-xl bg-canvas-light p-3 text-sm font-bold">
@@ -724,51 +784,11 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               {summary.outside > 0 && <p className="rounded-lg bg-amber-50 p-2 text-sm font-bold text-amber-800">{summary.outside} Tische liegen außerhalb der Zeltgrenze.</p>}
               {summary.overlaps > 0 && <p className="rounded-lg bg-red-50 p-2 text-sm font-bold text-red-700">{summary.overlaps} Tisch-Überlappungen – bitte im Bearbeiten-Modus korrigieren.</p>}
               {summary.outside === 0 && summary.overlaps === 0 && <p className="rounded-lg bg-green-50 p-2 text-sm font-bold text-green-800">Keine Kollisionen, alle Tische innerhalb der Zeltgrenze.</p>}
-              <div className="rounded-xl bg-canvas-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maß-Report</p>
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                  <label className="block">Min. Gang
-                    <NumField min={0} value={mins.aisle} onCommit={n => setMins(m => ({ ...m, aisle: n }))} className={field} />
-                  </label>
-                  <label className="block">Min. Bühne
-                    <NumField min={0} value={mins.stage} onCommit={n => setMins(m => ({ ...m, stage: n }))} className={field} />
-                  </label>
-                  <label className="block">Min. Wand
-                    <NumField min={0} value={mins.wall} onCommit={n => setMins(m => ({ ...m, wall: n }))} className={field} />
-                  </label>
-                  <label className="block">Max. Plätze/Reihe
-                    <NumField min={1} value={mins.maxRowSeats} onCommit={n => setMins(m => ({ ...m, maxRowSeats: n }))} className={field} />
-                  </label>
-                </div>
-                <div className="mt-2 space-y-1 text-xs font-bold">
-                  {report.aisles.map(a => <p key={a.label} className={a.cm < mins.aisle ? "text-red-700" : "opacity-70"}>Gang {a.label}: {a.cm} cm</p>)}
-                  {report.stageDistance !== null && <p className={report.stageDistance < mins.stage ? "text-red-700" : "opacity-70"}>Bühne → nächster Tisch: {report.stageDistance} cm</p>}
-                  {report.wallMargins.map(w => <p key={w.label} className={w.cm < mins.wall ? "text-red-700" : "opacity-70"}>{w.label}: {w.cm} cm</p>)}
-                  {report.aisles.length === 0 && report.stageDistance === null && report.wallMargins.length === 0 && <p className="opacity-60">Noch keine messbaren Abstände (Reihen/Bühne/Zeltgrenze fehlen).</p>}
-                </div>
-                {report.violations.length > 0 && (
-                  <div className="mt-2 space-y-1 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-700">
-                    {report.violations.map(v => <p key={v}>{v}</p>)}
-                  </div>
-                )}
-              </div>
-              <div className="rounded-xl border border-border-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maße für den Druckplan</p>
-                <div className="grid grid-cols-1 gap-1 text-sm font-bold">
-                  {DIM_CATEGORIES.map(c => (
-                    <label key={c.key} className="flex items-center gap-2">
-                      <input type="checkbox" checked={activeDims.includes(c.key)} onChange={() => togglePrintDim(c.key)} className="h-4 w-4 accent-accent-green" />
-                      {c.label}
-                    </label>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs opacity-60">Nur angehakte Maß-Kategorien erscheinen im Druckplan und in der Maß-Ansicht des Plans.</p>
-              </div>
               <button type="button" onClick={save} disabled={saveState === "saving"} className="min-h-11 w-full rounded-xl bg-accent-green font-black text-white disabled:opacity-50">{saveState === "saving" ? "Speichert…" : "Plan speichern"}</button>
-              <button type="button" onClick={() => gotoStep(6)} className="min-h-11 w-full rounded-xl border border-border-light font-bold">Weiter zu „Bearbeiten“</button>
+              <button type="button" onClick={() => gotoStep(7)} className="min-h-11 w-full rounded-xl border border-border-light font-bold">Weiter zu „Bearbeiten“</button>
             </>
           )}
-          {step === 6 && (
+          {step === 7 && (
             <>
               <h3 className="font-display font-bold">Bearbeiten</h3>
               <div className="flex flex-wrap gap-2">
@@ -779,7 +799,6 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={undo} disabled={history.length === 0} className="min-h-11 rounded-xl border border-border-light px-4 text-sm font-bold disabled:opacity-40">↩ Undo</button>
                 <button type="button" onClick={redo} disabled={future.length === 0} className="min-h-11 rounded-xl border border-border-light px-4 text-sm font-bold disabled:opacity-40">↪ Redo</button>
-                <button type="button" onClick={() => setShowDims(v => !v)} className={toolBtn(showDims)}>{showDims ? "Maßketten aus" : "Maßketten an"}</button>
               </div>
               <p className="text-xs text-base-dark/60">Klick wählt die <strong>höchste Gruppe</strong> (Bereich › Reihe › Tisch), Doppelklick geht eine Ebene tiefer, Esc eine hoch. <strong>Shift+Klick</strong> oder Rahmen auf leerer Fläche = mehrere auswählen; <strong>Entf löscht alles Ausgewählte</strong> samt Inhalt. Ziehen verschiebt die Auswahl gemeinsam, <strong>Ecken-Handles</strong> passen die Größe an, Pfeiltasten = 10 cm (Shift = 50 cm), Ctrl+Z/Y = Undo/Redo. Auswahl-, Hand- und Maß-Switch unten rechts im Plan funktionieren in jedem Step.</p>
             </>
