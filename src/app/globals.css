@@ -256,6 +256,13 @@
   top: -10.42%;
   width: 129.09%;
   height: 108.37%;
+  transform-origin: 50% 8.8%;
+  animation: hero-sign-sway 6s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes hero-sign-sway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50% { transform: rotate(2.2deg); }
 }
 /* Funkel-Overlay exakt auf den gezeichneten Birnen (Punkte aus HeroLights.tsx). */
 .hero-light {
@@ -266,6 +273,7 @@
   background: radial-gradient(circle, rgba(255, 244, 200, 0.9) 0%, rgba(255, 205, 105, 0.5) 45%, rgba(255, 190, 80, 0) 70%);
   mix-blend-mode: screen;
   opacity: 0.2;
+  animation: hero-twinkle 2.6s ease-in-out 0s infinite;
   will-change: opacity;
 }
 @keyframes hero-twinkle {
@@ -273,6 +281,7 @@
   50% { opacity: 0.85; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .hero-sign-frame { animation: none; will-change: auto; }
   .hero-light { animation: none !important; opacity: 0.5; }
 }
 

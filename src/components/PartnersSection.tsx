@@ -17,7 +17,7 @@ function PartnerCircle({ logo, placeholderLabel, index, reduced }: { logo?: Part
       alt={logo.name}
       width={160}
       height={160}
-      sizes="(max-width: 768px) 112px, 144px"
+      sizes="(max-width: 767px) 79px, 101px"
       className="w-[70%] h-[70%] object-contain"
     />
   );

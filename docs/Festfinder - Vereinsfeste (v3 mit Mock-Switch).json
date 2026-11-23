@@ -1,0 +1,1850 @@
+{
+  "name": "Festfinder - Vereinsfeste (v4 - Verifiziert & 3J-Radar)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "festfinder-start",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "9a3f2124-92b1-43fa-8419-119c565248b2",
+      "name": "Webhook Trigger (Admin Button)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        560
+      ],
+      "webhookId": "festfinder-start-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zsl2ZAGVK6BGG24I",
+          "name": "Mauerer Events API Key"
+        }
+      },
+      "notes": "Admin-Buttons senden {\"mode\":\"fest\"} oder {\"mode\":\"radar\"}. Default ohne mode = fest."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1001-c1",
+              "leftValue": "={{ ($json.body && $json.body.mode) === \"radar\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1001",
+      "name": "IF Webhook Modus (Radar)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1200,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6 * * 2,5"
+            }
+          ]
+        }
+      },
+      "id": "70630a24-b069-45d6-9425-dd49f65b0a3c",
+      "name": "Schedule Trigger (Di + Fr 06:30)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        208
+      ],
+      "notes": "Di + Fr (~8,7 Laeufe/Monat x 28 Queries = ~244 Credits) -> laesst Free-Budget fuer Stufe-2 Verifizierung & Radar."
+    },
+    {
+      "parameters": {},
+      "id": "cbebf47a-fa9a-42c0-bd9c-e53915fe998e",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 1,15 * *"
+            }
+          ]
+        }
+      },
+      "id": "8e8f935a-ac00-4020-8c89-4401e223fe2f",
+      "name": "Schedule Trigger (1. & 15. 05:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        1120
+      ],
+      "notes": "2x/Monat: 24 Gruendungsjahr-Queries + max. 10 Besuchs-Anlass-Recherchen = ~68 Credits/Monat."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "regions",
+              "type": "array",
+              "value": [
+                "Ingolstadt",
+                "Kelheim",
+                "Regensburg",
+                "München"
+              ]
+            },
+            {
+              "id": "cfg-2",
+              "name": "minScore",
+              "type": "number",
+              "value": 60
+            },
+            {
+              "id": "cfg-3",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "id": "cfg-10",
+              "name": "todayIso",
+              "type": "string",
+              "value": "={{ new Date().toISOString().slice(0, 10) }}"
+            },
+            {
+              "id": "cfg-11",
+              "name": "tavilyTimeRange",
+              "type": "string",
+              "value": "month"
+            },
+            {
+              "id": "cfg-12",
+              "name": "maxSourceAgeDays",
+              "type": "number",
+              "value": 180
+            },
+            {
+              "id": "cfg-4",
+              "name": "maxCandidates",
+              "type": "number",
+              "value": 18
+            },
+            {
+              "id": "cfg-13",
+              "name": "maxVerify",
+              "type": "number",
+              "value": 6
+            },
+            {
+              "id": "cfg-9",
+              "name": "perRegionCap",
+              "type": "number",
+              "value": 5
+            },
+            {
+              "id": "cfg-5",
+              "name": "nimModel",
+              "type": "string",
+              "value": "nvidia/nemotron-3.5-bolt-e4b"
+            },
+            {
+              "id": "cfg-6",
+              "name": "nimFallback",
+              "type": "string",
+              "value": "poolside/laguna-xs-2.1"
+            },
+            {
+              "id": "cfg-7",
+              "name": "prefilter",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "cfg-8",
+              "name": "useMockTavily",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "984b23af-5133-46ce-b746-01e86a1c7902",
+      "name": "Config - Regionen + Schwelle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        208
+      ],
+      "notes": "todayIso wird bei jedem Lauf dynamisch gesetzt. tavilyTimeRange=month schneidet alte Treffer schon bei Tavily ab. maxVerify=6 deckelt Stufe-2 Nachrecherche."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maurer-events.com/api/admin/fest-chancen/known",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1002",
+      "name": "Bekannte URLs laden (Fest)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        208
+      ],
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zsl2ZAGVK6BGG24I",
+          "name": "Mauerer Events API Key"
+        }
+      },
+      "notes": "Laedt bereits bekannte/geloeschte URLs & EventKeys vorab, damit sie nicht die Quote blockieren."
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Config - Regionen + Schwelle').first().json;\nconst regions = c.regions || ['Ingolstadt', 'Kelheim', 'Regensburg', 'München'];\nconst now = new Date();\nconst todayIso = now.toISOString().slice(0, 10);\nconst yNow = now.getUTCFullYear();\nconst mNow = now.getUTCMonth() + 1;\n// Ab Oktober keine regulären Feste mehr für das laufende Jahr suchen\nconst y1 = mNow >= 10 ? yNow + 1 : yNow;\nconst y2 = y1 + 1;\nconst y3 = y1 + 2;\nconst runId = (c.useMockTavily === true ? 'mock-' : '') + String(c.runId || '');\nconst defaultRange = c.tavilyTimeRange || 'month';\nconst base = {\n  runId,\n  todayIso,\n  minScore: c.minScore ?? 60,\n  maxCandidates: c.maxCandidates ?? 18,\n  maxVerify: c.maxVerify ?? 6,\n  perRegionCap: c.perRegionCap ?? 5,\n  maxSourceAgeDays: c.maxSourceAgeDays ?? 180,\n  nimModel: c.nimModel || 'nvidia/nemotron-3.5-bolt-e4b',\n  nimFallback: c.nimFallback || 'poolside/laguna-xs-2.1',\n  prefilter: c.prefilter !== false,\n  useMockTavily: c.useMockTavily === true,\n};\nconst templates = [\n  { fn: (r) => `Festwirt gesucht ${r} ${y1} OR ${y2}`, timeRange: defaultRange },\n  { fn: (r) => `Festzelt Bewirtung Ausschreibung Bewerbung ${r} ${y1} OR ${y2}`, timeRange: defaultRange },\n  { fn: (r) => `Volksfest OR Dult Festwirt Vergabe ${r} ${y1} OR ${y2}`, timeRange: defaultRange },\n  { fn: (r) => `Schützenfest OR Feuerwehrfest Gründungsfest Festwirt ${r} ${y1} OR ${y2}`, timeRange: defaultRange },\n  { fn: (r) => `Kirchweih OR Kirta Festzelt Verpachtung ${r} ${y1}`, timeRange: defaultRange },\n  { fn: (r) => `Festwirt abgesprungen Ersatz kurzfristig ${r}`, timeRange: 'week' },\n  { fn: (r) => `Festausschuss gegründet Gründungsfest ${y2} OR ${y3} ${r}`, timeRange: 'month' },\n];\nconst items = [];\nfor (const region of regions) {\n  for (const tpl of templates) {\n    items.push({ json: Object.assign({}, base, { query: tpl.fn(region), region, timeRange: tpl.timeRange }) });\n  }\n}\nreturn items;"
+      },
+      "id": "731ad463-4014-426c-a7fa-138da9382cf2",
+      "name": "Queries generieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "49409170-9c30-4488-9b4f-c94ce8f900e0-c1",
+              "leftValue": "={{ $json.useMockTavily }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "49409170-9c30-4488-9b4f-c94ce8f900e0",
+      "name": "IF Mock oder Tavily",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $json.query || '';\nconst todayIso = $json.todayIso || new Date().toISOString().slice(0, 10);\nfunction plusDays(days) { const d = new Date(); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }\nfunction plusMonths(m) { const d = new Date(); d.setUTCMonth(d.getUTCMonth() + m); return d.toISOString().slice(0, 10); }\nfunction de(iso) { const p = iso.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; }\nconst d1 = plusMonths(14), d1End = plusMonths(14), dl1 = plusDays(35);\nconst d2 = plusMonths(16), dl2 = plusDays(-10); // abgelaufene Frist -> muss hart gefiltert werden!\nconst d3 = plusMonths(12);\nconst results = [\n  {\n    title: '150 Jahre Schützenverein Kelheim – Festwirt gesucht',\n    url: 'https://sv-kelheim-beispiel.de/jubilaeum-150',\n    published_date: plusDays(-5),\n    content: 'Der Schützenverein Kelheim feiert 150 Jahre mit großem Festzelt. Bewerbungsfrist bis ' + de(dl1) + '.',\n    raw_content: 'Veröffentlicht am ' + de(plusDays(-5)) + '. 150 Jahre Schützenverein Kelheim e.V. vom ' + de(d1) + ' bis ' + de(d1End) + ' auf dem Festplatz Kelheim (1200 Gäste). Für die Festzelt-Bewirtung wird ein Festwirt gesucht. Bewerbungen bis ' + de(dl1) + ' an Festausschuss Hans Muster, 09441 123456, fest@sv-kelheim-beispiel.de.',\n    score: 0.93,\n  },\n  {\n    title: 'Volksfest Musterstadt – Bewerbung abgelaufen (Testfall)',\n    url: 'https://volksfest-abgelaufen-beispiel.de/ausschreibung',\n    published_date: plusDays(-45),\n    content: 'Ausschreibung Festwirt Volksfest Musterstadt am ' + de(d2) + '. Einsendeschluss war der ' + de(dl2) + '.',\n    raw_content: 'Veröffentlicht am ' + de(plusDays(-45)) + '. Die Gemeinde Musterstadt im Landkreis Ingolstadt sucht einen Festwirt für das Volksfest am ' + de(d2) + '. Bewerbungsfrist endete am ' + de(dl2) + '. Kontakt: rathaus@musterstadt-beispiel.de.',\n    score: 0.90,\n  },\n  {\n    title: 'Feuerwehrfest Regensburg-Land – Festausschuss gegründet',\n    url: 'https://ff-musterdorf-regensburg-beispiel.de/festausschuss',\n    published_date: plusDays(-8),\n    content: '125-jähriges Gründungsfest am ' + de(d3) + ', Festausschuss hat Arbeit aufgenommen.',\n    raw_content: 'Artikel vom ' + de(plusDays(-8)) + '. Die Freiwillige Feuerwehr Musterdorf im Landkreis Regensburg (gegründet ' + (Number(d3.slice(0, 4)) - 125) + ') plant ihr 125-jähriges Gründungsfest am ' + de(d3) + ' mit Festzelt. Der Festausschuss wurde konstituiert, Festwirt und Brauerei sind noch nicht vergeben. 1. Vorstand Franz Beispiel, info@ff-musterdorf-regensburg-beispiel.de.',\n    score: 0.87,\n  },\n];\nreturn [{ json: { query: q, todayIso, results, response_time: 0, _mock: true } }];"
+      },
+      "id": "3136cc6b-4b96-4126-81f0-a24305a70dc2",
+      "name": "Mock Suchergebnisse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        48
+      ],
+      "notes": "Dynamische Mock-Daten relativ zu HEUTE: 1 offene Frist, 1 abgelaufene Frist (muss raus), 1 Fruehsignal."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.query, max_results: 6, search_depth: 'basic', time_range: $json.timeRange || 'month', include_answer: false, include_raw_content: true, country: 'germany', language: 'de', exclude_domains: ['facebook.com','instagram.com','tiktok.com','youtube.com'] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 4,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "ff2f6095-31ee-458d-9c0e-d475bd3e4098",
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        368
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SBz8kb0foVW3etPx",
+          "name": "Taviliy 2"
+        }
+      },
+      "notes": "Nutzt time_range (week/month) fuer frische Ergebnisse relativ zum Laufdatum."
+    },
+    {
+      "parameters": {
+        "jsCode": "const queries = $('Queries generieren').all();\nconst byQuery = new Map();\nfor (const q of queries) { if (q.json && q.json.query) byQuery.set(q.json.query, q.json); }\nconst items = [];\nlet lineageErrors = 0;\nfor (const item of $input.all()) {\n  let src = null;\n  const echoQuery = item.json.query;\n  if (echoQuery && byQuery.has(echoQuery)) src = byQuery.get(echoQuery);\n  else {\n    const pi = item.pairedItem;\n    const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n    src = typeof idx === 'number' ? (queries[idx] && queries[idx].json) : null;\n  }\n  if (!src || !src.query) { lineageErrors++; continue; }\n  const results = item.json.results || [];\n  for (const hit of results.slice(0, 6)) {\n    if (!hit.url) continue;\n    // PDFs nicht mehr pauschal blocken (Gemeinde-Ausschreibungen sind oft PDFs), nur Medien-Dateien raus\n    if (/\\.(jpg|jpeg|png|gif|bmp|webp|mp4|mp3|zip)(\\?.*)?$/i.test(hit.url)) continue;\n    const raw = (hit.raw_content || hit.content || '').replace(/\\s+/g, ' ').trim();\n    const pubRaw = hit.published_date || hit.publishedDate || null;\n    const publishedDate = pubRaw ? String(pubRaw).slice(0, 10) : null;\n    items.push({\n      json: {\n        url: hit.url,\n        title: hit.title || '',\n        snippet: raw.slice(0, 700),\n        text: raw,\n        publishedDate,\n        tavilyScore: hit.score ?? null,\n        query: src.query,\n        region: src.region,\n        runId: src.runId,\n        todayIso: src.todayIso,\n        minScore: src.minScore,\n        maxCandidates: src.maxCandidates,\n        maxVerify: src.maxVerify,\n        perRegionCap: src.perRegionCap,\n        maxSourceAgeDays: src.maxSourceAgeDays,\n        nimModel: src.nimModel,\n        nimFallback: src.nimFallback,\n        prefilter: src.prefilter,\n        useMockTavily: src.useMockTavily === true,\n      },\n    });\n  }\n}\nif (items.length === 0 && lineageErrors > 0) throw new Error('Lineage verloren: ' + lineageErrors + ' Suchantworten nicht zuordenbar.');\nif (items.length === 0) return [{ json: { _empty: true, reason: 'no_search_results' } }];\nreturn items;"
+      },
+      "id": "78d020e7-f801-4fb0-824e-54dee417b840",
+      "name": "Suchtreffer parsen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputs = $input.all().filter(i => i.json && !i.json._empty);\nconst cfg = $('Config - Regionen + Schwelle').first().json || {};\nif (!inputs.length) return [{ json: { _empty: true, skippedKnown: 0, skippedOld: 0, skippedPrefilter: 0, skippedShort: 0, skippedDup: 0, skippedQuota: 0 } }];\n\n// Bekannte & gelöschte URLs vorab aus dem Backend laden (Fallback: leer)\nlet knownUrls = new Set();\ntry {\n  const knownRes = ($('Bekannte URLs laden (Fest)').first() || {}).json || {};\n  if (Array.isArray(knownRes.urls)) knownUrls = new Set(knownRes.urls.map(u => String(u).toLowerCase()));\n} catch (e) {}\n\nconst first = inputs[0].json;\nconst maxCandidates = Number(first.maxCandidates || cfg.maxCandidates || 18);\nconst perRegionCap = Number(first.perRegionCap || cfg.perRegionCap || 5);\nconst maxSourceAgeDays = Number(first.maxSourceAgeDays || cfg.maxSourceAgeDays || 180);\nconst prefilter = first.prefilter !== false;\nconst nowMs = Date.now();\nconst maxAgeMs = maxSourceAgeDays * 864e5;\n\nconst KEYWORDS = /festwirt|zeltverleih|ausschreibung|bewerbung|jubil|schuetzen|schützen|volksfest|dult|kirchweih|kirta|trachten|feuerwehrfest|musikfest|gastronom|bewirtung|verpachtung|gründungsfest|festausschuss|abgesprungen/i;\nconst NEGATIVE = /impressum|datenschutz|stellenanzeige|shop|ticketverkauf|login|warenkorb/i;\nconst norm = (u) => String(u || '').trim().toLowerCase().replace(/[?#].*$/, '').replace(/\\/+$/, '');\n\nconst seen = new Set();\nconst uniq = [];\nlet skippedPrefilter = 0, skippedShort = 0, skippedDup = 0, skippedKnown = 0, skippedOld = 0;\n\nfor (const item of inputs) {\n  const j = item.json;\n  const key = norm(j.url);\n  if (!key) continue;\n  if (knownUrls.has(key)) { skippedKnown++; continue; }\n  if (seen.has(key)) { skippedDup++; continue; }\n  const text = String(j.text || j.snippet || '');\n  if (text.length < 120) { skippedShort++; continue; }\n  if (j.publishedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(j.publishedDate)) {\n    const pd = new Date(j.publishedDate + 'T00:00:00Z');\n    if (!isNaN(pd.getTime()) && (nowMs - pd.getTime()) > maxAgeMs) { skippedOld++; continue; }\n  }\n  if (prefilter) {\n    const probe = (j.title || '') + ' ' + (j.snippet || '');\n    if (!KEYWORDS.test(probe)) { skippedPrefilter++; continue; }\n    if (NEGATIVE.test(probe) && !KEYWORDS.test(j.title || '')) { skippedPrefilter++; continue; }\n  }\n  seen.add(key);\n  uniq.push(Object.assign({}, j, { sourceUrlNormalized: key }));\n}\n\n// Neueste Quellen mit hohem Tavily-Score priorisieren\nuniq.sort((a, b) => {\n  const aFresh = a.publishedDate ? 0.15 : 0;\n  const bFresh = b.publishedDate ? 0.15 : 0;\n  return ((b.tavilyScore || 0) + bFresh) - ((a.tavilyScore || 0) + aFresh);\n});\n\nconst perRegion = {};\nconst picked = [];\nfor (const j of uniq) {\n  const r = j.region || '?';\n  perRegion[r] = (perRegion[r] || 0) + 1;\n  if (perRegion[r] <= perRegionCap) picked.push(j);\n  if (picked.length >= maxCandidates) break;\n}\nconst skippedQuota = uniq.length - picked.length;\nif (!picked.length) {\n  return [{ json: { _empty: true, skippedKnown, skippedOld, skippedPrefilter, skippedShort, skippedDup, skippedQuota } }];\n}\nreturn picked.map(j => ({\n  json: {\n    url: j.url,\n    sourceUrlNormalized: j.sourceUrlNormalized,\n    title: j.title,\n    snippet: String(j.snippet || '').slice(0, 700),\n    text: String(j.text || '').slice(0, 4000),\n    publishedDate: j.publishedDate || null,\n    region: j.region,\n    runId: j.runId,\n    todayIso: j.todayIso,\n    minScore: j.minScore,\n    maxVerify: j.maxVerify,\n    maxSourceAgeDays: j.maxSourceAgeDays,\n    nimModel: j.nimModel,\n    nimFallback: j.nimFallback,\n    tavilyScore: j.tavilyScore,\n    useMockTavily: j.useMockTavily === true,\n    skippedKnown,\n    skippedOld,\n    skippedPrefilter,\n    skippedShort,\n    skippedDup,\n    skippedQuota,\n  },\n}));"
+      },
+      "id": "09a9c1a3-7680-41fa-ad53-291b1d0962a1",
+      "name": "Kandidaten vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        208
+      ],
+      "notes": "Filtert bekannte/geloeschte URLs & zu alte publishedDate VOR dem LLM."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1003-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1003",
+      "name": "IF Kandidaten vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $json.nimModel,\n  temperature: 0,\n  max_tokens: 2048,\n  stream: false,\n  response_format: { type: 'json_object' },\n  messages: [\n    {\n      role: 'system',\n      content: 'HEUTE ist ' + ($json.todayIso || new Date().toISOString().slice(0, 10)) + '. Extrahiere Event-Daten fuer einen bayerischen Festwirt aus dem Webseiten-Text. Antworte NUR mit JSON, kein Markdown.\\n\\nStrenge Aktualitaets- & Faktenregeln:\\n- Nur Fakten aus dem Text. Nichts erfinden, nichts schaetzen.\\n- Vergleiche ALLE Daten strikt mit HEUTE (' + ($json.todayIso || new Date().toISOString().slice(0, 10)) + ').\\n- isEventPage: false bei Rueckblick, bereits vergangenem Fest, Chronik ohne Zukunfts-Fest, Zeltverleih, Bandkalender, Impressum, Streitbericht, oder Meldung \"Festwirt gefunden/bleibt/gewonnen\".\\n- sourceDate: Veroeffentlichungs- oder Artikeldatum der Quelle im Format YYYY-MM-DD (wenn im Text erkennbar, sonst null).\\n- applicationDeadline: Bewerbungs-, Einreichungs- oder Einschreibefrist fuer den Festwirt im Format YYYY-MM-DD (wenn genannt, sonst null).\\n- eventDate: konkretes Startdatum des Festes mit Tag, Monat UND Jahr (YYYY-MM-DD), sonst null.\\n- eventYear: Jahr des Festes (4-stellig), wenn explizit genannt oder eindeutig ableitbar, sonst null.\\n- foundingYear: explizites Gruendungsjahr des Vereins, sonst null.\\n- jubileeYears: nur bei ausdruecklich genanntem Jubilaeum (z.B. 100, 125, 150), sonst null.\\n- festwirtStatus: open = Festwirt gesucht / Ausschreibung / Bewerbung moeglich. taken = Festwirt bereits vergeben/genannt. closed = Eigenbewirtung / Vergabe abgeschlossen. unknown = unklar/noch nichts vergeben.\\n- regionFit: core = Ort liegt in der Zielregion; adjacent = direkt angrenzender Landkreis; far = weiter entfernt oder unklar.\\n- incumbentFestwirt / brauereiPartner: nur wenn namentlich genannt, sonst null.\\n- planningSignal: festausschuss | termin | presse | none.\\n- recurring: true bei jaehrlichem Volksfest/Kirchweih/Kirta.\\n- eventType: volksfest | schuetzen | trachten | feuerwehr | musik | kirchweih | other.\\n- emergency: true nur bei Notfall / Wirt abgesprungen / kurzfristig Ersatz gesucht.\\n\\nSchema:\\n' + JSON.stringify({ isEventPage: true, title: null, organizer: null, location: null, regionFit: 'far', sourceDate: null, applicationDeadline: null, eventDate: null, eventYear: null, foundingYear: null, jubileeYears: null, festwirtStatus: 'unknown', incumbentFestwirt: null, brauereiPartner: null, planningSignal: 'none', recurring: false, eventType: 'other', contactName: null, contactRole: null, contactEmail: null, contactPhone: null, emergency: false })\n    },\n    {\n      role: 'user',\n      content: 'HEUTE: ' + ($json.todayIso || '') + '\\nZielregion: ' + ($json.region || '') + '\\nURL: ' + ($json.url || '') + '\\nQuelle-Datum (Suchindex): ' + ($json.publishedDate || 'unbekannt') + '\\nTitel: ' + ($json.title || '') + '\\n\\nText:\\n' + ($json.text || $json.snippet || '')\n    }\n  ]\n}) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "id": "6809c82d-5146-4ee0-a97b-0eb45c18d05f",
+      "name": "LLM extrahieren",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        208
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wzRmewfqz8NbOVsy",
+          "name": "nim"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Stufe 1: kennt HEUTE, extrahiert sourceDate & applicationDeadline."
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (!text || typeof text !== 'string') return null;\n  const t = text.replace(/```json|```/gi, '').trim();\n  try { return JSON.parse(t); } catch (e) {}\n  const s = t.indexOf('{'), e2 = t.lastIndexOf('}');\n  if (s !== -1 && e2 > s) { try { return JSON.parse(t.slice(s, e2 + 1)); } catch (e) {} }\n  return null;\n}\nfunction parseIso(raw) {\n  if (!raw) return null;\n  let ds = String(raw).trim();\n  const de = ds.match(/^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/);\n  if (de) ds = de[3] + '-' + de[2].padStart(2, '0') + '-' + de[1].padStart(2, '0');\n  if (!/^\\d{4}-\\d{2}-\\d{2}/.test(ds)) return null;\n  const dt = new Date(ds.slice(0, 10) + 'T00:00:00Z');\n  return isNaN(dt.getTime()) ? null : { iso: ds.slice(0, 10), dt };\n}\nconst hostOf = (u) => {\n  const m = String(u || '').toLowerCase().match(/^https?:\\/\\/([^\\/?#:]+)/);\n  return m ? m[1].split('@').pop().replace(/^www\\./, '') : '';\n};\n\nconst TYPES = ['volksfest','schuetzen','trachten','feuerwehr','musik','kirchweih'];\nconst JUBILEES = [50,60,70,75,80,90,100,110,120,125,130,140,150,160,175,200];\nconst FS = ['open','taken','unknown','closed'];\nconst RF = ['core','adjacent','far'];\nconst ET = ['volksfest','schuetzen','trachten','feuerwehr','musik','kirchweih','other'];\nconst PS = ['none','festausschuss','termin','presse'];\n\nconst today = new Date();\nconst todayIso = today.toISOString().slice(0, 10);\nconst todayStartUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());\nconst sources = $('Kandidaten vorbereiten').all().filter(i => i.json && !i.json._empty);\nconst inputs = $input.all();\n\nlet knownEventKeys = new Set();\ntry {\n  const knownRes = ($('Bekannte URLs laden (Fest)').first() || {}).json || {};\n  if (Array.isArray(knownRes.eventKeys)) knownEventKeys = new Set(knownRes.eventKeys.map(k => String(k).toLowerCase()));\n} catch (e) {}\n\nconst out = [];\nlet httpErrors=0, route404=0, model404=0, authErr=0, firstError='';\nlet truncated=0, reasoningOnly=0, noJson=0, notEvent=0, lowScore=0, takenSkip=0, closedSkip=0, farSkip=0, lineageErrors=0;\nlet pastEventSkip=0, expiredDeadlineSkip=0, oldSourceSkip=0, noDateSkip=0, knownEventSkip=0;\nlet maxVerify = 6;\n\nfor (const item of inputs) {\n  const pi = item.pairedItem;\n  const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n  const src = typeof idx === 'number' ? (sources[idx] && sources[idx].json) : null;\n  if (!src || !src.url) { lineageErrors++; continue; }\n  maxVerify = Number(src.maxVerify || 6);\n  if (item.json.error) {\n    const em = String(item.json.error.message || '');\n    if (/page not found/i.test(em)) route404++;\n    else if (/not found for account/i.test(em)) model404++;\n    else if (/401|403|unauthorized/i.test(em)) authErr++;\n    httpErrors++;\n    if (!firstError) firstError = em.slice(0, 200);\n    continue;\n  }\n  const choice = (item.json.choices && item.json.choices[0]) || {};\n  const msg = choice.message || {};\n  let content = msg.content;\n  if (Array.isArray(content)) content = content.map(c => (c && c.text) || '').join('');\n  if (!content) {\n    if (choice.finish_reason === 'length') truncated++;\n    else if (msg.reasoning_content) reasoningOnly++;\n    else noJson++;\n    continue;\n  }\n  const d = extractJson(content);\n  if (!d) { noJson++; continue; }\n  if (d.isEventPage === false) { notEvent++; continue; }\n\n  let fs = String(d.festwirtStatus || 'unknown').toLowerCase();\n  if (FS.indexOf(fs) === -1) fs = 'unknown';\n  const emergency = d.emergency === true;\n  if (emergency && (fs === 'taken' || fs === 'unknown')) fs = 'open';\n  if (fs === 'taken') { takenSkip++; continue; }\n  if (fs === 'closed') { closedSkip++; continue; }\n\n  let rf = String(d.regionFit || 'far').toLowerCase();\n  if (RF.indexOf(rf) === -1) rf = 'far';\n  if (rf === 'far') { farSkip++; continue; }\n\n  // HARTER FRIST-CHECK gegen heute\n  const dlParsed = parseIso(d.applicationDeadline);\n  const applicationDeadline = dlParsed ? dlParsed.iso : null;\n  if (dlParsed && dlParsed.dt.getTime() < todayStartUtc) {\n    expiredDeadlineSkip++;\n    continue;\n  }\n\n  // HARTER QUELLEN-ALTER-CHECK gegen heute\n  const srcParsed = parseIso(d.sourceDate) || parseIso(src.publishedDate);\n  const sourceDate = srcParsed ? srcParsed.iso : null;\n  const maxAgeDays = Number(src.maxSourceAgeDays || 180);\n  if (srcParsed && (today.getTime() - srcParsed.dt.getTime()) > maxAgeDays * 864e5) {\n    oldSourceSkip++;\n    continue;\n  }\n\n  // HARTER EVENT-DATUM-CHECK gegen heute\n  const evParsed = parseIso(d.eventDate);\n  let eventDate = evParsed ? evParsed.iso : null;\n  let months = null, dateAssumed = false;\n  const eyRaw = Number(d.eventYear);\n  const eventYear = (Number.isInteger(eyRaw) && eyRaw >= 2000 && eyRaw <= today.getUTCFullYear() + 5)\n    ? eyRaw\n    : (evParsed ? evParsed.dt.getUTCFullYear() : null);\n\n  if (evParsed) {\n    if (evParsed.dt.getTime() < todayStartUtc - 14 * 864e5) { pastEventSkip++; continue; }\n    months = (evParsed.dt.getTime() - today.getTime()) / (864e5 * 30.44);\n  } else if (eventYear) {\n    if (eventYear < today.getUTCFullYear()) { pastEventSkip++; continue; }\n    months = (Date.UTC(eventYear, 5, 1) - today.getTime()) / (864e5 * 30.44);\n    dateAssumed = true;\n    if (months < 0) { pastEventSkip++; continue; }\n  } else if (!applicationDeadline && !emergency) {\n    // Kein Eventdatum, kein Jahr, keine Frist -> Evergreen/Archivseite verwerfen\n    noDateSkip++;\n    continue;\n  }\n\n  let et = String(d.eventType || 'other').toLowerCase();\n  if (ET.indexOf(et) === -1) et = 'other';\n  let ps = String(d.planningSignal || 'none').toLowerCase();\n  if (PS.indexOf(ps) === -1) ps = 'none';\n  const recurring = d.recurring === true;\n  const fy = Number(d.foundingYear);\n  const foundingYear = (Number.isInteger(fy) && fy >= 1800 && fy <= today.getUTCFullYear()) ? fy : null;\n  const jy = Number(d.jubileeYears);\n\n  let score = 0; const reasons = [];\n  if (JUBILEES.indexOf(jy) !== -1) { score += 40; reasons.push(jy + ' Jahre Jubilaeum'); }\n  if (fs === 'open') { score += 35; reasons.push('Festwirt gesucht'); }\n  else { score += 15; reasons.push('Festwirt unklar'); }\n  if (rf === 'core') { score += 20; reasons.push('Kernregion'); }\n  else if (rf === 'adjacent') { score += 10; reasons.push('Nachbarregion'); }\n  if (applicationDeadline) { score += 10; reasons.push('Frist ' + applicationDeadline); }\n\n  const leadType = fs === 'open' ? 'open' : 'signal';\n  if (months !== null) {\n    if (leadType === 'signal' && months >= 12 && months <= 42) { score += 15; reasons.push('Connect-Fenster ' + Math.round(months) + ' Monate'); }\n    else {\n      if (months >= 6 && months <= 24) { score += 15; reasons.push('in ' + Math.round(months) + ' Monaten'); }\n      else if (months < 6 && !emergency) { score -= 15; reasons.push('kurzfristig'); }\n      else if (months > 42) { score -= 15; reasons.push('weit entfernt'); }\n    }\n  }\n  if (TYPES.indexOf(et) !== -1) score += 10;\n  if (ps !== 'none') { score += 15; reasons.push('Signal: ' + ps); }\n  if (emergency) { score += 30; reasons.push('NOTFALL'); }\n  if (d.incumbentFestwirt || d.brauereiPartner) reasons.push('Incumbent: ' + (d.incumbentFestwirt || d.brauereiPartner));\n  score = Math.max(0, Math.min(100, score));\n\n  const minScore = Number(src.minScore ?? 60);\n  if (!emergency && score < minScore) { lowScore++; continue; }\n\n  const domain = hostOf(src.url);\n  const org = String(d.organizer || domain).toLowerCase().replace(/\\s+/g, ' ').trim();\n  const eventKey = org + '|' + (eventDate || eventYear || '') + '|' + (Number.isFinite(jy) ? jy : '');\n  if (knownEventKeys.has(eventKey.toLowerCase())) { knownEventSkip++; continue; }\n\n  const qSubject = String(d.organizer || d.title || domain).replace(/[\"']/g, '').trim().slice(0, 70);\n  const qLoc = String(d.location || src.region || '').replace(/[\"']/g, '').trim();\n  const verifyQuery = '\"' + qSubject + '\" ' + qLoc + ' Festwirt OR Ausschreibung OR Vergabe OR Bewerbung ' + (eventYear || (today.getUTCFullYear() + 1));\n\n  out.push({\n    json: {\n      title: d.title || src.title || null,\n      organizer: d.organizer || null,\n      location: d.location || null,\n      region: src.region || null,\n      eventDate,\n      eventYear,\n      sourceDate,\n      applicationDeadline,\n      dateAssumed,\n      monthsAhead: months === null ? null : Math.round(months),\n      jubileeYears: Number.isFinite(jy) ? jy : null,\n      foundingYear,\n      festwirtStatus: fs,\n      leadType,\n      eventType: et,\n      incumbentFestwirt: d.incumbentFestwirt || null,\n      brauereiPartner: d.brauereiPartner || null,\n      planningSignal: ps,\n      recurring,\n      contactName: d.contactName || null,\n      contactRole: d.contactRole || null,\n      contactEmail: d.contactEmail || null,\n      contactPhone: d.contactPhone || null,\n      emergency,\n      recheckAt: null,\n      eventKey,\n      sourceUrl: src.url,\n      sourceUrlNormalized: src.sourceUrlNormalized || null,\n      nimModel: src.nimModel || null,\n      score,\n      scoreReason: reasons.join(', ').slice(0, 200),\n      runId: src.runId || '',\n      todayIso,\n      useMockTavily: src.useMockTavily === true,\n      verifyQuery,\n      originalSnippet: src.snippet || '',\n      status: 'new',\n      discoveredAt: new Date().toISOString(),\n    },\n  });\n}\n\nconst byKey = new Map();\nfor (const o of out) {\n  const ex = byKey.get(o.json.eventKey);\n  if (!ex || o.json.score > ex.json.score) byKey.set(o.json.eventKey, o);\n}\nconst finalOut = Array.from(byKey.values())\n  .sort((a, b) => (b.json.emergency ? 1 : 0) - (a.json.emergency ? 1 : 0) || b.json.score - a.json.score)\n  .slice(0, maxVerify);\n\nif (finalOut.length === 0 && inputs.length > 0) {\n  if (lineageErrors === inputs.length) throw new Error('Lineage verloren: ' + lineageErrors + '/' + inputs.length);\n  if (authErr > 0) throw new Error('Auth-Fehler (' + authErr + ') - Credential nim pruefen: ' + firstError);\n  if (route404 >= inputs.length * 0.8) throw new Error('Route 404 bei ' + route404 + '/' + inputs.length);\n  if (model404 >= inputs.length * 0.8) throw new Error('Modell 404 bei ' + model404 + '/' + inputs.length);\n  if (truncated + reasoningOnly >= inputs.length * 0.5) throw new Error('Nur Reasoning statt JSON (' + truncated + ' truncated, ' + reasoningOnly + ' reasoning-only).');\n  if (httpErrors >= inputs.length * 0.8) throw new Error('LLM-Calls fehlgeschlagen (' + httpErrors + '/' + inputs.length + '): ' + firstError);\n}\n\nconst stage1Diag = { notEvent, takenSkip, closedSkip, farSkip, expiredDeadlineSkip, pastEventSkip, oldSourceSkip, noDateSkip, knownEventSkip, lowScore };\nif (!finalOut.length) {\n  return [{ json: { _empty: true, stage1Diag } }];\n}\nfinalOut[0].json.stage1Diag = stage1Diag;\nreturn finalOut;"
+      },
+      "id": "b37b4f28-e810-4af4-9bac-45632bb95811",
+      "name": "Bewerten + Filtern (Stufe 1)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        208
+      ],
+      "notes": "Harte Datums- & Fristfilter gegen HEUTE, waehlt Top maxVerify fuer Stufe-2 Nachrecherche."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1004-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1004",
+      "name": "IF Verify-Kandidaten vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1005-c1",
+              "leftValue": "={{ $json.useMockTavily }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1005",
+      "name": "IF Mock oder Tavily (Verify)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $json.verifyQuery || '';\nfunction plusDays(days) { const d = new Date(); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }\nfunction de(iso) { const p = iso.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; }\nreturn [{\n  json: {\n    query: q,\n    results: [\n      {\n        title: 'Bestätigung: ' + ($json.title || 'Ausschreibung'),\n        url: $json.sourceUrl || 'https://example.de/bestaetigung',\n        published_date: plusDays(-3),\n        content: 'Aktuelle Meldung vom ' + de(plusDays(-3)) + ': Ausschreibung weiterhin offen, noch kein Festwirt vergeben.' + ($json.applicationDeadline ? (' Bewerbungsfrist endet am ' + de($json.applicationDeadline) + '.') : ''),\n        raw_content: 'Stand ' + de(plusDays(-3)) + ': Der Festausschuss bestätigt, dass noch Bewerbungen von Festwirten entgegengenommen werden. ' + ($json.originalSnippet || ''),\n        score: 0.92,\n      },\n    ],\n    _mock: true,\n  },\n}];"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1006",
+      "name": "Mock Verify-Recherche",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.verifyQuery, max_results: 4, search_depth: 'basic', time_range: 'year', include_answer: false, include_raw_content: true, country: 'germany', language: 'de', exclude_domains: ['facebook.com','instagram.com','tiktok.com','youtube.com'] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1007",
+      "name": "Tavily Verify-Recherche",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        368
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SBz8kb0foVW3etPx",
+          "name": "Taviliy 2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Stufe 2: prueft fuer die Top-Kandidaten, ob Frist noch offen oder Festwirt bereits vergeben."
+    },
+    {
+      "parameters": {
+        "jsCode": "const cands = $('Bewerten + Filtern (Stufe 1)').all().filter(i => i.json && !i.json._empty);\nconst byQuery = new Map();\nfor (const c of cands) { if (c.json && c.json.verifyQuery) byQuery.set(c.json.verifyQuery, c.json); }\n\nconst out = [];\nfor (const item of $input.all()) {\n  let src = null;\n  const eq = item.json.query;\n  if (eq && byQuery.has(eq)) src = byQuery.get(eq);\n  else {\n    const pi = item.pairedItem;\n    const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n    src = typeof idx === 'number' ? (cands[idx] && cands[idx].json) : null;\n  }\n  if (!src || !src.sourceUrl) continue;\n  const hits = (item.json.results || []).slice(0, 4);\n  const researchText = hits.map((h, i) => {\n    const pub = h.published_date || h.publishedDate || 'unbekannt';\n    const body = String(h.raw_content || h.content || '').replace(/\\s+/g, ' ').trim().slice(0, 900);\n    return '[' + (i + 1) + '] Datum: ' + pub + ' | URL: ' + (h.url || '') + ' | Titel: ' + (h.title || '') + '\\n' + body;\n  }).join('\\n\\n');\n  out.push({\n    json: Object.assign({}, src, {\n      verifyResearchText: researchText.slice(0, 3800) || 'Keine weiteren Treffer in der Nachrecherche.',\n    }),\n  });\n}\nif (!out.length) return [{ json: { _empty: true } }];\nreturn out;"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1008",
+      "name": "Verify-Kontext bündeln",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $json.nimModel,\n  temperature: 0,\n  max_tokens: 1200,\n  stream: false,\n  response_format: { type: 'json_object' },\n  messages: [\n    {\n      role: 'system',\n      content: 'HEUTE ist ' + ($json.todayIso || new Date().toISOString().slice(0, 10)) + '. Du bist Fact-Checker fuer einen bayerischen Festwirt. Pruefe den Event-Kandidaten anhand der frischen Nachrecherche-Ergebnisse. Antworte NUR mit JSON.\\n\\nPruefregeln:\\n- verificationStatus:\\n  * \"expired\": Fest liegt vor HEUTE ODER Bewerbungs-/Einschreibefrist liegt vor HEUTE ODER Ausschreibung ist beendet.\\n  * \"already_awarded\": In den Nachrecherche-Ergebnissen wurde bereits ein Festwirt benannt/vergeben oder Eigenbewirtung beschlossen.\\n  * \"irrelevant\": Falsche Region, kein echtes Fest mit Festzelt/Bewirtung, oder reine Doppelung/Werbung.\\n  * \"verified\": Fest liegt eindeutig in der Zukunft (nach HEUTE), Frist ist offen (oder noch nicht ausgeschrieben bei Fruehsignal) und es gibt KEINEN Hinweis auf erfolgte Vergabe.\\n- applicationDeadline: bestaetigte oder neu gefundene Bewerbungsfrist (YYYY-MM-DD), sonst null.\\n- eventDate: bestaetigtes oder praezisiertes Startdatum (YYYY-MM-DD), sonst null.\\n- festwirtStatus: open | unknown | taken | closed.\\n- Ergaenze fehlende Kontaktdaten (contactName, contactRole, contactEmail, contactPhone) oder incumbentFestwirt/brauereiPartner falls in der Nachrecherche gefunden.\\n- verificationSummary: genau 1 kurzer deutscher Satz mit dem konkreten Pruefergebnis (z.B. Frist, Quelle, Vergabestatus).\\n\\nSchema:\\n' + JSON.stringify({ verificationStatus: 'irrelevant', applicationDeadline: null, eventDate: null, festwirtStatus: 'unknown', incumbentFestwirt: null, brauereiPartner: null, contactName: null, contactRole: null, contactEmail: null, contactPhone: null, verificationSummary: '' })\n    },\n    {\n      role: 'user',\n      content: 'HEUTE: ' + ($json.todayIso || '') + '\\n\\nKANDIDAT AUS STUFE 1:\\nTitel: ' + ($json.title || '') + '\\nVeranstalter: ' + ($json.organizer || '') + '\\nOrt/Region: ' + ($json.location || '') + ' (' + ($json.region || '') + ')\\nFest-Datum/Jahr: ' + ($json.eventDate || $json.eventYear || 'unbekannt') + '\\nBisherige Frist: ' + ($json.applicationDeadline || 'unbekannt') + '\\nStatus Stufe 1: ' + ($json.festwirtStatus || 'unknown') + '\\nOriginal-URL: ' + ($json.sourceUrl || '') + '\\nAuszug Stufe 1: ' + ($json.originalSnippet || '') + '\\n\\nFRISCHE NACHRECHERCHE:\\n' + ($json.verifyResearchText || '')\n    }\n  ]\n}) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1009",
+      "name": "LLM Verifizieren (Stufe 2)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        208
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wzRmewfqz8NbOVsy",
+          "name": "nim"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Fact-Check anhand frischer Nachrecherche + HEUTE. Nur verified kommt weiter."
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (!text || typeof text !== 'string') return null;\n  const t = text.replace(/```json|```/gi, '').trim();\n  try { return JSON.parse(t); } catch (e) {}\n  const s = t.indexOf('{'), e2 = t.lastIndexOf('}');\n  if (s !== -1 && e2 > s) { try { return JSON.parse(t.slice(s, e2 + 1)); } catch (e) {} }\n  return null;\n}\nfunction parseIso(raw) {\n  if (!raw) return null;\n  let ds = String(raw).trim();\n  const de = ds.match(/^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/);\n  if (de) ds = de[3] + '-' + de[2].padStart(2, '0') + '-' + de[1].padStart(2, '0');\n  if (!/^\\d{4}-\\d{2}-\\d{2}/.test(ds)) return null;\n  const dt = new Date(ds.slice(0, 10) + 'T00:00:00Z');\n  return isNaN(dt.getTime()) ? null : { iso: ds.slice(0, 10), dt };\n}\n\nconst today = new Date();\nconst todayStartUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());\nconst sources = $('Verify-Kontext bündeln').all().filter(i => i.json && !i.json._empty);\nconst out = [];\nlet rejectedExpired = 0, rejectedAwarded = 0, rejectedIrrelevant = 0, verifyErrors = 0;\n\nfor (const item of $input.all()) {\n  const pi = item.pairedItem;\n  const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n  const src = typeof idx === 'number' ? (sources[idx] && sources[idx].json) : null;\n  if (!src || !src.sourceUrl) continue;\n  if (item.json.error) { verifyErrors++; continue; }\n\n  const choice = (item.json.choices && item.json.choices[0]) || {};\n  let content = (choice.message || {}).content;\n  if (Array.isArray(content)) content = content.map(c => (c && c.text) || '').join('');\n  const v = extractJson(content);\n  if (!v) { verifyErrors++; continue; }\n\n  const vs = String(v.verificationStatus || 'irrelevant').toLowerCase();\n  if (vs === 'expired') { rejectedExpired++; continue; }\n  if (vs === 'already_awarded') { rejectedAwarded++; continue; }\n  if (vs !== 'verified') { rejectedIrrelevant++; continue; }\n\n  const dlParsed = parseIso(v.applicationDeadline) || parseIso(src.applicationDeadline);\n  if (dlParsed && dlParsed.dt.getTime() < todayStartUtc) { rejectedExpired++; continue; }\n\n  const evParsed = parseIso(v.eventDate) || parseIso(src.eventDate);\n  if (evParsed && evParsed.dt.getTime() < todayStartUtc - 14 * 864e5) { rejectedExpired++; continue; }\n\n  const fs = (v.festwirtStatus && ['open','unknown','taken','closed'].includes(String(v.festwirtStatus).toLowerCase()))\n    ? String(v.festwirtStatus).toLowerCase()\n    : src.festwirtStatus;\n  if (fs === 'taken' || fs === 'closed') { rejectedAwarded++; continue; }\n\n  const finalEventDate = evParsed ? evParsed.iso : src.eventDate;\n  let monthsAhead = src.monthsAhead;\n  if (evParsed) monthsAhead = Math.round((evParsed.dt.getTime() - today.getTime()) / (864e5 * 30.44));\n\n  out.push({\n    json: {\n      title: src.title,\n      organizer: src.organizer,\n      location: src.location,\n      region: src.region,\n      eventDate: finalEventDate,\n      eventYear: src.eventYear,\n      sourceDate: src.sourceDate,\n      applicationDeadline: dlParsed ? dlParsed.iso : null,\n      verificationStatus: 'verified',\n      verificationSummary: String(v.verificationSummary || 'In Nachrecherche als aktuell und offen bestätigt.').slice(0, 300),\n      verifiedAt: today.toISOString(),\n      dateAssumed: evParsed ? false : src.dateAssumed,\n      monthsAhead,\n      jubileeYears: src.jubileeYears,\n      foundingYear: src.foundingYear,\n      festwirtStatus: fs,\n      leadType: fs === 'open' ? 'open' : 'signal',\n      eventType: src.eventType,\n      incumbentFestwirt: v.incumbentFestwirt || src.incumbentFestwirt || null,\n      brauereiPartner: v.brauereiPartner || src.brauereiPartner || null,\n      planningSignal: src.planningSignal,\n      recurring: src.recurring,\n      contactName: v.contactName || src.contactName || null,\n      contactRole: v.contactRole || src.contactRole || null,\n      contactEmail: v.contactEmail || src.contactEmail || null,\n      contactPhone: v.contactPhone || src.contactPhone || null,\n      emergency: src.emergency,\n      recheckAt: null,\n      eventKey: src.eventKey,\n      sourceUrl: src.sourceUrl,\n      sourceUrlNormalized: src.sourceUrlNormalized,\n      nimModel: src.nimModel,\n      score: src.score,\n      scoreReason: src.scoreReason,\n      runId: src.runId,\n      status: 'new',\n      discoveredAt: src.discoveredAt,\n    },\n  });\n}\n\nconst verifyDiag = { rejectedExpired, rejectedAwarded, rejectedIrrelevant, verifyErrors };\nif (!out.length) return [{ json: { _empty: true, verifyDiag } }];\nout[0].json.verifyDiag = verifyDiag;\nreturn out;"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1010",
+      "name": "Verifizierung auswerten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1011-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a1011",
+      "name": "IF Verifizierte vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2880,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://maurer-events.com/api/admin/fest-chancen/ingest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json).filter(j => j && j.sourceUrl)) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "bf42a586-9074-4193-a8b4-24d6fb66f168",
+      "name": "An Maurer Events senden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        208
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zsl2ZAGVK6BGG24I",
+          "name": "Mauerer Events API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config - Regionen + Schwelle').first().json;\nlet cand = [], stage1 = [], verified = [], ingest = {};\ntry { cand = $('Kandidaten vorbereiten').all().filter(i => i.json && !i.json._empty); } catch (e) {}\ntry { stage1 = $('Bewerten + Filtern (Stufe 1)').all().filter(i => i.json && !i.json._empty); } catch (e) {}\ntry { verified = $('Verifizierung auswerten').all().filter(i => i.json && !i.json._empty && i.json.sourceUrl); } catch (e) {}\ntry { ingest = ($('An Maurer Events senden').first() || {}).json || {}; } catch (e) {}\n\nif (verified.length > 0 && ingest.ok !== true) {\n  throw new Error('Ingest ohne ok:true -> ' + JSON.stringify(ingest).slice(0, 300));\n}\nconst mock = cfg.useMockTavily === true;\nconst byType = {};\nfor (const s of verified) byType[s.json.leadType] = (byType[s.json.leadType] || 0) + 1;\nconst scores = verified.map(i => Number(i.json.score) || 0);\nreturn [{\n  json: {\n    ok: true,\n    mode: 'fest',\n    todayIso: cfg.todayIso || new Date().toISOString().slice(0, 10),\n    dataSource: mock ? 'mock' : 'tavily',\n    runId: (mock ? 'mock-' : '') + String(cfg.runId || ''),\n    candidatesStage1: cand.length,\n    passedStage1: stage1.length,\n    verifiedStage2: verified.length,\n    byType,\n    received: ingest.received ?? 0,\n    inserted: ingest.inserted ?? 0,\n    updated: ingest.updated ?? 0,\n    skipped: ingest.skipped ?? 0,\n    stale: ingest.stale ?? 0,\n    topScore: scores.length ? Math.max.apply(null, scores) : null,\n    message: verified.length ? 'Verifizierte Fest-Chancen gesynct' : 'Keine neuen verifizierten Treffer (veraltete/bekannte wurden gefiltert)',\n    finishedAt: new Date().toISOString(),\n  },\n}];"
+      },
+      "id": "5251916d-8015-4f1b-9afc-e4b2512c2680",
+      "name": "Fertig - Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rc1",
+              "name": "landkreise",
+              "type": "array",
+              "value": [
+                "Ingolstadt",
+                "Kelheim",
+                "Regensburg",
+                "München"
+              ]
+            },
+            {
+              "id": "rc2",
+              "name": "horizonMonths",
+              "type": "number",
+              "value": 48
+            },
+            {
+              "id": "rc3",
+              "name": "connectMinMonths",
+              "type": "number",
+              "value": 18
+            },
+            {
+              "id": "rc4",
+              "name": "connectMaxMonths",
+              "type": "number",
+              "value": 42
+            },
+            {
+              "id": "rc5",
+              "name": "minLeadScore",
+              "type": "number",
+              "value": 55
+            },
+            {
+              "id": "rc6",
+              "name": "maxVereine",
+              "type": "number",
+              "value": 32
+            },
+            {
+              "id": "rc10",
+              "name": "maxEnrich",
+              "type": "number",
+              "value": 10
+            },
+            {
+              "id": "rc7",
+              "name": "nimModel",
+              "type": "string",
+              "value": "nvidia/nemotron-3.5-bolt-e4b"
+            },
+            {
+              "id": "rc8",
+              "name": "useMockTavily",
+              "type": "boolean",
+              "value": false
+            },
+            {
+              "id": "rc9",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "id": "rc11",
+              "name": "todayIso",
+              "type": "string",
+              "value": "={{ new Date().toISOString().slice(0, 10) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ae0adffd-aecf-47bf-b6bd-c6c4333df7ac",
+      "name": "Config - Radar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        1184
+      ],
+      "notes": "Horizont 48 Mon., Connect-Fenster 18-42 Mon. (~1,5-3,5 Jahre vor Jubilaeum). maxEnrich=10 fuer Besuchs-Anlass-Nachrecherche."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maurer-events.com/api/admin/fest-chancen/known",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2001",
+      "name": "Bekannte Domains laden (Radar)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        1184
+      ],
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zsl2ZAGVK6BGG24I",
+          "name": "Mauerer Events API Key"
+        }
+      },
+      "notes": "Ueberspringt geloeschte oder kuerzlich (<90d) verifizierte Vereins-Domains."
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Config - Radar').first().json;\nconst lk = c.landkreise || ['Ingolstadt', 'Kelheim', 'Regensburg', 'München'];\nconst now = new Date();\nconst todayIso = now.toISOString().slice(0, 10);\nconst yNow = now.getUTCFullYear();\nconst mNow = now.getUTCMonth() + 1;\n// Dynamischer 3-Jahres-Zielhorizont relativ zu HEUTE:\n// Ab Juli zielen wir auf y+2, y+3, y+4 (z.B. Nov 2026 -> 2028, 2029, 2030 = ~18-43 Monate Vorlauf!)\nconst t0 = mNow >= 7 ? yNow + 2 : yNow + 1;\nconst tA = t0 + 1; // ~3 Jahre voraus\nconst tB = t0 + 2; // ~3,5-4 Jahre voraus\nconst runId = (c.useMockTavily === true ? 'mock-' : '') + String(c.runId || '');\nconst base = {\n  runId,\n  todayIso,\n  targetYears: [t0, tA, tB],\n  horizonMonths: c.horizonMonths ?? 48,\n  connectMinMonths: c.connectMinMonths ?? 18,\n  connectMaxMonths: c.connectMaxMonths ?? 42,\n  minLeadScore: c.minLeadScore ?? 55,\n  maxVereine: c.maxVereine ?? 32,\n  maxEnrich: c.maxEnrich ?? 10,\n  nimModel: c.nimModel || 'nvidia/nemotron-3.5-bolt-e4b',\n  useMockTavily: c.useMockTavily === true,\n};\n\n// Dynamisch berechnete Gründungsjahre für 50/75/100/125/150-jährige Jubiläen in ~3 Jahren!\nconst queries = [\n  { type: 'gruendungsjahr', fn: (l) => `Freiwillige Feuerwehr ${l} (\"gegründet ${tA-150}\" OR \"gegründet ${tB-150}\" OR \"gegründet ${tA-125}\" OR \"gegründet ${tB-125}\" OR \"gegründet ${tA-100}\" OR \"gegründet ${tB-100}\")` },\n  { type: 'gruendungsjahr', fn: (l) => `Schützenverein ${l} (\"gegründet ${tA-125}\" OR \"gegründet ${tB-125}\" OR \"gegründet ${tA-100}\" OR \"gegründet ${tB-100}\" OR \"gegründet ${tA-75}\" OR \"gegründet ${tB-75}\")` },\n  { type: 'gruendungsjahr', fn: (l) => `(Trachtenverein OR Musikverein OR Blaskapelle) ${l} (\"gegründet ${tA-100}\" OR \"gegründet ${tB-100}\" OR \"gegründet ${tA-75}\" OR \"gegründet ${tB-75}\" OR \"gegründet ${tA-50}\" OR \"gegründet ${tB-50}\")` },\n  { type: 'gruendungsjahr', fn: (l) => `(Burschenverein OR Kriegerverein OR Sportverein) ${l} (\"gegründet ${tA-100}\" OR \"gegründet ${tB-100}\" OR \"gegründet ${tA-75}\" OR \"gegründet ${tB-75}\" OR \"gegründet ${tA-50}\" OR \"gegründet ${tB-50}\")` },\n  { type: 'signal', fn: (l) => `(Gründungsfest OR Fahnenweihe OR Gaufest) ${tA} OR ${tB} ${l}` },\n  { type: 'signal', fn: (l) => `Verein ${l} (\"100-jähriges\" OR \"125-jähriges\" OR \"150-jähriges\") ${t0} OR ${tA}` },\n];\n\nconst items = [];\nfor (const l of lk) {\n  for (const q of queries) {\n    items.push({ json: Object.assign({}, base, { query: q.fn(l), region: l, queryType: q.type }) });\n  }\n}\nreturn items;"
+      },
+      "id": "28d39c2f-85d8-463b-8d82-e4ff7e7d13d4",
+      "name": "Radar-Queries generieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        1184
+      ],
+      "notes": "Berechnet Gruendungsjahre fuer 50/75/100/125/150-Jahr-Jubilaeen in 2-4 Jahren dynamisch aus dem aktuellen Datum."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "91ae3b26-3785-4ab3-8c05-68b3b6f86485-c1",
+              "leftValue": "={{ $json.useMockTavily }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "91ae3b26-3785-4ab3-8c05-68b3b6f86485",
+      "name": "IF Mock oder Tavily1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $json.query || '';\nconst yNow = new Date().getUTCFullYear();\nconst y3 = yNow + 3; // exakt 3 Jahre voraus -> Connect-Fenster!\nconst y2 = yNow + 2;\nconst results = [\n  {\n    title: 'Freiwillige Feuerwehr Musterberg – Chronik',\n    url: 'https://ff-musterberg-beispiel.de/chronik',\n    content: 'Die Freiwillige Feuerwehr Musterberg wurde ' + (y3 - 150) + ' gegründet.',\n    raw_content: 'Freiwillige Feuerwehr Musterberg e.V. im Landkreis Kelheim, gegründet im Jahr ' + (y3 - 150) + '. Der Verein zählt rund 220 Mitglieder. Das 125-jährige Gründungsfest wurde vor 25 Jahren mit großem Festzelt gefeiert. 1. Vorstand Markus Beispiel, info@ff-musterberg-beispiel.de.',\n    score: 0.91,\n  },\n  {\n    title: 'Schützenverein Waldeck – Über uns',\n    url: 'https://sv-waldeck-beispiel.de/verein',\n    content: 'Schützenverein Waldeck in der Region Ingolstadt, gegründet ' + (y3 - 100) + '.',\n    raw_content: 'Schützenverein Waldeck e.V., gegründet ' + (y3 - 100) + ' in Waldeck bei Ingolstadt. Rund 180 Mitglieder pflegen Schießsport und Geselligkeit. Unser jährliches Gartenfest und der Schützenball sind feste Größen im Ort.',\n    score: 0.86,\n  },\n  {\n    title: 'Burschenverein Altmühltal – Vereinsgeschichte',\n    url: 'https://bv-altmuehltal-beispiel.de/chronik',\n    content: 'Gegründet ' + (y2 - 75) + ', jährliches Kirta-Festzelt.',\n    raw_content: 'Burschenverein Altmühltal e.V. im Landkreis Regensburg, gegründet ' + (y2 - 75) + '. Wir richten jedes Jahr die Kirta mit Festzelt aus. 260 Mitglieder. Kontakt: vorstand@bv-altmuehltal-beispiel.de.',\n    score: 0.82,\n  },\n];\nreturn [{ json: { query: q, results, response_time: 0, _mock: true } }];"
+      },
+      "id": "c73569f9-9240-4e08-84d8-32929e7a870e",
+      "name": "Mock Radar-Fixtures",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1024
+      ],
+      "notes": "Dynamische Mock-Vereine mit Gruendungsjahren exakt 2-3 Jahre vor Jubilaeum."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.query, max_results: 6, search_depth: 'basic', include_answer: false, include_raw_content: true, country: 'germany', language: 'de', exclude_domains: ['facebook.com','instagram.com','tiktok.com','youtube.com'] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 4,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "d8f54a81-b314-4be1-9b19-16c01220a336",
+      "name": "Tavily Search (Radar)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        1344
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SBz8kb0foVW3etPx",
+          "name": "Taviliy 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const queries = $('Radar-Queries generieren').all();\nconst byQuery = new Map();\nfor (const q of queries) { if (q.json && q.json.query) byQuery.set(q.json.query, q.json); }\n\n// Bereits verifizierte (<90d) oder gelöschte Radar-Domains aus Backend überspringen\nlet skipDomains = new Set();\ntry {\n  const knownRes = ($('Bekannte Domains laden (Radar)').first() || {}).json || {};\n  if (Array.isArray(knownRes.radarDomains)) skipDomains = new Set(knownRes.radarDomains.map(d => String(d).toLowerCase()));\n} catch (e) {}\n\nconst hostOf = (u) => {\n  const m = String(u || '').toLowerCase().match(/^https?:\\/\\/([^\\/?#:]+)/);\n  return m ? m[1].split('@').pop().replace(/^www\\./, '') : '';\n};\nconst hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(16); };\n\nconst seen = new Set();\nconst out = [];\nlet dup = 0, skippedKnownDomain = 0, lineageErrors = 0, noHost = 0, social = 0, file = 0, short = 0, maxVereine = 32;\n\nfor (const item of $input.all()) {\n  const src = byQuery.get(item.json.query);\n  if (!src) { lineageErrors++; continue; }\n  maxVereine = Number(src.maxVereine || 32);\n  for (const hit of (item.json.results || []).slice(0, 6)) {\n    if (!hit.url) continue;\n    const host = hostOf(hit.url);\n    if (!host) { noHost++; continue; }\n    if (/(facebook|instagram|tiktok|youtube)\\./.test(host)) { social++; continue; }\n    if (/\\.(jpg|jpeg|png|gif|webp|mp4|mp3)(\\?.*)?$/i.test(hit.url)) { file++; continue; }\n    if (skipDomains.has(host)) { skippedKnownDomain++; continue; }\n    if (seen.has(host)) { dup++; continue; }\n    const text = String(hit.raw_content || hit.content || '').replace(/\\s+/g, ' ').trim();\n    if (text.length < 120) { short++; continue; }\n    seen.add(host);\n    out.push({\n      json: {\n        domain: host,\n        url: hit.url,\n        title: hit.title || '',\n        text: text.slice(0, 4000),\n        contentHash: hash(text),\n        queryType: src.queryType,\n        region: src.region,\n        runId: src.runId,\n        todayIso: src.todayIso,\n        horizonMonths: src.horizonMonths,\n        connectMinMonths: src.connectMinMonths,\n        connectMaxMonths: src.connectMaxMonths,\n        minLeadScore: src.minLeadScore,\n        maxEnrich: src.maxEnrich,\n        nimModel: src.nimModel,\n        useMockTavily: src.useMockTavily === true,\n      },\n    });\n  }\n}\n\nconst result = out.slice(0, maxVereine);\nif (!result.length) return [{ json: { _empty: true, diag: { dup, skippedKnownDomain, noHost, social, file, short, lineageErrors } } }];\nresult[0].json.diag = { dup, skippedKnownDomain, noHost, social, file, short, lineageErrors };\nreturn result;"
+      },
+      "id": "5d30ed3f-f5e8-4af7-953d-cf2944308de1",
+      "name": "Radar-Treffer sammeln",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2002-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2002",
+      "name": "IF Radar-Treffer vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $json.nimModel,\n  temperature: 0,\n  max_tokens: 1500,\n  stream: false,\n  response_format: { type: 'json_object' },\n  messages: [\n    {\n      role: 'system',\n      content: 'HEUTE ist ' + ($json.todayIso || new Date().toISOString().slice(0, 10)) + '. Extrahiere Vereins-Stammdaten aus einem Webseiten-Text. Antworte NUR mit JSON, kein Markdown.\\n\\nRegeln:\\n- Nur Fakten aus dem Text. Nichts erfinden.\\n- vereinName: Name des konkreten Vereins. Bei reinen Sammel-/Verzeichnisseiten mit vielen verschiedenen Vereinen ohne Hauptverein: null liefern.\\n- foundingYear: explizites Gruendungsjahr (z.B. gegruendet 1904, seit 1879). Wenn Jubilaeumszahl UND Jubilaeumsjahr genannt sind: foundingYear = Jahr minus Zahl. Sonst null.\\n- vereinsTyp: schuetzen | feuerwehr | trachten | burschen | musik | gartenbau | sport | kirchweih | other\\n- regionFit: core = Ort liegt in der Zielregion; adjacent = direkt angrenzender Landkreis; far = weiter entfernt oder unklar.\\n- planningSignals: nur explizite Hinweise auf zukuenftige Jubilaeen (nach HEUTE), je {type, text}. type: festausschuss | termin | gaufest | presse.\\n- announcedEvents: nur ZUKUENFTIGE angekuendigte Feste (Jahr >= ' + new Date().getUTCFullYear() + ') als {year, jubileeYears}.\\n- incumbentFestwirt / brauereiPartner: nur wenn namentlich genannt, sonst null.\\n\\nSchema:\\n' + JSON.stringify({ vereinName: null, ort: null, vereinsTyp: 'other', regionFit: 'far', foundingYear: null, mitglieder: null, contactName: null, contactRole: null, contactEmail: null, contactPhone: null, incumbentFestwirt: null, brauereiPartner: null, planningSignals: [], announcedEvents: [] })\n    },\n    {\n      role: 'user',\n      content: 'HEUTE: ' + ($json.todayIso || '') + '\\nZielregion: ' + ($json.region || '') + '\\nURL: ' + ($json.url || '') + '\\nTitel: ' + ($json.title || '') + '\\n\\nText:\\n' + ($json.text || '')\n    }\n  ]\n}) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "id": "8d6697e5-eae1-438f-ad0a-1f095f39fe36",
+      "name": "LLM Vereins-Stammdaten",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        1184
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wzRmewfqz8NbOVsy",
+          "name": "nim"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (!text || typeof text !== 'string') return null;\n  const t = text.replace(/```json|```/gi, '').trim();\n  try { return JSON.parse(t); } catch (e) {}\n  const s = t.indexOf('{'), e2 = t.lastIndexOf('}');\n  if (s !== -1 && e2 > s) { try { return JSON.parse(t.slice(s, e2 + 1)); } catch (e) {} }\n  return null;\n}\n\nconst MS = [50,60,70,75,80,90,100,110,120,125,130,140,150,160,175,200];\nconst TP = { schuetzen: 20, feuerwehr: 20, trachten: 20, burschen: 20, musik: 15, kirchweih: 15, gartenbau: 8, sport: 8, other: 8 };\nconst PORTAL_DOMAINS = /(wikipedia|regiowiki|donaukurier|mittelbayerische|merkur|idowa|wochenblatt|br\\.de|bayern\\.de|nordbayern|sueddeutsche)\\./i;\n\nconst sources = $('Radar-Treffer sammeln').all().filter(i => i.json && !i.json._empty);\nconst today = new Date();\nconst todayIso = today.toISOString().slice(0, 10);\nconst yNow = today.getUTCFullYear();\nconst yNext = yNow + 1;\n\nlet deletedLeadKeys = new Set();\ntry {\n  const knownRes = ($('Bekannte Domains laden (Radar)').first() || {}).json || {};\n  if (Array.isArray(knownRes.radarDeletedLeadKeys)) deletedLeadKeys = new Set(knownRes.radarDeletedLeadKeys);\n} catch (e) {}\n\nconst out = [];\nlet httpErrors = 0, authErr = 0, noJson = 0, noEvent = 0, lineageErrors = 0, farSkip = 0, lowScore = 0, deletedSkip = 0, firstError = '';\nlet maxEnrich = 10;\n\nfor (const item of $input.all()) {\n  const pi = item.pairedItem;\n  const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n  const src = typeof idx === 'number' ? (sources[idx] && sources[idx].json) : null;\n  if (!src || !src.domain) { lineageErrors++; continue; }\n  maxEnrich = Number(src.maxEnrich || 10);\n  if (item.json.error) {\n    httpErrors++;\n    const em = String(item.json.error.message || '');\n    if (/401|403|unauthorized/i.test(em)) authErr++;\n    if (!firstError) firstError = em.slice(0, 200);\n    continue;\n  }\n  const choice = (item.json.choices && item.json.choices[0]) || {};\n  let content = (choice.message || {}).content;\n  if (Array.isArray(content)) content = content.map(c => (c && c.text) || '').join('');\n  const d = extractJson(content);\n  if (!d || !d.vereinName) { noJson++; continue; }\n\n  const rf = String(d.regionFit || 'far').toLowerCase();\n  if (rf !== 'core' && rf !== 'adjacent') { farSkip++; continue; }\n\n  const horizon = Number(src.horizonMonths || 48);\n  const cMin = Number(src.connectMinMonths || 18);\n  const cMax = Number(src.connectMaxMonths || 42);\n  const minScore = Number(src.minLeadScore || 55);\n\n  const events = [];\n  const fy = Number(d.foundingYear);\n  if (Number.isInteger(fy) && fy >= 1800 && fy <= yNow - 20) {\n    for (const m of MS) {\n      const y = fy + m;\n      const months = Math.round((Date.UTC(y, 5, 1) - today.getTime()) / (864e5 * 30.44));\n      if (months >= 3 && months <= horizon) events.push({ year: y, jubileeYears: m, months });\n    }\n  }\n  for (const a of (d.announcedEvents || [])) {\n    const y = Number(a && a.year);\n    if (!y) continue;\n    const months = Math.round((Date.UTC(y, 5, 1) - today.getTime()) / (864e5 * 30.44));\n    if (months >= 3 && months <= horizon && !events.some(e => e.year === y)) {\n      events.push({ year: y, jubileeYears: Number(a.jubileeYears) || null, months });\n    }\n  }\n  if (!events.length) { noEvent++; continue; }\n\n  const typ = String(d.vereinsTyp || 'other').toLowerCase();\n  const signals = (d.planningSignals || []).map(s => String((s && s.type) || '').toLowerCase()).filter(Boolean);\n  const mit = Number(d.mitglieder) || 0;\n\n  for (const ev of events) {\n    const leadKey = src.domain + ':' + ev.year + ':' + (ev.jubileeYears || 'x');\n    if (deletedLeadKeys.has(leadKey)) { deletedSkip++; continue; }\n\n    let score = 0; const reasons = [];\n    const j = ev.jubileeYears || 0;\n    score += j >= 150 ? 30 : (j === 100 || j === 125 ? 28 : (j === 75 ? 22 : (j ? 15 : 10)));\n    if (j) reasons.push(j + ' Jahre (' + ev.year + ')');\n    score += TP[typ] ?? 8; reasons.push('Typ ' + typ);\n    score += mit >= 300 ? 15 : (mit >= 150 ? 10 : 5);\n    score += rf === 'core' ? 15 : 10; reasons.push('Region ' + src.region);\n\n    if (ev.months >= cMin && ev.months <= cMax) { score += 20; reasons.push('3J-Connect-Fenster (' + ev.months + ' Mon.)'); }\n    else if (ev.months > cMax) { score += 10; reasons.push('noch ' + ev.months + ' Mon.'); }\n    else if (ev.months >= 6) { score += 5; reasons.push('kurzfristig ' + ev.months + ' Mon.'); }\n\n    let sp = 0;\n    if (signals.includes('festausschuss')) sp += 15;\n    if (signals.includes('gaufest')) sp += 15;\n    if (signals.includes('termin')) sp += 10;\n    if (signals.includes('presse')) sp += 5;\n    sp = Math.min(sp, 25);\n    if (sp) { score += sp; reasons.push('Signale: ' + signals.join('/')); }\n    if (d.contactName && (d.contactEmail || d.contactPhone)) { score += 10; reasons.push('Kontakt vorhanden'); }\n    else if (d.contactName) { score += 5; }\n    if (d.incumbentFestwirt || d.brauereiPartner) { score -= 15; reasons.push('Wirt/Bräu gebunden'); }\n    score = Math.max(0, Math.min(100, score));\n    if (score < minScore) { lowScore++; continue; }\n\n    const phase = ev.months < cMin ? (ev.months < 6 ? 'reaktiv' : 'angebot') : (ev.months <= cMax ? 'connecten' : 'beobachten');\n    const status = phase === 'connecten' ? 'connecten' : ((phase === 'reaktiv' || phase === 'angebot') ? 'jetzt_anbieten' : 'beobachten');\n    const nextAction = (status === 'connecten' ? 'Frühzeitig kennenlernen: ' : 'Jetzt anbieten: ')\n      + (d.contactName ? ((d.contactRole || 'Ansprechpartner') + ' ' + d.contactName) : 'Vorstand über Vereinsseite/Impressum klären')\n      + ((d.incumbentFestwirt || d.brauereiPartner) ? (' – Stammwirt/Bräu: ' + (d.incumbentFestwirt || d.brauereiPartner)) : ' – kein fester Wirt erkennbar.');\n\n    const cleanName = String(d.vereinName).replace(/[\"']/g, '').trim().slice(0, 60);\n    const cleanOrt = String(d.ort || src.region || '').replace(/[\"']/g, '').trim();\n    const isPortal = PORTAL_DOMAINS.test(src.domain);\n    const enrichQuery = isPortal\n      ? ('\"' + cleanName + '\" ' + cleanOrt + ' Termine OR Starkbierfest OR Gartenfest OR Kirta OR Vorstand ' + yNow + ' OR ' + yNext)\n      : ('site:' + src.domain + ' Termine OR Veranstaltungen OR Vorstand OR Impressum OR Festzelt OR Gartenfest OR Starkbierfest');\n\n    out.push({\n      json: {\n        leadKey,\n        vereinName: d.vereinName,\n        ort: d.ort || null,\n        region: src.region,\n        vereinsTyp: typ,\n        foundingYear: Number.isInteger(fy) ? fy : null,\n        mitglieder: mit || null,\n        eventYear: ev.year,\n        jubileeYears: ev.jubileeYears,\n        monthsAhead: ev.months,\n        dateAssumed: true,\n        phase,\n        status,\n        score,\n        scoreReason: reasons.join(', ').slice(0, 200),\n        planningSignals: signals,\n        incumbentFestwirt: d.incumbentFestwirt || null,\n        brauereiPartner: d.brauereiPartner || null,\n        contactName: d.contactName || null,\n        contactRole: d.contactRole || null,\n        contactEmail: d.contactEmail || null,\n        contactPhone: d.contactPhone || null,\n        nextAction,\n        sourceUrl: src.url,\n        domain: src.domain,\n        contentHash: src.contentHash,\n        queryType: src.queryType,\n        runId: src.runId,\n        todayIso,\n        nimModel: src.nimModel,\n        useMockTavily: src.useMockTavily === true,\n        enrichQuery,\n        discoveredAt: new Date().toISOString(),\n      },\n    });\n  }\n}\n\nif (!out.length && $input.all().length) {\n  if (lineageErrors === $input.all().length) throw new Error('Lineage verloren: ' + lineageErrors);\n  if (authErr) throw new Error('Auth-Fehler nim: ' + firstError);\n  if (httpErrors >= $input.all().length * 0.8) throw new Error('LLM-Calls fehlgeschlagen: ' + firstError);\n}\n\n// Top-Leads (Connect-Fenster priorisiert) für Stufe-2 Besuchs-Anlass-Recherche auswählen\nconst picked = out\n  .sort((a, b) => (b.json.status === 'connecten' ? 1 : 0) - (a.json.status === 'connecten' ? 1 : 0) || b.json.score - a.json.score)\n  .slice(0, maxEnrich);\n\nif (!picked.length) return [{ json: { _empty: true, radarDiag: { noJson, farSkip, noEvent, lowScore, deletedSkip } } }];\nreturn picked;"
+      },
+      "id": "87089c05-0848-4a50-be0c-82ae093446c3",
+      "name": "Jubiläen + Lead-Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        1184
+      ],
+      "notes": "Berechnet Jubilaeen deterministisch aus foundingYear (3-48 Mon.) und baut Stufe-2 Besuchs-Anlass-Queries."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2003-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2003",
+      "name": "IF Radar-Kandidaten vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2004-c1",
+              "leftValue": "={{ $json.useMockTavily }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2004",
+      "name": "IF Mock oder Tavily (Radar-Enrich)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $json.enrichQuery || '';\nfunction plusDays(days) { const d = new Date(); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }\nfunction de(iso) { const p = iso.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; }\nconst visitDate = plusDays(75);\nreturn [{\n  json: {\n    query: q,\n    results: [\n      {\n        title: ($json.vereinName || 'Verein') + ' – Termine & Vorstand',\n        url: 'https://' + ($json.domain || 'verein-beispiel.de') + '/termine',\n        content: 'Nächste Veranstaltung: Starkbierfest am ' + de(visitDate) + ' im Vereinsheim. 1. Vorstand Markus Beispiel, Tel. 09441 556677.',\n        raw_content: 'Termine: Am ' + de(visitDate) + ' laden wir herzlich zum traditionellen Starkbierfest ein. Vorstandschaft: 1. Vorstand Markus Beispiel, vorstand@' + ($json.domain || 'verein-beispiel.de') + ', Telefon 09441 556677. Rückblick: Beim letzten runden Jubiläum feierten wir 4 Tage im 1.200-Mann-Festzelt.',\n        score: 0.9,\n      },\n    ],\n    _mock: true,\n  },\n}];"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2005",
+      "name": "Mock Radar-Enrich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.enrichQuery, max_results: 4, search_depth: 'basic', include_answer: false, include_raw_content: true, country: 'germany', language: 'de', exclude_domains: ['facebook.com','instagram.com','tiktok.com','youtube.com'] }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 2000
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2006",
+      "name": "Tavily Radar-Enrich",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        1344
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SBz8kb0foVW3etPx",
+          "name": "Taviliy 2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Stufe 2: sucht nach naechster Veranstaltung (Starkbierfest, Gartenfest, Kirta), Vorstand & Zelt-Historie."
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $('Jubiläen + Lead-Score').all().filter(i => i.json && !i.json._empty);\nconst byQuery = new Map();\nfor (const l of leads) { if (l.json && l.json.enrichQuery) byQuery.set(l.json.enrichQuery, l.json); }\n\nconst out = [];\nfor (const item of $input.all()) {\n  let src = null;\n  const eq = item.json.query;\n  if (eq && byQuery.has(eq)) src = byQuery.get(eq);\n  else {\n    const pi = item.pairedItem;\n    const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n    src = typeof idx === 'number' ? (leads[idx] && leads[idx].json) : null;\n  }\n  if (!src || !src.leadKey) continue;\n  const hits = (item.json.results || []).slice(0, 4);\n  const enrichText = hits.map((h, i) => {\n    const body = String(h.raw_content || h.content || '').replace(/\\s+/g, ' ').trim().slice(0, 900);\n    return '[' + (i + 1) + '] URL: ' + (h.url || '') + ' | Titel: ' + (h.title || '') + '\\n' + body;\n  }).join('\\n\\n');\n  out.push({\n    json: Object.assign({}, src, {\n      enrichResearchText: enrichText.slice(0, 3800) || 'Keine Termine oder Impressumsdaten gefunden.',\n    }),\n  });\n}\nif (!out.length) return [{ json: { _empty: true } }];\nreturn out;"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2007",
+      "name": "Radar-Enrich bündeln",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $json.nimModel,\n  temperature: 0,\n  max_tokens: 1200,\n  stream: false,\n  response_format: { type: 'json_object' },\n  messages: [\n    {\n      role: 'system',\n      content: 'HEUTE ist ' + ($json.todayIso || new Date().toISOString().slice(0, 10)) + '. Ein bayerischer Festwirt moechte sich 2-3 Jahre VOR einem Vereinsjubilaeum persoenlich bei dem Verein vorstellen (z.B. bei einem Starkbierfest, Gartenfest, Kirta oder der Jahreshauptversammlung vorbeischauen). Extrahiere aus den Recherche-Treffern den naechsten Besuchs-Anlass und aktuelle Kontakte. Antworte NUR mit JSON.\\n\\nRegeln:\\n- Nur Fakten aus dem Text. Nichts erfinden.\\n- isRelevantClub: false nur wenn sich herausstellt, dass der Verein aufgeloest ist oder eindeutig nichts mit Vereinsfesten zu tun hat; sonst true.\\n- nextVisitEvent: Name der NAECHSTEN regulaeren Vereinsveranstaltung NACH HEUTE (z.B. \"Starkbierfest\", \"Gartenfest\", \"Kirta\", \"Sommerfest\", \"Schuetzenball\", \"Jahreshauptversammlung\"). Wenn nur vergangene Termine vor HEUTE stehen: null.\\n- nextVisitDate: konkretes Datum dieser Veranstaltung im Format YYYY-MM-DD (MUSS >= HEUTE sein, sonst null).\\n- nextVisitUrl: URL der Termin- oder Eventseite, sonst null.\\n- tentHistory: kurzer Hinweis, ob der Verein frueher schon Zeltfeste/Gruendungsfeste mit Festzelt gefeiert hat (max 1 Satz), sonst null.\\n- contactName / contactRole / contactEmail / contactPhone: aktueller 1. Vorstand, Kommandant oder Festleiter aus Impressum/Vorstandschaft.\\n- incumbentFestwirt / brauereiPartner: falls genannt, sonst null.\\n- verificationSummary: 1 kurzer deutscher Satz zum Ergebnis der Nachrecherche.\\n\\nSchema:\\n' + JSON.stringify({ isRelevantClub: true, nextVisitEvent: null, nextVisitDate: null, nextVisitUrl: null, tentHistory: null, contactName: null, contactRole: null, contactEmail: null, contactPhone: null, incumbentFestwirt: null, brauereiPartner: null, verificationSummary: '' })\n    },\n    {\n      role: 'user',\n      content: 'HEUTE: ' + ($json.todayIso || '') + '\\nVerein: ' + ($json.vereinName || '') + '\\nOrt/Region: ' + ($json.ort || '') + ' (' + ($json.region || '') + ')\\nGruendungsjahr: ' + ($json.foundingYear || 'unbekannt') + '\\nGeplantes Jubilaeum: ' + ($json.jubileeYears || '') + ' Jahre im Jahr ' + ($json.eventYear || '') + '\\nDomain: ' + ($json.domain || '') + '\\n\\nRECHERCHE-ERGEBNISSE (Termine, Vorstand, Historie):\\n' + ($json.enrichResearchText || '')\n    }\n  ]\n}) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2008",
+      "name": "LLM Besuchs-Anlass & Kontakt (Stufe 2)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        1184
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wzRmewfqz8NbOVsy",
+          "name": "nim"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (!text || typeof text !== 'string') return null;\n  const t = text.replace(/```json|```/gi, '').trim();\n  try { return JSON.parse(t); } catch (e) {}\n  const s = t.indexOf('{'), e2 = t.lastIndexOf('}');\n  if (s !== -1 && e2 > s) { try { return JSON.parse(t.slice(s, e2 + 1)); } catch (e) {} }\n  return null;\n}\nfunction parseIso(raw) {\n  if (!raw) return null;\n  let ds = String(raw).trim();\n  const de = ds.match(/^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/);\n  if (de) ds = de[3] + '-' + de[2].padStart(2, '0') + '-' + de[1].padStart(2, '0');\n  if (!/^\\d{4}-\\d{2}-\\d{2}/.test(ds)) return null;\n  const dt = new Date(ds.slice(0, 10) + 'T00:00:00Z');\n  return isNaN(dt.getTime()) ? null : { iso: ds.slice(0, 10), dt };\n}\n\nconst today = new Date();\nconst todayStartUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());\nconst sources = $('Radar-Enrich bündeln').all().filter(i => i.json && !i.json._empty);\nconst out = [];\n\nfor (const item of $input.all()) {\n  const pi = item.pairedItem;\n  const idx = Array.isArray(pi) ? (pi[0] && pi[0].item) : (pi && pi.item);\n  const src = typeof idx === 'number' ? (sources[idx] && sources[idx].json) : null;\n  if (!src || !src.leadKey) continue;\n\n  let e = null;\n  if (!item.json.error) {\n    const choice = (item.json.choices && item.json.choices[0]) || {};\n    let content = (choice.message || {}).content;\n    if (Array.isArray(content)) content = content.map(c => (c && c.text) || '').join('');\n    e = extractJson(content);\n  }\n\n  // Wenn die Nachrecherche zeigt, dass es kein relevanter Verein ist -> raus\n  if (e && e.isRelevantClub === false) continue;\n\n  const visitParsed = e ? parseIso(e.nextVisitDate) : null;\n  const nextVisitDate = (visitParsed && visitParsed.dt.getTime() >= todayStartUtc) ? visitParsed.iso : null;\n  const nextVisitEvent = (e && e.nextVisitEvent && (!visitParsed || visitParsed.dt.getTime() >= todayStartUtc))\n    ? String(e.nextVisitEvent).slice(0, 160)\n    : null;\n  const nextVisitUrl = (e && e.nextVisitUrl && /^https?:\\/\\//i.test(String(e.nextVisitUrl))) ? String(e.nextVisitUrl) : null;\n\n  const contactName = (e && e.contactName) || src.contactName || null;\n  const contactRole = (e && e.contactRole) || src.contactRole || null;\n  const contactEmail = (e && e.contactEmail) || src.contactEmail || null;\n  const contactPhone = (e && e.contactPhone) || src.contactPhone || null;\n  const incumbentFestwirt = (e && e.incumbentFestwirt) || src.incumbentFestwirt || null;\n  const brauereiPartner = (e && e.brauereiPartner) || src.brauereiPartner || null;\n  const tentHistory = (e && e.tentHistory) ? String(e.tentHistory).slice(0, 240) : null;\n  const verificationSummary = (e && e.verificationSummary) ? String(e.verificationSummary).slice(0, 300) : null;\n\n  let score = src.score;\n  if (nextVisitEvent && nextVisitDate) score = Math.min(100, score + 8);\n  if (tentHistory) score = Math.min(100, score + 5);\n\n  let nextAction = src.nextAction;\n  if (nextVisitEvent) {\n    nextAction = 'Bei „' + nextVisitEvent + '“' + (nextVisitDate ? (' am ' + nextVisitDate.split('-').reverse().join('.')) : '') + ' persönlich vorbeischauen'\n      + (contactName ? (' und ' + (contactRole ? contactRole + ' ' : '') + contactName + ' ansprechen') : ' und Vorstand kennenlernen')\n      + ' (Jubiläum ' + src.eventYear + ').';\n  }\n\n  out.push({\n    json: {\n      leadKey: src.leadKey,\n      vereinName: src.vereinName,\n      ort: src.ort,\n      region: src.region,\n      vereinsTyp: src.vereinsTyp,\n      foundingYear: src.foundingYear,\n      mitglieder: src.mitglieder,\n      eventYear: src.eventYear,\n      jubileeYears: src.jubileeYears,\n      monthsAhead: src.monthsAhead,\n      dateAssumed: src.dateAssumed,\n      phase: src.phase,\n      status: src.status,\n      score,\n      scoreReason: src.scoreReason,\n      planningSignals: src.planningSignals,\n      incumbentFestwirt,\n      brauereiPartner,\n      contactName,\n      contactRole,\n      contactEmail,\n      contactPhone,\n      nextAction,\n      nextVisitEvent,\n      nextVisitDate,\n      nextVisitUrl,\n      tentHistory,\n      verificationSummary,\n      verifiedAt: today.toISOString(),\n      sourceUrl: src.sourceUrl,\n      domain: src.domain,\n      contentHash: src.contentHash,\n      queryType: src.queryType,\n      runId: src.runId,\n      discoveredAt: src.discoveredAt,\n    },\n  });\n}\n\nif (!out.length) return [{ json: { _empty: true } }];\nreturn out;"
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2009",
+      "name": "Radar-Enrich auswerten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2010-c1",
+              "leftValue": "={{ $json._empty !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b9a7e40-8b77-4d7c-93a1-6c4f9b0a2010",
+      "name": "IF Radar-Leads vorhanden",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://maurer-events.com/api/admin/vereins-radar/ingest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json).filter(j => j && j.leadKey)) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "7679a492-3f78-4e2c-8756-ed0a76f78e9f",
+      "name": "An Maurer Events senden (Radar)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        1184
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zsl2ZAGVK6BGG24I",
+          "name": "Mauerer Events API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config - Radar').first().json;\nlet leads = [], ingest = {};\ntry { leads = $('Radar-Enrich auswerten').all().filter(i => i.json && !i.json._empty && i.json.leadKey); } catch (e) {}\ntry { ingest = ($('An Maurer Events senden (Radar)').first() || {}).json || {}; } catch (e) {}\nif (leads.length > 0 && ingest.ok !== true) {\n  throw new Error('Radar-Ingest ohne ok:true -> ' + JSON.stringify(ingest).slice(0, 300));\n}\nconst byStatus = {};\nlet withVisitEvent = 0;\nfor (const l of leads) {\n  byStatus[l.json.status] = (byStatus[l.json.status] || 0) + 1;\n  if (l.json.nextVisitEvent) withVisitEvent++;\n}\nreturn [{\n  json: {\n    ok: true,\n    mode: 'radar',\n    todayIso: cfg.todayIso || new Date().toISOString().slice(0, 10),\n    dataSource: cfg.useMockTavily === true ? 'mock' : 'tavily',\n    runId: (cfg.useMockTavily === true ? 'mock-' : '') + String(cfg.runId || ''),\n    leads: leads.length,\n    withVisitEvent,\n    byStatus,\n    received: ingest.received ?? 0,\n    inserted: ingest.inserted ?? 0,\n    updated: ingest.updated ?? 0,\n    skipped: ingest.skipped ?? 0,\n    stale: ingest.stale ?? 0,\n    topLeads: leads.slice().sort((a, b) => b.json.score - a.json.score).slice(0, 5).map(i => ({\n      verein: i.json.vereinName,\n      jahr: i.json.eventYear,\n      jubilaeum: i.json.jubileeYears,\n      nextVisit: i.json.nextVisitEvent ? (i.json.nextVisitEvent + (i.json.nextVisitDate ? ' (' + i.json.nextVisitDate + ')' : '')) : null,\n      score: i.json.score,\n      status: i.json.status,\n    })),\n    finishedAt: new Date().toISOString(),\n  },\n}];"
+      },
+      "id": "729e65a7-d083-4986-bfc6-c1b96bae1718",
+      "name": "Fertig - Radar Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        1184
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger (Admin Button)": {
+      "main": [
+        [
+          {
+            "node": "IF Webhook Modus (Radar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Webhook Modus (Radar)": {
+      "main": [
+        [
+          {
+            "node": "Config - Radar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Config - Regionen + Schwelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (Di + Fr 06:30)": {
+      "main": [
+        [
+          {
+            "node": "Config - Regionen + Schwelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config - Radar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (1. & 15. 05:00)": {
+      "main": [
+        [
+          {
+            "node": "Config - Radar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config - Regionen + Schwelle": {
+      "main": [
+        [
+          {
+            "node": "Bekannte URLs laden (Fest)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bekannte URLs laden (Fest)": {
+      "main": [
+        [
+          {
+            "node": "Queries generieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queries generieren": {
+      "main": [
+        [
+          {
+            "node": "IF Mock oder Tavily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Mock oder Tavily": {
+      "main": [
+        [
+          {
+            "node": "Mock Suchergebnisse",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Suchergebnisse": {
+      "main": [
+        [
+          {
+            "node": "Suchtreffer parsen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Suchtreffer parsen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suchtreffer parsen": {
+      "main": [
+        [
+          {
+            "node": "Kandidaten vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kandidaten vorbereiten": {
+      "main": [
+        [
+          {
+            "node": "IF Kandidaten vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Kandidaten vorhanden": {
+      "main": [
+        [
+          {
+            "node": "LLM extrahieren",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM extrahieren": {
+      "main": [
+        [
+          {
+            "node": "Bewerten + Filtern (Stufe 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bewerten + Filtern (Stufe 1)": {
+      "main": [
+        [
+          {
+            "node": "IF Verify-Kandidaten vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Verify-Kandidaten vorhanden": {
+      "main": [
+        [
+          {
+            "node": "IF Mock oder Tavily (Verify)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Mock oder Tavily (Verify)": {
+      "main": [
+        [
+          {
+            "node": "Mock Verify-Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily Verify-Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Verify-Recherche": {
+      "main": [
+        [
+          {
+            "node": "Verify-Kontext bündeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Verify-Recherche": {
+      "main": [
+        [
+          {
+            "node": "Verify-Kontext bündeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify-Kontext bündeln": {
+      "main": [
+        [
+          {
+            "node": "LLM Verifizieren (Stufe 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Verifizieren (Stufe 2)": {
+      "main": [
+        [
+          {
+            "node": "Verifizierung auswerten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verifizierung auswerten": {
+      "main": [
+        [
+          {
+            "node": "IF Verifizierte vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Verifizierte vorhanden": {
+      "main": [
+        [
+          {
+            "node": "An Maurer Events senden",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "An Maurer Events senden": {
+      "main": [
+        [
+          {
+            "node": "Fertig - Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config - Radar": {
+      "main": [
+        [
+          {
+            "node": "Bekannte Domains laden (Radar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bekannte Domains laden (Radar)": {
+      "main": [
+        [
+          {
+            "node": "Radar-Queries generieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radar-Queries generieren": {
+      "main": [
+        [
+          {
+            "node": "IF Mock oder Tavily1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Mock oder Tavily1": {
+      "main": [
+        [
+          {
+            "node": "Mock Radar-Fixtures",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily Search (Radar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Radar-Fixtures": {
+      "main": [
+        [
+          {
+            "node": "Radar-Treffer sammeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search (Radar)": {
+      "main": [
+        [
+          {
+            "node": "Radar-Treffer sammeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radar-Treffer sammeln": {
+      "main": [
+        [
+          {
+            "node": "IF Radar-Treffer vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Radar-Treffer vorhanden": {
+      "main": [
+        [
+          {
+            "node": "LLM Vereins-Stammdaten",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Radar Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Vereins-Stammdaten": {
+      "main": [
+        [
+          {
+            "node": "Jubiläen + Lead-Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jubiläen + Lead-Score": {
+      "main": [
+        [
+          {
+            "node": "IF Radar-Kandidaten vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Radar-Kandidaten vorhanden": {
+      "main": [
+        [
+          {
+            "node": "IF Mock oder Tavily (Radar-Enrich)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Radar Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Mock oder Tavily (Radar-Enrich)": {
+      "main": [
+        [
+          {
+            "node": "Mock Radar-Enrich",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily Radar-Enrich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Radar-Enrich": {
+      "main": [
+        [
+          {
+            "node": "Radar-Enrich bündeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Radar-Enrich": {
+      "main": [
+        [
+          {
+            "node": "Radar-Enrich bündeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radar-Enrich bündeln": {
+      "main": [
+        [
+          {
+            "node": "LLM Besuchs-Anlass & Kontakt (Stufe 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Besuchs-Anlass & Kontakt (Stufe 2)": {
+      "main": [
+        [
+          {
+            "node": "Radar-Enrich auswerten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radar-Enrich auswerten": {
+      "main": [
+        [
+          {
+            "node": "IF Radar-Leads vorhanden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Radar-Leads vorhanden": {
+      "main": [
+        [
+          {
+            "node": "An Maurer Events senden (Radar)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fertig - Radar Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "An Maurer Events senden (Radar)": {
+      "main": [
+        [
+          {
+            "node": "Fertig - Radar Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timezone": "Europe/Berlin"
+  },
+  "versionId": "b79c1d44-6e81-4f92-9c31-9a5e2214b901",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5ad7d6ce9f64d71383aeffacff7508737c42c8cbd904416045dfe9dd8161b88"
+  },
+  "nodeGroups": [],
+  "id": "pofjym87WZtkxjrR",
+  "tags": []
+}

@@ -57,6 +57,7 @@ export default function HeroScene() {
                     fill
                     sizes="100vw"
                     draggable={false}
+                    loading="eager"
                     onLoad={() => setGateReady(true)}
                 />
                 {gateReady && <HeroLights lights={gateGarlandLights} />}

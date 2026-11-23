@@ -1,16 +1,10 @@
-"use client";
-
-import { useReducedMotion } from "framer-motion";
 import type { HeroLight } from "@/components/heroLightPoints";
 
 /* Sanftes Funkeln ueber den gezeichneten Gluehbirnen einer Stage-Box.
    Die Punkte liegen prozentgenau auf den Birnen des SVGs und blenden nur in der
    Helligkeit - deshalb bleibt das zentrierende CSS-Transform unangetastet.
-   CSS-Animation statt framer-motion, damit die Animation auf dem Compositor
-   laeuft (vermeidet "nicht zusammengesetzte Animationen"). */
+   Dauer, Staffelung und Reduced-Motion-Verhalten steuert CSS compositor-seitig. */
 export default function HeroLights({ lights }: { lights: HeroLight[] }) {
-    const reduced = useReducedMotion();
-
     return (
         <>
             {lights.map((light, i) => {
@@ -24,10 +18,8 @@ export default function HeroLights({ lights }: { lights: HeroLight[] }) {
                             left: `${light.x}%`,
                             top: `${light.y}%`,
                             width: `${(light.r * 2.4).toFixed(3)}%`,
-                            opacity: reduced ? 0.5 : undefined,
-                            animation: reduced
-                                ? "none"
-                                : `hero-twinkle ${duration}s ease-in-out ${delay}s infinite`,
+                            animationDuration: `${duration}s`,
+                            animationDelay: `${delay}s`,
                         }}
                     />
                 );
