@@ -12,6 +12,11 @@ const NAV_ITEMS = [
       pathname === '/admin' || pathname.startsWith('/admin/events'),
   },
   {
+    href: '/admin/tischplaene',
+    label: 'Tischpläne',
+    isActive: (pathname: string) => pathname.startsWith('/admin/tischplaene'),
+  },
+  {
     href: '/admin/kunden',
     label: 'Kunden',
     isActive: (pathname: string) => pathname.startsWith('/admin/kunden'),

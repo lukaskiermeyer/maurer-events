@@ -20,6 +20,9 @@ export default function Navbar() {
   // Event-Übersicht und Event-Details haben ebenfalls einen dunklen Hero-Bereich (Festzelt-Decke),
   // daher dort den Header ebenfalls glass/polymorph (wie im Hero) rendern.
   const isHeroPage = isHome || /\/termine(\/|$)/.test(pathname);
+  // Event-Details: Kopfzone ist grün (Zeltdach-Giebel) → Navbar komplett transparent,
+  // damit kein Weißschleier über dem Grün liegt und der Giebel bündig anschließt.
+  const isEventDetail = /\/termine\/[^/]+/.test(pathname);
   const showNavbar = true;
   const transparent = isHeroPage && isInHero && !isOpen;
 
@@ -72,7 +75,9 @@ export default function Navbar() {
       <nav 
         className={`fixed w-full z-50 transition-all duration-500 ease-in-out ${
           transparent
-            ? "bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-[0_1px_12px_rgba(0,0,0,0.08)]"
+            ? isEventDetail
+              ? "bg-transparent backdrop-blur-xl border-b border-accent-green shadow-[0_1px_12px_rgba(0,0,0,0.08)]"
+              : "bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-[0_1px_12px_rgba(0,0,0,0.08)]"
             : "bg-base-light/80 backdrop-blur-md border-b border-base-dark/60"
         } ${
           showNavbar ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"

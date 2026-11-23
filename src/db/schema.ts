@@ -1,5 +1,6 @@
 import { PgSchema, text, timestamp, boolean, uuid, integer, json, jsonb, index, check, unique, uniqueIndex, real, customType, bigint, bigserial } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { PlanLayout } from '@/lib/plan-types';
 
 // Qualify every table and enum, even when a pooled session has an empty search_path.
 // PgSchema's constructor supports explicit public qualification; pgSchema() rejects it.
@@ -51,6 +52,9 @@ export const events = pgTable('events', {
   minimumConsumption: integer('minimum_consumption').default(5000), // Deprecated: unused for pricing, the package price is authoritative. Drop in a later migration.
   walkInReserve: integer('walk_in_reserve').default(0).notNull(), // Seats reserved for walk-ins
   publishTablesAt: timestamp('publish_tables_at'), // When tables become visible
+  planPresetId: uuid('plan_preset_id').references(() => planPresets.id, { onDelete: 'set null' }),
+  inviteSubject: text('invite_subject'),
+  inviteBody: text('invite_body'),
   type: text('type').default('event').notNull(), // Deprecated: nur noch 'event'; Galerie ist eigenständig (gallery_albums). Spalte später entfernen.
   isFeaturedGallery: boolean('is_featured_gallery').default(false).notNull(), // Deprecated: ungenutzt, Startseite kuratiert über galleries.is_favorite. Spalte später entfernen.
   isPublished: boolean('is_published').default(true).notNull(), // Whether the event is visible on the public site
@@ -93,6 +97,15 @@ export const tables = pgTable('tables', {
     widthCheck: check('tables_width_check', sql`${table.widthM} is null or ${table.widthM} > 0`),
     heightCheck: check('tables_height_check', sql`${table.heightM} is null or ${table.heightM} > 0`),
   };
+});
+
+export const planPresets = pgTable('plan_presets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  layout: jsonb('layout').$type<PlanLayout>().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const customers = pgTable('customers', {
@@ -389,6 +402,7 @@ export const reservations = pgTable('reservations', {
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'restrict' }).notNull(),
   customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
   tableId: uuid('table_id').references(() => tables.id, { onDelete: 'set null' }), // Nullable until assigned by admin
+  planTableId: text('plan_table_id'), // Tisch-Element-ID im gewählten Plan-Preset des Events
   reservationDate: timestamp('reservation_date').defaultNow().notNull(), // The specific day they booked for
   guestName: text('guest_name').notNull(),
   email: text('email').notNull(),

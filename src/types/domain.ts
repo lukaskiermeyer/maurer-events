@@ -1,4 +1,4 @@
-import type { events, tables, galleries, galleryAlbums, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments } from '@/db/schema';
+import type { events, tables, galleries, galleryAlbums, waitlists, eventSettings, vouchers, eventDocuments, customers, customerImports, staff, staffRoles, staffDocuments, contractTemplates, contracts, staffingRules, staffAvailability, eventStaffRequirements, staffAssignments, planPresets } from '@/db/schema';
 import type { getAdminStats } from '@/app/actions/events';
 import type { getReservationsByEvent } from '@/app/actions/reservations';
 import type { getPublicEventSettings } from '@/app/actions/eventSettings';
@@ -7,6 +7,7 @@ import type { getAdminTeamMembers } from '@/app/actions/team';
 
 export type EventRecord = typeof events.$inferSelect;
 export type TableRecord = typeof tables.$inferSelect;
+export type PlanPresetRecord = typeof planPresets.$inferSelect;
 export type VoucherRecord = typeof vouchers.$inferSelect;
 export type EventDocument = typeof eventDocuments.$inferSelect;
 export type CustomerRecord = typeof customers.$inferSelect;

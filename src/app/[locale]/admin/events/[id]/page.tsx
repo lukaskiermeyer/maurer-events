@@ -5,6 +5,7 @@ import { getEventGalleryImages } from "@/app/actions/gallery";
 import { getWaitlist } from "@/app/actions/waitlist";
 import { getEventSettings } from "@/app/actions/eventSettings";
 import { getAdminEventDocuments } from "@/app/actions/eventDocuments";
+import { getPlanPresets, getEventPlan } from "@/app/actions/plans";
 import { db } from "@/db";
 import { events, scannerAccess } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -25,7 +26,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants, packagePresets, taxStatus, documents] = await Promise.all([
+  const [reservations, tables, tentSettings, galleryImages, waitlistEntries, eventSettings, scannerGrants, packagePresets, taxStatus, documents, planPresets, eventPlan] = await Promise.all([
     getReservationsByEvent(resolvedParams.id),
     getTables(),
     getTentSettings(),
@@ -35,7 +36,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     db.select({ id: scannerAccess.id, email: scannerAccess.email, validUntil: scannerAccess.validUntil }).from(scannerAccess).where(eq(scannerAccess.eventId, resolvedParams.id)),
     getPackagePresets(),
     getTaxStatus(),
-    getAdminEventDocuments(resolvedParams.id)
+    getAdminEventDocuments(resolvedParams.id),
+    getPlanPresets(),
+    getEventPlan(resolvedParams.id)
   ]);
 
   return (
@@ -77,6 +80,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           initialDocuments={documents}
           scannerGrants={scannerGrants}
           stripeEnabled={Boolean(process.env.STRIPE_SECRET_KEY)}
+          planPreset={eventPlan}
+          planPresets={planPresets}
         />
       </div>
     </div>

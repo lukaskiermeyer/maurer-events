@@ -15,7 +15,7 @@ const service = reservationAdmin(db);
 // Only select fields needed by the administration UI. Frozen checkout and
 // email payloads, request hashes and retry keys never cross the client boundary.
 const adminReservationColumns = {
-  id: reservations.id, eventId: reservations.eventId, customerId: reservations.customerId, tableId: reservations.tableId,
+  id: reservations.id, eventId: reservations.eventId, customerId: reservations.customerId, tableId: reservations.tableId, planTableId: reservations.planTableId,
   reservationDate: reservations.reservationDate, guestName: reservations.guestName,
   email: reservations.email, phone: reservations.phone, guestCount: reservations.guestCount, selectedTime: reservations.selectedTime,
   amountTotal: reservations.amountTotal, stripeSessionId: reservations.stripeSessionId,
