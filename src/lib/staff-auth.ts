@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { staff, staffSessions } from "@/db/schema";
 import { UUID_PATTERN } from "./reservation-policy";
@@ -25,12 +25,17 @@ export async function hashPassword(password: string) {
 }
 
 export async function verifyPassword(password: string, stored: string | null) {
-  if (!stored || !password) return false;
-  const [scheme, saltPart, hashPart] = stored.split("$");
-  if (scheme !== "scrypt" || !saltPart || !hashPart) return false;
-  const expected = Buffer.from(hashPart, "base64");
-  const derived = (await scrypt(password, Buffer.from(saltPart, "base64"), expected.length)) as Buffer;
-  return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
+  if (!stored || typeof password !== "string" || password.length > 200) return false;
+  try {
+    const [scheme, saltPart, hashPart] = stored.split("$");
+    if (scheme !== "scrypt" || !saltPart || !hashPart) return false;
+    const expected = Buffer.from(hashPart, "base64");
+    if (expected.length !== 64) return false;
+    const derived = (await scrypt(password, Buffer.from(saltPart, "base64"), expected.length)) as Buffer;
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
 }
 
 export function randomToken() {
@@ -62,7 +67,7 @@ export async function staffSession(token: string | undefined) {
   if (!token || !UUID_PATTERN.test(token)) return null;
   const [row] = await db.select({ session: staffSessions, member: staff }).from(staffSessions)
     .innerJoin(staff, eq(staff.id, staffSessions.staffId))
-    .where(and(eq(staffSessions.id, token), gt(staffSessions.validUntil, new Date())));
+    .where(and(eq(staffSessions.id, token), gt(staffSessions.validUntil, new Date()), ne(staff.status, "inactive")));
   return row || null;
 }
 

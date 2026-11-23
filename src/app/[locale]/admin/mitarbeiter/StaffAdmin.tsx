@@ -4,20 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { Link } from "@/i18n/routing";
-import { Pencil, Eye, Mail, Power, PowerOff, Trash2 } from "lucide-react";import type { ContractTemplate, StaffRecord, StaffRole } from "@/types/domain";
+import { Pencil, Eye, Mail, Power, PowerOff, Trash2 } from "lucide-react";import type { ContractTemplate, StaffRole } from "@/types/domain";
 import type { documentFormTemplates } from "@/db/schema";
 import { createRole, createStaff, deleteContractTemplate, deleteRoleHardDev, deleteStaffHardDev, resendStaffInvite, saveContractTemplate, updateRole, updateStaffAdmin } from "@/app/actions/staff";
 import { deleteDocumentTemplate, saveDocumentTemplate } from "@/app/actions/document-templates";
 import { DEFAULT_CONTRACT_HTML, wrapContractPaper } from "@/lib/contract-paper";
 import { useDialog } from "@/components/ui/Dialog";
+import type { SafeStaffMember } from "@/lib/staff-privacy";
+import type ReactQuillInstance from "react-quill-new";
+import type { DeltaStatic, EmitterSource } from "react-quill-new";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <div className="h-40 bg-canvas-light animate-pulse rounded-lg flex items-center justify-center opacity-50 text-sm">Lade Editor …</div>,
 });
-const RQ = ReactQuill as any;
+const RQ = ReactQuill as unknown as typeof ReactQuillInstance;
 
-type StaffRow = { member: StaffRecord; role: StaffRole | null };
+type StaffRow = { member: SafeStaffMember; role: StaffRole | null };
 type TemplateRow = { template: ContractTemplate; role: StaffRole | null };
 type DocumentTemplate = typeof documentFormTemplates.$inferSelect;
 type TabKey = "team" | "roles" | "contracts" | "minijob";
@@ -106,12 +109,6 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   inactive: { label: "Inaktiv", cls: "bg-red-100 text-red-700" },
 };
 
-const TEMPLATE_STATUS_META: Record<string, { label: string; cls: string }> = {
-  draft: { label: "Entwurf", cls: "bg-slate-100 text-slate-700" },
-  reviewed: { label: "Geprüft", cls: "bg-sky-100 text-sky-800" },
-  active: { label: "Aktiv", cls: "bg-accent-green/15 text-accent-green" },
-};
-
 function slugify(value: string) {
   return value
     .trim()
@@ -150,9 +147,9 @@ function Help({ children }: { children: React.ReactNode }) {
 
 export default function StaffAdmin({ initialStaff, initialRoles, initialTemplates, initialDocumentTemplates }: { initialStaff: StaffRow[]; initialRoles: StaffRole[]; initialTemplates: TemplateRow[]; initialDocumentTemplates: DocumentTemplate[] }) {
   const [tab, setTab] = useState<TabKey>("team");
-  const quillRef = useRef<any>(null);
+  const quillRef = useRef<ReactQuillInstance>(null);
   const isHighlighting = useRef(false);
-  const [editorKey, setEditorKey] = useState(0);
+  const [editorKey] = useState(0);
   const [staffForm, setStaffForm] = useState({ id: "", email: "", firstName: "", lastName: "", phone: "", roleId: initialRoles[0]?.id || "", status: "invited", hourlyRateEuro: "", profitSharePercent: "" });
   const [keyTouched, setKeyTouched] = useState(false);
   const [roleForm, setRoleForm] = useState({ key: "", name: "", hourlyRateEuro: "", profitSharePercent: "", requiredDocuments: [] as string[], requiresHandwrittenSignature: false });
@@ -174,16 +171,19 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { Quill } = await import("react-quill-new") as any;
+      const { Quill } = await import("react-quill-new");
+      const LegacyQuill = Quill as unknown as {
+        imports: Record<string, unknown>;
+        import(path: string): new (...args: never[]) => object;
+        register(target: unknown): void;
+      };
       const quill = quillRef.current?.getEditor?.();
       if (cancelled || !quill) return;
-      if (!Quill.imports?.["formats/variable"]) {
-        const Inline = Quill.import("blots/inline");
+      if (!LegacyQuill.imports["formats/variable"]) {
+        const Inline = LegacyQuill.import("blots/inline");
         class VariableBlot extends Inline {}
-        VariableBlot.blotName = "variable";
-        VariableBlot.tagName = "span";
-        VariableBlot.className = "ql-variable";
-        Quill.register(VariableBlot);
+        Object.assign(VariableBlot, { blotName: "variable", tagName: "span", className: "ql-variable" });
+        LegacyQuill.register(VariableBlot);
       }
       const apply = () => {
         if (isHighlighting.current) return;
@@ -197,7 +197,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
         }
         isHighlighting.current = false;
       };
-      quill.on("text-change", (_delta: any, _old: any, source: string) => {
+      quill.on("text-change", (_delta: DeltaStatic, _old: DeltaStatic, source: EmitterSource) => {
         if (source === "api" && isHighlighting.current) return;
         setTimeout(apply, 0);
       });
@@ -837,7 +837,7 @@ export default function StaffAdmin({ initialStaff, initialRoles, initialTemplate
                 {contractViewMode === "editor" ? (
                   <div className="bg-white rounded-lg overflow-hidden border border-border-light">
                     <style>{`.ql-editor .ql-variable { color: #16a34a; font-weight: 700; }`}</style>
-                   <RQ key={editorKey} ref={quillRef as any} theme="snow" defaultValue={templateForm.bodyHtml} onChange={(content) => setTemplateForm(prev => ({ ...prev, bodyHtml: content }))} className="min-h-[180px]" />
+                   <RQ key={editorKey} ref={quillRef} theme="snow" defaultValue={templateForm.bodyHtml} onChange={(content) => setTemplateForm(prev => ({ ...prev, bodyHtml: content }))} className="min-h-[180px]" />
                   </div>
                 ) : (
                   <div className="space-y-3">

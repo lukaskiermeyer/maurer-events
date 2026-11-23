@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminRecoveryCodes, adminTrustedDevices, adminUsers } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "./secret-box";
@@ -34,10 +34,12 @@ export function getTotpSecret(admin: AdminRow | null): string | null {
   }
 }
 
-export async function updateLastStep(adminId: string, step: number): Promise<void> {
-  await db.update(adminUsers)
+export async function updateLastStep(adminId: string, step: number): Promise<boolean> {
+  const rows = await db.update(adminUsers)
     .set({ totpLastUsedStep: step, updatedAt: new Date() })
-    .where(eq(adminUsers.id, adminId));
+    .where(and(eq(adminUsers.id, adminId), or(isNull(adminUsers.totpLastUsedStep), lt(adminUsers.totpLastUsedStep, step))))
+    .returning({ id: adminUsers.id });
+  return rows.length === 1;
 }
 
 export async function enableTotp(adminId: string, secretBase32: string): Promise<{ recoveryCodes: string[] }> {
@@ -76,11 +78,10 @@ export async function setPasswordHash(adminId: string, hash: string): Promise<vo
 export async function consumeRecoveryCodeForAdmin(adminId: string, code: string): Promise<boolean> {
   if (await consumeRecoveryCode(adminId, code)) return true;
   const legacyHash = hashRecoveryCodeLegacy(code);
-  const [row] = await db.select().from(adminRecoveryCodes)
-    .where(and(eq(adminRecoveryCodes.adminId, adminId), eq(adminRecoveryCodes.codeHash, legacyHash), isNull(adminRecoveryCodes.consumedAt)));
-  if (!row) return false;
-  await db.update(adminRecoveryCodes).set({ consumedAt: new Date() }).where(eq(adminRecoveryCodes.id, row.id));
-  return true;
+  const rows = await db.update(adminRecoveryCodes).set({ consumedAt: new Date() })
+    .where(and(eq(adminRecoveryCodes.adminId, adminId), eq(adminRecoveryCodes.codeHash, legacyHash), isNull(adminRecoveryCodes.consumedAt)))
+    .returning({ id: adminRecoveryCodes.id });
+  return rows.length === 1;
 }
 
 export { countRecoveryCodes };

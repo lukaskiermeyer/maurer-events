@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { optimizeImage } from "@/lib/imageOptimizer";
 import { uuid } from "@/lib/reservation-policy";
 import { translateFields } from "@/lib/translate";
+import { sniffMime } from "@/lib/file-types";
 
 export const runtime = "nodejs";
 
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) return NextResponse.json({ error: "Keine Datei übermittelt." }, { status: 400 });
     if (!ALLOWED.has(file.type)) return NextResponse.json({ error: "Nur PDF, JPG, PNG und WebP erlaubt." }, { status: 400 });
     if (file.size > MAX_BYTES) return NextResponse.json({ error: "Datei zu groß (max 15 MB)." }, { status: 413 });
+    if (sniffMime(Buffer.from(await file.arrayBuffer())) !== file.type) {
+      return NextResponse.json({ error: "Dateiinhalt stimmt nicht mit dem Dateityp überein." }, { status: 400 });
+    }
 
     const eventId = uuid(form.get("eventId"), "Event-ID");
     const kind = form.get("kind");

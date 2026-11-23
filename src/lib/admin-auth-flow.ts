@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import QRCode from "qrcode";
 import { Resend } from "resend";
 import { db } from "@/db";
@@ -7,7 +7,6 @@ import { appendAuditEvent } from "./admin-audit";
 import { hmacSha256, pepper, ipHash as ipHashFn } from "./admin-crypto";
 import {
   createEnrollmentToken,
-  consumeEnrollmentToken,
   getPendingTotp,
   setPendingTotp,
   validateEnrollmentToken,
@@ -56,7 +55,7 @@ export function csrfTokenFor(secret: string): string {
 
 async function sendAdminMail(to: string, subject: string, paragraphs: string[]): Promise<void> {
   if (!process.env.RESEND_API_KEY || process.env.MAIL_DRY_RUN === "true") {
-    console.info("[admin-mail dry-run]", { to, subject, paragraphs });
+    console.info("[admin-mail dry-run]", { to, subject, content: "redacted" });
     return;
   }
   await new Resend(process.env.RESEND_API_KEY).emails.send({
@@ -161,7 +160,9 @@ export async function completeTotpLogin(params: {
       await audit(params.ctx, "admin.login.totp_failed", admin.id, admin.id, { attempts, lock });
       return { ok: false, error: "Code ungültig oder bereits verwendet." };
     }
-    await updateLastStep(admin.id, vr.counter);
+    if (!await updateLastStep(admin.id, vr.counter)) {
+      return { ok: false, error: "Code ungültig oder bereits verwendet." };
+    }
   } else {
     const consumed = await consumeRecoveryCodeForAdmin(admin.id, code);
     if (!consumed) return { ok: false, error: "Recovery-Code ungültig oder bereits verwendet." };
@@ -214,19 +215,48 @@ export async function setupSetPassword(params: {
   pin?: string | null;
   password: string;
   ctx: FlowContext;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; next: "login" | "totp" } | { ok: false; error: string }> {
   const validation = await validateEnrollmentToken({ rawToken: params.rawToken, pin: params.pin });
-  if (!validation.ok || !validation.adminId) return { ok: false, error: "Link ungültig, abgelaufen oder PIN falsch." };
+  if (!validation.ok || !validation.adminId || !validation.tokenId) return { ok: false, error: "Link ungültig, abgelaufen oder PIN falsch." };
   const policyError = checkPasswordPolicy(params.password);
   if (policyError) return { ok: false, error: policyError };
   if (await isBreachedPassword(params.password)) {
     return { ok: false, error: "Dieses Passwort taucht in bekannten Datenleaks auf. Bitte wähle ein anderes." };
   }
   const hash = await hashPassword(params.password);
+  const email = await adminEmail(validation.adminId);
+
+  if (validation.purpose === "password_reset") {
+    // Claim und Passwortwechsel sind atomar; nur ein paralleler Reset kann gewinnen.
+    const claimed = await db.transaction(async tx => {
+      const rows = await tx.update(adminEnrollmentTokens).set({ consumedAt: new Date() }).where(and(
+        eq(adminEnrollmentTokens.id, validation.tokenId!), isNull(adminEnrollmentTokens.consumedAt), gt(adminEnrollmentTokens.expiresAt, new Date()),
+      )).returning({ id: adminEnrollmentTokens.id });
+      if (rows.length !== 1) return false;
+      await tx.update(adminUsers).set({
+        passwordHash: hash, passwordSetAt: new Date(), failedPasswordAttempts: 0, lockedUntil: null, updatedAt: new Date(),
+      }).where(eq(adminUsers.id, validation.adminId!));
+      await tx.update(adminEnrollmentTokens).set({ consumedAt: new Date() }).where(and(
+        eq(adminEnrollmentTokens.adminId, validation.adminId!), isNull(adminEnrollmentTokens.consumedAt),
+      ));
+      return true;
+    });
+    if (!claimed) return { ok: false, error: "Link ungültig, abgelaufen oder bereits verwendet." };
+    await revokeAllAdminSessions(validation.adminId, "password_reset");
+    await revokeTrustedDevices(email);
+    await audit(params.ctx, "admin.password.reset_consumed", validation.adminId, validation.adminId);
+    await sendAdminMail(email, "Dein Admin-Passwort wurde zurückgesetzt", [
+      "Das Passwort deines Admin-Kontos wurde soeben geändert.",
+      "Wichtig: Dein TOTP-Secret (Google Authenticator) bleibt unverändert bestehen – beim nächsten Login wird weiterhin dein 6-stelliger Code verlangt.",
+      "Falls du das nicht warst: sofort Passwort erneut zurücksetzen und den Festwirt informieren.",
+    ]).catch(() => {});
+    return { ok: true, next: "login" };
+  }
+
   await setPasswordHash(validation.adminId, hash);
-  await revokeTrustedDevices(await adminEmail(validation.adminId));
+  await revokeTrustedDevices(email);
   await audit(params.ctx, "admin.password.set", validation.adminId, validation.adminId, { purpose: validation.purpose });
-  return { ok: true };
+  return { ok: true, next: "totp" };
 }
 
 export async function setupStartTotp(params: {
@@ -236,11 +266,11 @@ export async function setupStartTotp(params: {
   ctx: FlowContext;
 }): Promise<{ ok: true; secret: string; qrDataUrl: string } | { ok: false; error: string }> {
   const validation = await validateEnrollmentToken({ rawToken: params.rawToken, pin: params.pin });
-  if (!validation.ok || !validation.adminId) return { ok: false, error: "Link ungültig oder abgelaufen." };
+  if (!validation.ok || !validation.adminId || !validation.tokenId) return { ok: false, error: "Link ungültig oder abgelaufen." };
   const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, validation.adminId));
   if (!admin) return { ok: false, error: "Link ungültig." };
   const secret = generateTotpSecret();
-  await setPendingTotp(params.tokenId, secret);
+  await setPendingTotp(validation.tokenId, secret);
   const uri = otpauthUri(secret, admin.email);
   const qrDataUrl = await QRCode.toDataURL(uri);
   return { ok: true, secret, qrDataUrl };
@@ -253,14 +283,26 @@ export async function setupConfirmTotp(params: {
   code: string;
   ctx: FlowContext;
 }): Promise<{ ok: true; recoveryCodes: string[] } | { ok: false; error: string }> {
+  if (!await takeRateLimit(`admin-setup-totp-ip:${params.ctx.ip}`, 30, 15 * 60000)) {
+    return { ok: false, error: "Zu viele Versuche. Bitte später erneut versuchen." };
+  }
   const validation = await validateEnrollmentToken({ rawToken: params.rawToken, pin: params.pin });
-  if (!validation.ok || !validation.adminId) return { ok: false, error: "Link ungültig oder abgelaufen." };
-  const pending = await getPendingTotp(params.tokenId);
+  if (!validation.ok || !validation.adminId || !validation.tokenId) return { ok: false, error: "Link ungültig oder abgelaufen." };
+  if (!await takeRateLimit(`admin-setup-totp:${validation.tokenId}`, 5, 15 * 60000)) {
+    return { ok: false, error: "Zu viele Versuche. Bitte später erneut versuchen." };
+  }
+  const pending = await getPendingTotp(validation.tokenId);
   if (!pending) return { ok: false, error: "Einrichtung abgelaufen. Bitte erneut starten." };
   const vr = verifyTotp(pending, params.code.trim(), null);
   if (!vr.valid) return { ok: false, error: "Code ungültig. Prüfe die App und versuche es erneut." };
   const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, validation.adminId));
   if (!admin) return { ok: false, error: "Link ungültig." };
+  // Erst nach gültigem TOTP atomar claimen: genau eine parallele Einrichtung gewinnt.
+  const claimed = await db.update(adminEnrollmentTokens).set({ consumedAt: new Date() }).where(and(
+    eq(adminEnrollmentTokens.id, validation.tokenId), isNull(adminEnrollmentTokens.consumedAt), gt(adminEnrollmentTokens.expiresAt, new Date()),
+  )).returning({ id: adminEnrollmentTokens.id });
+  if (claimed.length !== 1) return { ok: false, error: "Link ungültig oder bereits verwendet." };
+
   const purpose = validation.purpose as EnrollmentPurpose;
   if (purpose === "totp_reset") {
     await revokeAllAdminSessions(admin.id, "totp_reset");
@@ -272,29 +314,8 @@ export async function setupConfirmTotp(params: {
     totpLastUsedStep: vr.counter,
     updatedAt: new Date(),
   }).where(eq(adminUsers.id, admin.id));
-  await consumeEnrollmentToken(params.tokenId);
   await audit(params.ctx, purpose === "totp_reset" ? "admin.totp.reset_done" : "admin.totp.enrolled", validation.adminId, admin.id);
   return { ok: true, recoveryCodes };
-}
-
-// Passwort-Reset verbrauchen: NUR Passwort neu, TOTP bleibt, Sessions weg.
-export async function consumePasswordReset(params: {
-  tokenId: string;
-  ctx: FlowContext;
-}): Promise<void> {
-  const [row] = await db.select().from(adminEnrollmentTokens).where(eq(adminEnrollmentTokens.id, params.tokenId));
-  if (!row) return;
-  await consumeEnrollmentToken(params.tokenId);
-  const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, row.adminId));
-  if (!admin) return;
-  await revokeAllAdminSessions(admin.id, "password_reset");
-  await revokeTrustedDevices(admin.email);
-  await audit(params.ctx, "admin.password.reset_consumed", row.adminId, admin.id);
-  await sendAdminMail(admin.email, "Dein Admin-Passwort wurde zurückgesetzt", [
-    "Das Passwort deines Admin-Kontos wurde soeben geändert.",
-    "Wichtig: Dein TOTP-Secret (Google Authenticator) bleibt unverändert bestehen – beim nächsten Login wird weiterhin dein 6-stelliger Code verlangt.",
-    "Falls du das nicht warst: sofort Passwort erneut zurücksetzen und den Festwirt informieren.",
-  ]);
 }
 
 // ---------------- Admin-Verwaltung ----------------
@@ -336,8 +357,8 @@ export async function inviteAdmin(params: {
   await sendAdminMail(email, "Einladung zum Maurer Events Admin", [
     "Du wurdest als Administrator für Maurer Events eingeladen.",
     `Einrichtungs-Link (72 Stunden gültig, einmalig): ${link}`,
-    `Deine Einrichtungs-PIN: ${token.pin ?? ""}`,
-    "Beides zusammen im Wizard eingeben: erst die PIN, dann Passwort setzen und Authenticator einrichten.",
+    "Die Einrichtungs-PIN erhältst du separat von der einladenden Person.",
+    "Link und PIN im Wizard eingeben: erst die PIN, dann Passwort setzen und Authenticator einrichten.",
   ]);
   return { ok: true, link, pin: token.pin ?? "", expiresAt: token.expiresAt };
 }
@@ -427,7 +448,9 @@ export async function markStepUp(sessionToken: string, code: string, ctx: FlowCo
   if (!secret) return { ok: false, error: "2FA nicht eingerichtet." };
   const vr = verifyTotp(secret, code.trim(), session.admin.totpLastUsedStep);
   if (!vr.valid) return { ok: false, error: "Code ungültig oder bereits verwendet." };
-  await updateLastStep(session.adminId, vr.counter);
+  if (!await updateLastStep(session.adminId, vr.counter)) {
+    return { ok: false, error: "Code ungültig oder bereits verwendet." };
+  }
   await setStepUp(sessionToken);
   await audit(ctx, "admin.step_up", session.adminId, session.adminId);
   return { ok: true };

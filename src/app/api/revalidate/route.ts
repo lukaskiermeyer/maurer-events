@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const secret = searchParams.get("secret") || request.headers.get("x-revalidate-secret") || "";
+  // Secrets gehören nicht in URLs, da sie sonst in Proxy-/Browser-Logs landen.
+  const secret = request.headers.get("x-revalidate-secret") || "";
   const expected = process.env.CRON_SECRET || "";
   if (!expected || secret !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

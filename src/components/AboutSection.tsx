@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 
-// Birnen-Positionen entlang der durchhängenden Kurve
 // Gerade Lichterkette als Section-Abtrennung: gleichmaessig verteilte Birnen
-// an einer horizontalen Linie (kein Durchhang).
+// an einer horizontalen Linie (kein Durchhang). cx-Werte werden als Prozent der
+// Breite positioniert; die Birnen selbst haben feste Pixelgroessen, damit sie
+// responsiv gleich gross bleiben.
 const GARLAND_BULBS = [
   { cx: 50, cy: 18 },
   { cx: 150, cy: 18 },
@@ -23,39 +24,34 @@ const GARLAND_BULBS = [
   { cx: 1150, cy: 18 },
 ] as const;
 
-// Lichterkette fuer den hellen Holzgrund: schwarzes Kabel und schwarze
-// Fassungen geben die Kontur (Holz ist zu hell fuer einen weissen Schein),
-// der warme Glaskoerper mit weissheissem Kern laesst die Birne leuchten.
+// Lichterkette mit festen Pixelgroessen (Birne 16px, Schein 90px), damit die
+// Lampen auf jeder Bildschirmbreite gleich gross sind; nur die Positionen
+// skalieren prozentual. Dunkle Kontur, warmer Glaskoerper mit weissheissem Kern.
 function Garland({ className }: { className?: string }) {
   const reduced = useReducedMotion();
   return (
     <div
-      className={`pointer-events-none absolute left-0 w-full ${className ?? ""}`}
+      className={`pointer-events-none absolute left-0 h-20 w-full ${className ?? ""}`}
       aria-hidden="true"
     >
-      {/* Lichtschein der Birnen auf dem Holz: eigene Ebene mit Screen-Blend,
-          damit die Lampen den Holzgrund ringsum aufhellen. Gleiche viewBox und
-          Breite wie die Kette, damit die Lichtkegel exakt unter den Birnen sitzen. */}
-      <svg
-        viewBox="0 0 1200 60"
-        className="absolute left-0 top-0 block h-auto w-full overflow-visible"
-        style={{ mixBlendMode: "screen" }}
-      >
-        <defs>
-          <radialGradient id="garland-woodglow">
-            <stop offset="0%" stopColor="rgba(255,226,160,0.3)" />
-            <stop offset="55%" stopColor="rgba(255,206,120,0.11)" />
-            <stop offset="100%" stopColor="rgba(255,206,120,0)" />
-          </radialGradient>
-        </defs>
+      {/* Lichtschein der Birnen: eigene Ebene mit Screen-Blend, damit die Lampen
+          den Grund ringsum aufhellen. Gleiche Positionen und feste Groesse wie
+          die Birnen, damit die Lichtkegel exakt unter den Birnen sitzen. */}
+      <div className="absolute inset-0" style={{ mixBlendMode: "screen" }}>
         {/* Sanftes, gestaffeltes Pulsieren der Lichtkegel; Reduced Motion statisch. */}
         {GARLAND_BULBS.map((bulb, i) => (
-          <motion.circle
+          <motion.div
             key={i}
-            cx={bulb.cx}
-            cy={bulb.cy + 15}
-            r="45"
-            fill="url(#garland-woodglow)"
+            className="absolute rounded-full"
+            style={{
+              left: `${(bulb.cx / 1200) * 100}%`,
+              top: bulb.cy + 15,
+              width: 90,
+              height: 90,
+              transform: "translate(-50%, -50%)",
+              background:
+                "radial-gradient(circle, rgba(255,226,160,0.3) 0%, rgba(255,206,120,0.11) 55%, rgba(255,206,120,0) 100%)",
+            }}
             animate={reduced ? { opacity: 0.8 } : { opacity: [0.5, 1, 0.5] }}
             transition={
               reduced
@@ -64,18 +60,30 @@ function Garland({ className }: { className?: string }) {
             }
           />
         ))}
-      </svg>
-      <svg viewBox="0 0 1200 200" className="block h-auto w-full overflow-visible">
-        <path d="M -20 18 L 1220 18" fill="none" stroke="#FAF8F4" strokeWidth="3" strokeOpacity="0.4" />
-        {GARLAND_BULBS.map((bulb, i) => (
-          <g key={i}>
-            <rect x={bulb.cx - 3.5} y={bulb.cy - 2} width="7" height="9" rx="1.5" fill="#FAF8F4" fillOpacity="0.6" />
-            <circle cx={bulb.cx} cy={bulb.cy + 15} r="8" fill="#0A0A0A" />
-            <circle cx={bulb.cx} cy={bulb.cy + 15} r="6" fill="#E9B44C" />
-            <circle cx={bulb.cx - 1.5} cy={bulb.cy + 13.5} r="2.8" fill="#FFF6DC" />
-          </g>
-        ))}
-      </svg>
+      </div>
+      <div
+        className="absolute left-0 right-0"
+        style={{ top: 16.5, height: 3, backgroundColor: "rgba(250,248,244,0.4)" }}
+      />
+      {GARLAND_BULBS.map((bulb, i) => (
+        <div
+          key={i}
+          className="absolute"
+          style={{ left: `${(bulb.cx / 1200) * 100}%`, top: bulb.cy - 2, transform: "translateX(-50%)" }}
+        >
+          <div
+            className="mx-auto"
+            style={{ width: 7, height: 9, borderRadius: 1.5, backgroundColor: "rgba(250,248,244,0.6)" }}
+          />
+          <div className="relative rounded-full" style={{ width: 16, height: 16, backgroundColor: "#0A0A0A" }}>
+            <div className="absolute rounded-full" style={{ inset: 2, backgroundColor: "#E9B44C" }} />
+            <div
+              className="absolute rounded-full"
+              style={{ left: 3.7, top: 3.7, width: 5.6, height: 5.6, backgroundColor: "#FFF6DC" }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

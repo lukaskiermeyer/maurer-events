@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { festChances } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { boundedJson, bodyError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,10 +45,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try { body = await request.json(); } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
-  }
+  const body = await boundedJson<unknown>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const parsed = PatchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: "validation_error", details: parsed.error.issues }, { status: 400 });

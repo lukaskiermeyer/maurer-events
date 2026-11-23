@@ -1,6 +1,4 @@
 "use client";
-import Image from 'next/image';
-
 import type { SVGProps } from 'react';
 
 import { useRef } from "react";
@@ -94,7 +92,19 @@ export default function ServicesSection() {
           animate={inView && !reduced ? { y: [0, -10, 0] } : { y: 0 }}
           transition={reduced ? { duration: 0 } : { duration: 1.6, ease: "easeInOut" }}
         >
-          <Image src="/Icon_MaurerGrün.svg" alt="" width={160} height={160} sizes="176px" className="w-28 sm:w-36 lg:w-44 h-auto brightness-0 invert opacity-20" />
+          <div
+            className="w-28 sm:w-36 lg:w-44 aspect-square bg-base-light opacity-95"
+            style={{
+              maskImage: "url(/Icon_MaurerGrün.svg)",
+              WebkitMaskImage: "url(/Icon_MaurerGrün.svg)",
+              maskSize: "contain",
+              WebkitMaskSize: "contain",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskPosition: "center",
+              WebkitMaskPosition: "center",
+            }}
+          />
         </motion.div>
       </motion.div>
 

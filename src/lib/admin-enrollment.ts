@@ -104,18 +104,22 @@ export async function findEnrollmentTokenByRaw(rawToken: string) {
   return rows[0] ?? null;
 }
 
-// Verbrauch; bei Resets zusätzlich alle anderen offenen Tokens des Admins entwerten.
-export async function consumeEnrollmentToken(tokenId: string): Promise<void> {
-  const [row] = await db.select().from(adminEnrollmentTokens).where(eq(adminEnrollmentTokens.id, tokenId));
-  await db.update(adminEnrollmentTokens).set({ consumedAt: new Date() }).where(eq(adminEnrollmentTokens.id, tokenId));
-  if (row && row.purpose !== "invite") {
+// Nur der erste Verbrauch darf weitere Tokens des Admins entwerten.
+export async function consumeEnrollmentToken(tokenId: string): Promise<boolean> {
+  const [claimed] = await db.update(adminEnrollmentTokens)
+    .set({ consumedAt: new Date() })
+    .where(and(eq(adminEnrollmentTokens.id, tokenId), isNull(adminEnrollmentTokens.consumedAt)))
+    .returning({ adminId: adminEnrollmentTokens.adminId, purpose: adminEnrollmentTokens.purpose });
+  if (!claimed) return false;
+  if (claimed.purpose !== "invite") {
     await db.update(adminEnrollmentTokens)
       .set({ consumedAt: new Date() })
       .where(and(
-        eq(adminEnrollmentTokens.adminId, row.adminId),
+        eq(adminEnrollmentTokens.adminId, claimed.adminId),
         isNull(adminEnrollmentTokens.consumedAt),
       ));
   }
+  return true;
 }
 
 // Pending-TOTP-Secret für den Setup-Wizard (lebt am Token, 15 min gültig).

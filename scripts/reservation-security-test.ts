@@ -426,6 +426,7 @@ test('Bound request streams before parsing, including absent content-length', as
 });
 test('Turnstile verifies hostname/action and fails closed on service errors', async () => {
   const previousFetch = globalThis.fetch; const previousSecret = process.env.TURNSTILE_SECRET_KEY; const previousUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const previousAllowedHostnames = process.env.TURNSTILE_ALLOWED_HOSTNAMES;
   process.env.TURNSTILE_SECRET_KEY = 'test'; process.env.NEXT_PUBLIC_BASE_URL = 'https://test.example.com';
   try {
     const reason = (code: string) => (error: unknown) => error instanceof BookingError && error.code === code;
@@ -448,7 +449,7 @@ test('Turnstile verifies hostname/action and fails closed on service errors', as
     await assert.rejects(verifyTurnstile('test', 'checkout'), reason('captcha-response-invalid'));
     globalThis.fetch = async () => Response.json({ success: false, 'error-codes': ['invalid-input-secret'] });
     await assert.rejects(verifyTurnstile('test', 'checkout'), reason('captcha-secret-invalid'));
-    process.env.NEXT_PUBLIC_BASE_URL = 'invalid-url';
+    process.env.TURNSTILE_ALLOWED_HOSTNAMES = ',';
     await assert.rejects(verifyTurnstile('test', 'checkout'), reason('captcha-url-invalid'));
     delete process.env.TURNSTILE_SECRET_KEY;
     await assert.rejects(verifyTurnstile('test', 'checkout'), reason('captcha-secret-missing'));
@@ -456,6 +457,7 @@ test('Turnstile verifies hostname/action and fails closed on service errors', as
     globalThis.fetch = previousFetch;
     if (previousSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY; else process.env.TURNSTILE_SECRET_KEY = previousSecret;
     if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_BASE_URL; else process.env.NEXT_PUBLIC_BASE_URL = previousUrl;
+    if (previousAllowedHostnames === undefined) delete process.env.TURNSTILE_ALLOWED_HOSTNAMES; else process.env.TURNSTILE_ALLOWED_HOSTNAMES = previousAllowedHostnames;
   }
 });
 test('Parallel waitlist requests are unique and cannot overwrite another guest', async () => {
@@ -665,8 +667,9 @@ test('Public event documents render menu and program quick actions', () => {
     { ...base, id: randomUUID(), kind: 'menu', title: 'Speisekarte 2026', titleEn: null },
     { ...base, id: randomUUID(), kind: 'program', title: 'Programm', titleEn: null },
   ] as EventDocument[];
-  const html = renderToString(createElement(EventDocuments, { documents, title: 'Vereinsfest', locale: 'de' }));
-  assert.ok(html.includes('Speisekarte &amp; Programm'));
+  const html = renderToString(createElement(EventDocuments, { documents, title: 'Vereinsfest', locale: 'de' })).replaceAll('<!-- -->', '');
+  assert.ok(html.includes('Speisekarte &amp;'));
+  assert.ok(html.includes('>Programm</span>'));
   assert.ok(html.includes('>Speisekarte<'));
   assert.ok(html.includes('Programm / Bands'));
 });

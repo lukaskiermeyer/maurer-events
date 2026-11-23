@@ -1,6 +1,5 @@
 import { db } from '@/db';
-import { adminAuditLog, adminUsers } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { adminAuditLog } from '@/db/schema';
 import { sha256Hex } from './admin-crypto';
 
 export async function getLastAuditHash(): Promise<string | null> {

@@ -12,9 +12,6 @@ export type TeamVoice = {
   image?: string;
 };
 
-const QUOTE_PATH =
-  "M9.6 6C5.2 8.6 2.6 12.4 2.6 17.2c0 4.6 2.8 7.8 6.6 7.8 3.2 0 5.6-2.4 5.6-5.6 0-3-2.2-5.2-5.2-5.2-.6 0-1.2.1-1.6.2.4-2.6 2.2-5 4.8-6.6L9.6 6zm14 0c-4.4 2.6-7 6.4-7 11.2 0 4.6 2.8 7.8 6.6 7.8 3.2 0 5.6-2.4 5.6-5.6 0-3-2.2-5.2-5.2-5.2-.6 0-1.2.1-1.6.2.4-2.6 2.2-5 4.8-6.6L23.6 6z";
-
 // Stimmen aus dem Team als Karten-Carousel (Skizze: 3 Karten nebeneinander,
 // Pfeile links/rechts, darunter das Teamfoto als breites Banner).
 export default function TeamVoices({

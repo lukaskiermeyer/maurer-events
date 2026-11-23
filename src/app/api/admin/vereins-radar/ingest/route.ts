@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { vereinsRadar } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { boundedJson, bodyError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,15 +95,8 @@ export async function POST(request: Request) {
     return unauthorized();
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { ok: false, errors: [{ index: 0, path: "body", message: "Invalid JSON" }] },
-      { status: 400 },
-    );
-  }
+  const body = await boundedJson<unknown>(request, 2 * 1024 * 1024).catch(bodyError);
+  if (body instanceof NextResponse) return body;
 
   if (!Array.isArray(body)) {
     return NextResponse.json(

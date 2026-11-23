@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { setupStartTotp, setupValidate, flowError } from "@/lib/admin-auth-flow";
+import { setupStartTotp, flowError } from "@/lib/admin-auth-flow";
+import { boundedJson, bodyError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as { token?: string; pin?: string | null } | null;
-  const validation = await setupValidate({ rawToken: String(body?.token || ""), pin: body?.pin ?? null });
-  if (!validation.ok) return NextResponse.json({ error: "Link ungültig oder abgelaufen." }, { status: 400 });
+  const body = await boundedJson<{ token?: string; pin?: string | null } | null>(request).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const h = await headers();
   const result = await setupStartTotp({
-    tokenId: validation.tokenId,
+    tokenId: "",
     rawToken: String(body?.token || ""),
     pin: body?.pin ?? null,
     ctx: {

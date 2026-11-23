@@ -282,8 +282,6 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                 initialEvents.map((event, index: number) => {
                   const dateObj = new Date(event.date);
                   const day = dateObj.getDate().toString().padStart(2, '0');
-                  const monthNamesDe = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
-                  const monthNamesEn = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
                   const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
                   const year = dateObj.getFullYear();
 

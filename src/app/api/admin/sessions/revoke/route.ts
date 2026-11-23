@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/db';
 import { adminPasskeySessions } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
-import { getAdminSession, revokeAdminSession } from '@/lib/admin-session';
+import { eq, and } from 'drizzle-orm';
+import { getAdminSession } from '@/lib/admin-session';
 import { appendAuditEvent } from '@/lib/admin-audit';
 import { ipHash } from '@/lib/admin-crypto';
+import { bodyError, boundedJson } from '@/lib/request-body';
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -14,9 +15,12 @@ export async function POST(req: NextRequest) {
   if (!sess) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!sess.stepUpValid) return NextResponse.json({ error: 'step_up_required' }, { status: 403 });
 
-  const body = await req.json().catch(() => null);
+  const body = await boundedJson<{ tokenHash?: unknown }>(req).catch(bodyError);
+  if (body instanceof NextResponse) return body;
   const targetHash = body?.tokenHash;
-  if (!targetHash) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  if (typeof targetHash !== 'string' || !/^[a-f0-9]{64}$/.test(targetHash)) {
+    return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  }
 
   // revoke by tokenHash if belongs to same admin
   await db.update(adminPasskeySessions)

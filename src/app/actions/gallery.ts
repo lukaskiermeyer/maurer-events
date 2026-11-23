@@ -55,34 +55,56 @@ export const getGalleryAlbums = unstable_cache(async () => {
 }, ['public-gallery-albums'], { revalidate: 3600, tags: ['gallery'] });
 
 export const getGalleryAlbumById = unstable_cache(async (albumId: string) => {
+  uuid(albumId);
   const [album] = await db.select().from(galleryAlbums)
-    .where(and(eq(galleryAlbums.id, albumId), isNull(galleryAlbums.deletedAt)));
+    .where(and(eq(galleryAlbums.id, albumId), isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date())));
   return album ?? null;
 }, ['public-gallery-album-by-id'], { revalidate: 3600, tags: ['gallery'] });
 
 export const getGalleryImages = unstable_cache(async (albumId: string) => {
-  return await db.select().from(galleries)
-    .where(eq(galleries.albumId, albumId))
+  uuid(albumId);
+  const rows = await db.select({ gallery: galleries }).from(galleries)
+    .innerJoin(galleryAlbums, eq(galleryAlbums.id, galleries.albumId))
+    .where(and(eq(galleries.albumId, albumId), isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date())))
     .orderBy(asc(galleries.createdAt));
+  return rows.map(row => row.gallery);
 }, ['public-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
-// Alben, die mit einem Fest verknüpft sind (Eventseite + Event-Admin).
+export async function getAdminGalleryImages(albumId: string) {
+  await requireAdmin();
+  uuid(albumId);
+  return db.select().from(galleries).where(eq(galleries.albumId, albumId)).orderBy(asc(galleries.createdAt));
+}
+
+// Öffentlich nur Alben vergangener, veröffentlichter Events.
 export const getAlbumsForEvent = unstable_cache(async (eventId: string) => {
-  return await db.select().from(galleryAlbums)
-    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
+  uuid(eventId);
+  const rows = await db.select({ album: galleryAlbums }).from(galleryAlbums)
+    .innerJoin(events, eq(events.id, galleryAlbums.eventId))
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date()), isNull(events.deletedAt), eq(events.isPublished, true)))
     .orderBy(asc(galleryAlbums.createdAt));
+  return rows.map(row => row.album);
 }, ['public-albums-for-event'], { revalidate: 3600, tags: ['gallery'] });
 
-// Bilder aller Alben eines Festes – für die Foto-Sektion der Eventseite.
+// Bilder aller öffentlich sichtbaren Alben eines Festes.
 export const getEventGalleryImages = unstable_cache(async (eventId: string) => {
-  const albums = await db.select().from(galleryAlbums)
-    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
-    .orderBy(asc(galleryAlbums.createdAt));
-  if (albums.length === 0) return [];
-  return await db.select().from(galleries)
-    .where(inArray(galleries.albumId, albums.map(a => a.id)))
+  uuid(eventId);
+  const rows = await db.select({ gallery: galleries }).from(galleries)
+    .innerJoin(galleryAlbums, eq(galleryAlbums.id, galleries.albumId))
+    .innerJoin(events, eq(events.id, galleryAlbums.eventId))
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date()), isNull(events.deletedAt), eq(events.isPublished, true)))
     .orderBy(asc(galleries.createdAt));
+  return rows.map(row => row.gallery);
 }, ['public-event-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
+
+export async function getAdminEventGalleryImages(eventId: string) {
+  await requireAdmin();
+  uuid(eventId);
+  const albums = await db.select({ id: galleryAlbums.id }).from(galleryAlbums)
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)));
+  if (albums.length === 0) return [];
+  return db.select().from(galleries).where(inArray(galleries.albumId, albums.map(album => album.id))).orderBy(asc(galleries.createdAt));
+}
 
 // ---------- Alben (Admin) ----------
 
@@ -352,6 +374,7 @@ export async function assignGalleryImage(imageId: string, albumId: string | null
 
 // Admin-Übersicht: Bilder mit Album (ohne Bilder bereits gelöschter Alben).
 export async function getAllGalleryImages() {
+  await requireAdmin();
   return await db.select({ gallery: galleries, album: galleryAlbums })
     .from(galleries)
     .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
@@ -366,7 +389,7 @@ export const getFavoriteGalleryImages = unstable_cache(async (limit = MAX_FAVORI
   return await db.select({ gallery: galleries, album: galleryAlbums })
     .from(galleries)
     .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
-    .where(and(eq(galleries.isFavorite, true), or(isNull(galleryAlbums.id), isNull(galleryAlbums.deletedAt))))
+    .where(and(eq(galleries.isFavorite, true), or(isNull(galleryAlbums.id), and(isNull(galleryAlbums.deletedAt), lte(galleryAlbums.date, new Date())))))
     .orderBy(asc(galleries.favoriteOrder), asc(galleries.createdAt))
     .limit(limit);
 }, ['public-favorite-gallery-images'], { revalidate: 3600, tags: ['gallery'] });

@@ -1,5 +1,6 @@
 import type { StaffRecord, StaffRole } from "@/types/domain";
 import { decryptField } from "./secure-fields";
+import { csvCell } from "./csv";
 
 const HEADERS = [
   "Personalnummer", "Anrede", "Titel", "Vorname", "Nachname", "Geburtsdatum", "Straße", "PLZ", "Ort",
@@ -57,15 +58,10 @@ export function payrollRow(member: StaffRecord, role: StaffRole | null) {
   ];
 }
 
-function csvCell(value: string, separator = ";") {
-  if (value.includes(separator) || value.includes('"') || value.includes("\n") || value.includes("\r")) {
-    return `"${value.replaceAll('"', '""')}"`;
-  }
-  return value;
-}
+
 
 export function buildPayrollCsv(rows: string[][]) {
-  return `\uFEFF${[HEADERS, ...rows].map(row => row.map(value => csvCell(value)).join(";")).join("\r\n")}\r\n`;
+  return `\uFEFF${[HEADERS, ...rows].map(row => row.map(value => csvCell(value, ";")).join(";")).join("\r\n")}\r\n`;
 }
 
 export function missingPayrollFields(member: StaffRecord) {

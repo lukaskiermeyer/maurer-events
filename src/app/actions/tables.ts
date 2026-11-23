@@ -85,10 +85,10 @@ export async function getBookedTableIds(eventId: string, dateStr: string) {
   const [settings] = await db.select().from(eventSettings).where(eq(eventSettings.eventId, eventId));
   const booked = await db.select({ tableId: reservations.tableId, guests: sum(reservations.guestCount).mapWith(Number), capacity: tables.capacity })
     .from(reservations).innerJoin(tables, eq(tables.id, reservations.tableId))
-    .where(and(dayRange(day), activeReservation())).groupBy(reservations.tableId, tables.capacity);
+    .where(and(eq(reservations.eventId, eventId), dayRange(day), activeReservation())).groupBy(reservations.tableId, tables.capacity);
   const exclusive = await db.selectDistinct({ tableId: reservations.tableId }).from(reservations)
     .leftJoin(eventSettings, eq(eventSettings.eventId, reservations.eventId))
-    .where(and(dayRange(day), activeReservation(), isNotNull(reservations.tableId), or(eq(eventSettings.requireFullTable, true), isNull(eventSettings.id))));
+    .where(and(eq(reservations.eventId, eventId), dayRange(day), activeReservation(), isNotNull(reservations.tableId), or(eq(eventSettings.requireFullTable, true), isNull(eventSettings.id))));
   const exclusiveIds = new Set(exclusive.map(row => row.tableId));
   return booked.filter(row => (settings?.requireFullTable ?? true) || exclusiveIds.has(row.tableId) || row.guests >= row.capacity).map(row => row.tableId);
 }

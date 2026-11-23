@@ -5,7 +5,7 @@ import type { EventRecord, AdminGalleryAlbum, GalleryImage, GalleryWithAlbum } f
 import {
   createGalleryAlbum, updateGalleryAlbum, deleteGalleryAlbum, restoreGalleryAlbum,
   getDeletedGalleryAlbums, getOrCreateEventAlbum, removeGalleryImage, setGalleryFavorite,
-  moveGalleryFavorite, moveGalleryAlbum, setAlbumCoverFromImage, assignGalleryImage, getGalleryImages,
+  moveGalleryFavorite, moveGalleryAlbum, setAlbumCoverFromImage, assignGalleryImage, getAdminGalleryImages,
 } from "@/app/actions/gallery";
 import { uploadImage } from "@/lib/client-image-upload";
 import { translateTextsNow } from "@/app/actions/translations";
@@ -179,7 +179,7 @@ export default function AdminGalleryTab({
   const handleRestore = async (id: string) => {
     try {
       const album = await restoreGalleryAlbum(id);
-      const imgs = await getGalleryImages(id);
+      const imgs = await getAdminGalleryImages(id);
       if (album) setAlbumList(prev => [album, ...prev]);
       setImageList(prev => [...imgs, ...prev]);
       setDeletedAlbums(prev => prev.filter(a => a.id !== id));

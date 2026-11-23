@@ -229,82 +229,138 @@
     {
       "idx": 32,
       "version": "7",
+      "when": 1794931000000,
+      "tag": "0032_event_published",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794932000000,
+      "tag": "0032_profit_share",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794933000000,
+      "tag": "0033_event_map_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794934000000,
+      "tag": "0033_driver_license_doc",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794935000000,
+      "tag": "0034_payroll_export_selection",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794936000000,
+      "tag": "0034_requirement_time_optional",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794937000000,
+      "tag": "0035_event_zip",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794938000000,
+      "tag": "0035_admin_passkey_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
       "when": 1795000000000,
       "tag": "0035_admin_mfa",
       "breakpoints": true
     },
     {
-      "idx": 33,
+      "idx": 41,
       "version": "7",
       "when": 1795076648414,
       "tag": "0036_staff_house_number",
       "breakpoints": true
     },
     {
-      "idx": 34,
+      "idx": 42,
       "version": "7",
       "when": 1795079000000,
       "tag": "0037_work_certificate_doc",
       "breakpoints": true
     },
     {
-      "idx": 35,
+      "idx": 43,
       "version": "7",
       "when": 1795082000000,
       "tag": "0038_admin_password_totp",
       "breakpoints": true
     },
     {
-      "idx": 36,
+      "idx": 44,
       "version": "7",
       "when": 1795200000000,
       "tag": "0039_bavarian_translations",
       "breakpoints": true
     },
     {
-      "idx": 37,
+      "idx": 45,
       "version": "7",
       "when": 1795300000000,
       "tag": "0040_gallery_favorites",
       "breakpoints": true
     },
     {
-      "idx": 38,
+      "idx": 46,
       "version": "7",
       "when": 1795400000000,
       "tag": "0041_gallery_albums",
       "breakpoints": true
     },
     {
-      "idx": 39,
+      "idx": 47,
       "version": "7",
       "when": 1795500000000,
       "tag": "0042_gallery_album_order",
       "breakpoints": true
     },
     {
-      "idx": 40,
+      "idx": 48,
       "version": "7",
       "when": 1795600000000,
       "tag": "0043_team_members",
       "breakpoints": true
     },
     {
-      "idx": 41,
+      "idx": 49,
       "version": "7",
       "when": 1795700000000,
       "tag": "0044_team_mock_photos",
       "breakpoints": true
     },
     {
-      "idx": 42,
+      "idx": 50,
       "version": "7",
       "when": 1795800000000,
       "tag": "0045_plan_presets",
       "breakpoints": true
     },
     {
-      "idx": 43,
+      "idx": 51,
       "version": "7",
       "when": 1795900000000,
       "tag": "0046_event_invite_template",

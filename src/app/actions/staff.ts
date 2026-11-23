@@ -4,7 +4,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { db } from "@/db";
-import { auditLog, contractTemplates, contracts, eventStaffRequirements, shiftOffers, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffRoles, staffSessions } from "@/db/schema";
+import { auditLog, contractTemplates, contracts, eventStaffRequirements, shiftOffers, staff, staffAssignments, staffAvailability, staffDocuments, staffInvites, staffPasswordResets, staffRoles, staffSessions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { requireStaffMember, hashToken, randomToken } from "@/lib/staff-auth";
 import { BookingError, uuid } from "@/lib/reservation-policy";
@@ -17,6 +17,7 @@ import { ensureMinijobDocument } from "@/lib/document-forms";
 import { missingRequiredDocsForStaff } from "@/lib/staff-required-docs";
 import { staffInviteHtml, staffInviteSubject, staffInviteText } from "@/lib/staff-invite-email";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
+import { safeStaffMember } from "@/lib/staff-privacy";
 
 function text(value: unknown, label: string, max: number, required = false) {
   if (value === undefined || value === null) {
@@ -47,9 +48,10 @@ async function audit(actorType: string, actorId: string, action: string, entityT
 
 export async function getStaffList() {
   await requireAdmin();
-  return db.select({ member: staff, role: staffRoles }).from(staff)
+  const rows = await db.select({ member: staff, role: staffRoles }).from(staff)
     .leftJoin(staffRoles, eq(staffRoles.id, staff.roleId))
     .orderBy(asc(staff.lastName), asc(staff.firstName));
+  return rows.map(row => ({ ...row, member: safeStaffMember(row.member) }));
 }
 
 export async function getStaffDetail(staffId: string) {
@@ -63,16 +65,7 @@ export async function getStaffDetail(staffId: string) {
     db.select().from(staffDocuments).where(eq(staffDocuments.staffId, staffId)).orderBy(desc(staffDocuments.createdAt)),
     db.select().from(contracts).where(eq(contracts.staffId, staffId)).orderBy(desc(contracts.createdAt)),
   ]);
-  // Datensparsamkeit: keine verschlüsselten Steuer-/IBAN-/SV-Werte und kein
-  // Passwort-Hash an die Admin-UI senden (dort nicht benötigt).
-  const safeMember = {
-    ...member.member,
-    passwordHash: null,
-    taxIdEnc: null,
-    socialSecurityEnc: null,
-    ibanEnc: null,
-  };
-  return { member: safeMember, role: member.role, documents, contracts: staffContracts };
+  return { member: safeStaffMember(member.member), role: member.role, documents, contracts: staffContracts };
 }
 
 export async function getRoles() {
@@ -189,7 +182,7 @@ const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}
   }
   await audit("admin", actor.email, "staff.create", "staff", created.id, { roleId });
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
-  return { success: true, staff: created, inviteUrl, warning };
+  return { success: true, staff: safeStaffMember(created), inviteUrl, warning };
 }
 
 export async function resendStaffInvite(staffId: string) {
@@ -197,8 +190,10 @@ export async function resendStaffInvite(staffId: string) {
   uuid(staffId);
   const [member] = await db.select().from(staff).where(eq(staff.id, staffId));
   if (!member) throw new BookingError("Mitarbeiter nicht gefunden.", 404);
+  if (member.status === "inactive") throw new BookingError("Deaktivierte Mitarbeiter können nicht eingeladen werden.", 403);
   const token = randomToken();
   const expiresAt = new Date(Date.now() + 7 * 86400000);
+  await db.delete(staffInvites).where(eq(staffInvites.staffId, staffId));
   await db.insert(staffInvites).values({ staffId, tokenHash: hashToken(token), expiresAt, createdBy: actor.email });
   const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/einladung?token=${encodeURIComponent(token)}`;
 const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/team/login`;
@@ -246,14 +241,18 @@ export async function updateStaffAdmin(staffId: string, data: Partial<{ firstNam
   const effectiveExit = patch.exitDate !== undefined ? (patch.exitDate as Date | null) : current.exitDate;
   if (effectiveEntry && effectiveExit && effectiveExit < effectiveEntry) throw new BookingError("Austrittsdatum liegt vor dem Eintrittsdatum.");
   if (patch.status === "inactive") {
-    // Sofortige Sitzungs-Sperrung beim Inaktivsetzen (Art. 32 TOM).
-    await db.delete(staffSessions).where(eq(staffSessions.staffId, staffId));
+    // Sofortige Sperrung aller aktuellen und noch ausstellbaren Zugänge.
+    await Promise.all([
+      db.delete(staffSessions).where(eq(staffSessions.staffId, staffId)),
+      db.delete(staffInvites).where(eq(staffInvites.staffId, staffId)),
+      db.delete(staffPasswordResets).where(eq(staffPasswordResets.staffId, staffId)),
+    ]);
   }
   const [updated] = await db.update(staff).set(patch).where(eq(staff.id, staffId)).returning();
   if (!updated) throw new BookingError("Mitarbeiter nicht gefunden.", 404);
   await audit("admin", actor.email, "staff.update", "staff", staffId);
   revalidatePath("/[locale]/admin/mitarbeiter", "page");
-  return { success: true, staff: updated };
+  return { success: true, staff: safeStaffMember(updated) };
 }
 
 export async function getStaffErasureStatus(staffId: string) {
@@ -418,7 +417,7 @@ export async function saveMyOnboarding(data: {
     documentWarning = "Daten gespeichert, aber das Minijob-Formular konnte nicht automatisch erstellt werden. Bitte wende dich an den Festwirt.";
   }
   await audit("staff", member.id, "staff.onboarding.save", "staff", member.id);
-  return { success: true, staff: updated, contract, document, documentWarning };
+  return { success: true, staff: safeStaffMember(updated), contract, document, documentWarning };
 }
 
 export async function updateMyProfile(data: { firstName?: string; lastName?: string; phone?: string | null; street?: string | null; houseNumber?: string | null; zip?: string | null; city?: string | null; iban?: string | null; bic?: string | null; taxClass?: string | null; healthInsurance?: string | null }) {
@@ -438,7 +437,7 @@ export async function updateMyProfile(data: { firstName?: string; lastName?: str
   const [updated] = await db.update(staff).set(patch).where(eq(staff.id, member.id)).returning();
   await audit("staff", member.id, "staff.profile.update", "staff", member.id);
   revalidatePath("/[locale]/team", "layout");
-  return { success: true, staff: updated };
+  return { success: true, staff: safeStaffMember(updated) };
 }
 export async function getMyProfile() {
   const member = await requireStaffMember(true);
@@ -447,7 +446,7 @@ export async function getMyProfile() {
     db.select().from(staffDocuments).where(eq(staffDocuments.staffId, member.id)).orderBy(desc(staffDocuments.createdAt)),
     db.select().from(contracts).where(eq(contracts.staffId, member.id)).orderBy(desc(contracts.createdAt)),
   ]);
-  return { member, role: role || null, documents, contracts: myContracts };
+  return { member: safeStaffMember(member), role: role || null, documents, contracts: myContracts };
 }
 
 export async function getMyContract() {
@@ -455,7 +454,7 @@ export async function getMyContract() {
   const contract = await ensureContractForStaff(member.id);
   const [role] = member.roleId ? await db.select().from(staffRoles).where(eq(staffRoles.id, member.roleId)) : [];
   const missingDocs = await missingRequiredDocsForStaff(member.id, role?.requiredDocuments ?? []);
-  return { member, role: role || null, contract, missingDocs };
+  return { member: safeStaffMember(member), role: role || null, contract, missingDocs };
 }
 
 export async function verifyStaffDocument(documentId: string, status: "verified" | "rejected") {
