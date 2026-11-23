@@ -7,11 +7,10 @@ import { PlanCanvas, PlanStaticSvg, type DrawPreset, type PlanTool } from "@/com
 import NumField from "@/components/admin/plan/NumField";
 import { savePlanPreset, deletePlanPreset, duplicatePlanPreset, getPlanPresets } from "@/app/actions/plans";
 import {
-  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DIM_CATEGORIES, DOOR_WIDTHS, applyNumbering, childrenOf, computeMeasureReport, descendantIds, isLayout,
-  garniturFootprint, highestGroupAt, isAncestorOf, moveGroup, parentOf, planRows, planTables, rowBlockGeometry, sortedRows, tableLabel, tablesOfRow,
-  type DimCategory, type NumberingOptions, type NumberingScheme, type PlanElement, type PlanLayout, type PlanTable, type RowSpec,
+  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DIM_CATEGORIES, DOOR_WIDTHS, applyNumbering, childrenOf, computeDimensions, computeMeasureReport, descendantIds, isLayout,
+  garniturFootprint, highestGroupAt, isAncestorOf, measurementDistance, moveGroup, parentOf, planRows, planTables, rowBlockGeometry, sortedRows, tableLabel, tablesOfRow,
+  type DimCategory, type MeasurementMode, type NumberingOptions, type NumberingScheme, type PlanElement, type PlanLayout, type PlanMeasurement, type PlanTable, type RowSpec,
 } from "@/lib/plan-types";
-import type { Measurement } from "@/components/admin/plan/PlanCanvas";
 import type { PlanPresetRecord } from "@/types/domain";
 
 type Rect = { x: number; y: number; w: number; h: number };
@@ -47,6 +46,13 @@ const EDIT_TOOLS: { key: PlanTool; label: string }[] = [
   { key: "measure", label: "Messen" },
 ];
 
+const DIM_PRESETS: { label: string; keys: DimCategory[] }[] = [
+  { label: "Aufbau", keys: ["zelt", "gaenge", "reihen-position", "reihen-laenge", "wand", "tueren", "buehne"] },
+  { label: "Zelt & Gänge", keys: ["zelt", "gaenge"] },
+  { label: "Alle", keys: DIM_CATEGORIES.map(c => c.key) },
+  { label: "Keine Auto-Maße", keys: [] },
+];
+
 export default function PlanManager({ presets: initialPresets, initialPresetId }: { presets: PlanPresetRecord[]; initialPresetId: string | null }) {
   const toast = useToast();
   const dialog = useDialog();
@@ -64,13 +70,14 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   const [rowSpec, setRowSpec] = useState<RowSpec>({ ...DEFAULT_ROW_SPEC });
   const [numbering, setNumbering] = useState<NumberingOptions>({ ...DEFAULT_NUMBERING });
   const [showDims, setShowDims] = useState(false);
+  const [measureMode, setMeasureMode] = useState<MeasurementMode>("axis");
   const [placeX, setPlaceX] = useState(0);
   const [placeY, setPlaceY] = useState(0);
   const [refId, setRefId] = useState("");
   const [refAxis, setRefAxis] = useState<"vertical" | "horizontal">("vertical");
   const [refGap, setRefGap] = useState(250);
   const [mins, setMins] = useState({ aisle: 80, stage: 100, wall: 50, maxRowSeats: 20 });
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const measurements: PlanMeasurement[] = layout.measurements ?? [];
   const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
   const [constantsOpen, setConstantsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
@@ -118,6 +125,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     setHistory(history.slice(0, -1));
     setFuture([...future, layout]);
     setLayout(prev);
+    setSelectedMeasure(null);
     setDirty(true);
   };
   const redo = () => {
@@ -126,6 +134,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     setFuture(future.slice(0, -1));
     setHistory([...history, layout]);
     setLayout(next);
+    setSelectedMeasure(null);
     setDirty(true);
   };
 
@@ -136,6 +145,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     setLayout(p ? structuredClone(p.layout) : structuredClone(DEFAULT_LAYOUT));
     setNumbering(p?.layout.numbering ? { ...p.layout.numbering } : { ...DEFAULT_NUMBERING });
     setSelectedIds([]);
+    setSelectedMeasure(null);
     setHistory([]);
     setFuture([]);
     setStep(p && p.layout.elements.length > 0 ? 7 : 1);
@@ -211,8 +221,10 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   const gotoStep = (s: Step) => {
     setStep(s);
     setSelectedIds([]);
+    setSelectedMeasure(null);
     setDrawPreset(null);
     setTool(defaultToolForStep(s));
+    if (s === 4) setShowDims(true);
   };
 
   // Zeltgrenze folgt immer den Zeltmaßen: existiert sie nicht, wird sie angelegt.
@@ -241,7 +253,28 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   const togglePan = () => setTool(t => t === "pan" ? defaultToolForStep(step) : "pan");
   const toggleSelect = () => setTool(t => t === "select" ? defaultToolForStep(step) : "select");
 
-  // Gemessene Distanz korrigieren: Element unter Punkt B wird passend verschoben.
+  // Eigene Maße gehören zum Plan-Dokument: Autosave, Export, Undo und Druck
+  // verwenden dadurch denselben Stand wie alle anderen Plan-Elemente.
+  const changeMeasurements = (fn: (items: PlanMeasurement[]) => PlanMeasurement[]) =>
+    commit(l => ({ ...l, measurements: fn(l.measurements ?? []) }));
+  const addMeasurement = (m: PlanMeasurement) => {
+    if (measurements.length >= 500) { toast.showToast("Maximal 500 eigene Maße pro Plan.", "warning"); return; }
+    changeMeasurements(items => [...items, m]);
+    setSelectedMeasure(measurements.length);
+    setSelectedIds([]);
+  };
+  const patchMeasurement = (i: number, patch: Partial<Omit<PlanMeasurement, "id">>) =>
+    changeMeasurements(items => items.map((m, j) => j === i ? { ...m, ...patch } : m));
+  const deleteMeasurement = (i: number) => {
+    changeMeasurements(items => items.filter((_, j) => j !== i));
+    setSelectedMeasure(null);
+  };
+  const clearMeasurements = () => {
+    changeMeasurements(() => []);
+    setSelectedMeasure(null);
+  };
+
+  // Optional: Element unter Punkt B gezielt verschieben, bis der Abstand stimmt.
   const adjustMeasurement = (i: number, axis: "x" | "y", target: number) => {
     const m = measurements[i];
     if (!m) return;
@@ -250,8 +283,10 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     if (delta === 0) return;
     const id = highestGroupAt(layout, m.b.x, m.b.y);
     if (!id) { toast.showToast("Unter Punkt B liegt kein Element – Abstand kann nicht angepasst werden.", "warning"); return; }
-    commit(l => moveGroup(l, id, axis === "x" ? delta : 0, axis === "y" ? delta : 0));
-    setMeasurements(ms => ms.map((mm, j) => j === i ? { ...mm, b: { x: mm.b.x + (axis === "x" ? delta : 0), y: mm.b.y + (axis === "y" ? delta : 0) } } : mm));
+    commit(l => {
+      const moved = moveGroup(l, id, axis === "x" ? delta : 0, axis === "y" ? delta : 0);
+      return { ...moved, measurements: (moved.measurements ?? []).map((mm, j) => j === i ? { ...mm, b: { x: mm.b.x + (axis === "x" ? delta : 0), y: mm.b.y + (axis === "y" ? delta : 0) } } : mm) };
+    });
   };
 
   const containingAreaId = (x: number, y: number): string | undefined => {
@@ -465,6 +500,12 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
 
   const report = useMemo(() => computeMeasureReport(layout, mins), [layout, mins]);
   const activeDims = layout.printDims ?? DIM_CATEGORIES.map(c => c.key);
+  const allDimensions = useMemo(() => computeDimensions({ ...layout, printDims: undefined }), [layout]);
+  const dimensionCount = (key: DimCategory) => allDimensions.filter(d => d.cat === key).length;
+  const setPrintDims = (keys: DimCategory[]) => {
+    commit(l => ({ ...l, printDims: keys }));
+    setShowDims(true);
+  };
   const togglePrintDim = (key: DimCategory) => commit(l => {
     const current = l.printDims ?? DIM_CATEGORIES.map(c => c.key);
     return { ...l, printDims: current.includes(key) ? current.filter(k => k !== key) : [...current, key] };
@@ -505,8 +546,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedMeasure !== null) {
         e.preventDefault();
-        setMeasurements(ms => ms.filter((_, j) => j !== selectedMeasure));
-        setSelectedMeasure(null);
+        deleteMeasurement(selectedMeasure);
         return;
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) { e.preventDefault(); deleteSelected(); return; }
@@ -753,45 +793,88 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
           )}
           {step === 4 && (
             <>
-              <h3 className="font-display font-bold">Maße</h3>
+              <div>
+                <h3 className="font-display font-bold">Maße & Aufbauplan</h3>
+                <p className="mt-1 text-xs text-base-dark/60">Auto-Maße auswählen oder einzelne Abstände direkt im Plan messen. Nur die gewünschten Maße kommen in den Druck.</p>
+              </div>
+
+              <section className="rounded-xl border border-border-light p-3" aria-labelledby="auto-dims-heading">
+                <div className="flex items-center justify-between gap-2">
+                  <p id="auto-dims-heading" className="text-xs font-bold uppercase tracking-widest opacity-60">Automatische Maßketten</p>
+                  <span className="text-xs font-bold opacity-60">{activeDims.length} Kategorien</span>
+                </div>
+                <button type="button" aria-pressed={showDims} onClick={() => setShowDims(v => !v)} className={`mt-2 ${toolBtn(showDims)} w-full`}>
+                  {showDims ? "Maßketten im Plan sichtbar" : "Maßketten im Plan anzeigen"}
+                </button>
+                <div className="mt-2 grid grid-cols-2 gap-1" aria-label="Schnellauswahl automatische Maße">
+                  {DIM_PRESETS.map(p => <button key={p.label} type="button" onClick={() => setPrintDims(p.keys)} className="min-h-10 rounded-lg border border-border-light bg-white px-2 text-xs font-bold hover:border-accent-green">{p.label}</button>)}
+                </div>
+                <div className="mt-3 space-y-1">
+                  {DIM_CATEGORIES.map(c => (
+                    <label key={c.key} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-1 text-sm font-bold hover:bg-canvas-light">
+                      <input type="checkbox" checked={activeDims.includes(c.key)} onChange={() => togglePrintDim(c.key)} className="h-4 w-4 shrink-0 accent-accent-green" />
+                      <span className="flex-1">{c.label}</span>
+                      <span className="text-xs font-normal tabular-nums opacity-50">{dimensionCount(c.key)}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs opacity-60">Die Zahl rechts zeigt die aktuell erzeugten Maße. Die Auswahl steuert Vorschau und Aufbau-/Druckplan.</p>
+              </section>
+
+              <section className="rounded-xl border border-accent-green/40 bg-accent-green/5 p-3" aria-labelledby="manual-dims-heading">
+                <div className="flex items-center justify-between gap-2">
+                  <p id="manual-dims-heading" className="text-xs font-bold uppercase tracking-widest opacity-60">Eigene Maße</p>
+                  <span className="text-xs font-bold opacity-60">{measurements.filter(m => m.print !== false).length} im Druck</span>
+                </div>
+                <button type="button" aria-pressed={tool === "measure"} onClick={() => { setTool(tool === "measure" ? "select" : "measure"); setSelectedIds([]); setSelectedMeasure(null); }} className={`mt-2 ${toolBtn(tool === "measure")} w-full`}>
+                  {tool === "measure" ? "Messen beenden" : "+ Neues Maß aufnehmen"}
+                </button>
+                <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-white p-1" role="group" aria-label="Messrichtung">
+                  <button type="button" aria-pressed={measureMode === "axis"} onClick={() => setMeasureMode("axis")} className={`min-h-10 rounded-lg px-2 text-xs font-bold ${measureMode === "axis" ? "bg-base-dark text-white" : "hover:bg-canvas-light"}`}>H / V</button>
+                  <button type="button" aria-pressed={measureMode === "free"} onClick={() => setMeasureMode("free")} className={`min-h-10 rounded-lg px-2 text-xs font-bold ${measureMode === "free" ? "bg-base-dark text-white" : "hover:bg-canvas-light"}`}>Frei</button>
+                </div>
+                <p className="mt-2 text-xs text-base-dark/70">H / V erzeugt automatisch saubere horizontale oder vertikale Maße wie auf dem alten Zeltplan. Bezeichnung und Druckausgabe verwaltest du rechts unter <strong>Eigene Maße</strong>.</p>
+              </section>
+
               <div className="rounded-xl border border-border-light p-3">
                 <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Zeltmaße</p>
                 <div className="grid grid-cols-2 gap-2 text-sm font-bold">
-                  <label className="block">Zeltbreite (cm)
+                  <label className="block">Breite (cm)
                     <NumField min={100} step={10} value={layout.widthCm} onCommit={n => setTentSize("widthCm", n)} className={field} />
                   </label>
-                  <label className="block">Zelthöhe (cm)
+                  <label className="block">Länge (cm)
                     <NumField min={100} step={10} value={layout.heightCm} onCommit={n => setTentSize("heightCm", n)} className={field} />
                   </label>
                 </div>
-                <p className="mt-2 text-xs opacity-60">Die Zeltgrenze entsteht automatisch und folgt jeder Maßänderung.</p>
+                <p className="mt-2 text-xs opacity-60">Die Zeltgrenze folgt beiden Werten automatisch.</p>
               </div>
 
-              <div className="rounded-xl border border-border-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Garnitur & Abstände · gelten für alle Blöcke</p>
-                <div className="grid grid-cols-2 gap-2 text-sm font-bold">
-                  <label className="block">Tischbreite (Platte, cm)
+              <details className="rounded-xl border border-border-light p-3">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest opacity-60">Standardwerte für neue Reihen</summary>
+                <p className="mt-2 text-xs text-base-dark/60">Diese Werte gelten für neu eingesetzte Blöcke. Bestehende Garnituren bearbeitest du über deren Eigenschaften.</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
+                  <label className="block">Tischbreite (cm)
                     <NumField min={20} value={rowSpec.tableW} onCommit={n => setRowSpec(s => ({ ...s, tableW: n }))} className={field} />
                   </label>
-                  <label className="block">Tischtiefe (Platte, cm)
+                  <label className="block">Tischtiefe (cm)
                     <NumField min={20} value={rowSpec.tableH} onCommit={n => setRowSpec(s => ({ ...s, tableH: n }))} className={field} />
                   </label>
                   <label className="block">Banktiefe (cm)
                     <NumField min={0} value={rowSpec.benchDepth} onCommit={n => setRowSpec(s => ({ ...s, benchDepth: n }))} className={field} />
                   </label>
-                  <label className="block">Abstand Bank–Tisch (cm)
+                  <label className="block">Bank–Tisch (cm)
                     <NumField min={0} value={rowSpec.benchGap} onCommit={n => setRowSpec(s => ({ ...s, benchGap: n }))} className={field} />
                   </label>
-                  <label className="block">Abstand Tische (cm)
+                  <label className="block">Tischabstand (cm)
                     <NumField min={0} value={rowSpec.gapTables} onCommit={n => setRowSpec(s => ({ ...s, gapTables: n }))} className={field} />
                   </label>
-                  <label className="block">Gang zwischen Reihen (cm)
+                  <label className="block">Reihenabstand (cm)
                     <NumField min={0} value={rowSpec.gapRows} onCommit={n => setRowSpec(s => ({ ...s, gapRows: n }))} className={field} />
                   </label>
                 </div>
-                <label className="mt-2 flex items-center gap-2 text-sm font-bold">
+                <label className="mt-3 flex items-center gap-2 text-sm font-bold">
                   <input type="checkbox" checked={rowSpec.double} onChange={e => setRowSpec(s => ({ ...s, double: e.target.checked }))} className="h-4 w-4 accent-accent-green" />
-                  Doppelreihen (Paare mit engem Innenabstand)
+                  Doppelreihen mit engem Innenabstand
                 </label>
                 {rowSpec.double && (
                   <label className="mt-2 block text-sm font-bold">Innenabstand im Paar (cm)
@@ -799,13 +882,15 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                   </label>
                 )}
                 <p className="mt-2 rounded-lg bg-canvas-light p-2 text-xs opacity-80">
-                  Gesamtmaß je Garnitur: {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).w)} × {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).h)} cm (Platte + 2 Bänke + Abstände)
+                  Gesamtmaß: {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).w)} × {Math.round(garniturFootprint(rowSpec.tableW, rowSpec.tableH, rowSpec.benchDepth, rowSpec.benchGap, rowSpec.tableVertical).h)} cm je Garnitur
                 </p>
-              </div>
+              </details>
 
-              <div className="rounded-xl bg-canvas-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maß-Report</p>
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+              <details className="rounded-xl bg-canvas-light p-3" open={report.violations.length > 0}>
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest opacity-60">
+                  Mindestmaße & Prüfbericht {report.violations.length > 0 ? `(${report.violations.length} Hinweise)` : ""}
+                </summary>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold">
                   <label className="block">Min. Gang
                     <NumField min={0} value={mins.aisle} onCommit={n => setMins(m => ({ ...m, aisle: n }))} className={field} />
                   </label>
@@ -830,22 +915,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                     {report.violations.map(v => <p key={v}>{v}</p>)}
                   </div>
                 )}
-              </div>
-
-              <div className="rounded-xl border border-border-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest opacity-60">Maße für den Druckplan</p>
-                <div className="grid grid-cols-1 gap-1 text-sm font-bold">
-                  {DIM_CATEGORIES.map(c => (
-                    <label key={c.key} className="flex items-center gap-2">
-                      <input type="checkbox" checked={activeDims.includes(c.key)} onChange={() => togglePrintDim(c.key)} className="h-4 w-4 accent-accent-green" />
-                      {c.label}
-                    </label>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs opacity-60">Nur angehakte Maß-Kategorien erscheinen im Druckplan und in der Maß-Ansicht des Plans.</p>
-              </div>
-
-              <button type="button" onClick={() => setShowDims(v => !v)} className={toolBtn(showDims)}>{showDims ? "Maßketten aus" : "Maßketten an"}</button>
+              </details>
             </>
           )}
           {step === 5 && (
@@ -962,6 +1032,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               onCreateDoor={createDoor}
               drawPreset={drawPreset}
               showDims={showDims}
+              measureMode={measureMode}
               measurements={measurements}
               selectedMeasure={selectedMeasure}
               onMeasureSelect={setSelectedMeasure}
@@ -974,7 +1045,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               onTogglePan={togglePan}
               onToggleSelect={toggleSelect}
               onToggleDims={() => setShowDims(v => !v)}
-              onMeasure={m => setMeasurements(ms => [...ms, m])}
+              onMeasure={addMeasurement}
               onResize={(id, rect) => {
                 if (!moveStartedRef.current) { pushHistory(layout); moveStartedRef.current = true; }
                 setLayout(l => ({ ...l, elements: l.elements.map(el => el.id === id ? { ...el, x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.w), h: Math.round(rect.h) } : el) }));
@@ -1009,32 +1080,65 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               ))}
             </div>
           )}
-          {(tool === "measure" || measurements.length > 0) && (
-            <div className="mb-4 space-y-2 rounded-xl bg-canvas-light p-3">
-              <p className="text-xs font-bold uppercase tracking-widest opacity-60">Messungen</p>
-              {measurements.length === 0 && <p className="text-xs text-base-dark/60">Zwei Punkte im Plan anklicken – rastet an Kanten ein. Δx/Δy unten editieren: Das Element unter Punkt B wird passend verschoben, bis die Distanz stimmt.</p>}
+          {(step === 4 || tool === "measure" || measurements.length > 0) && (
+            <section className="mb-4 space-y-2 rounded-xl bg-canvas-light p-3" aria-labelledby="measurements-heading">
+              <div className="flex items-center justify-between gap-2">
+                <p id="measurements-heading" className="text-xs font-bold uppercase tracking-widest opacity-60">Eigene Maße</p>
+                <span className="text-xs font-bold opacity-60">{measurements.length}</span>
+              </div>
+              {measurements.length === 0 && <p className="text-xs text-base-dark/60">Mit <strong>Neues Maß aufnehmen</strong> oder dem Werkzeug <strong>Messen</strong> zwei Punkte anklicken. Das Maß wird automatisch gespeichert und ist standardmäßig im Druck enthalten.</p>}
               {measurements.map((m, i) => {
                 const dx = Math.round(m.b.x - m.a.x);
                 const dy = Math.round(m.b.y - m.a.y);
+                const direction = dx === 0 ? "senkrecht" : dy === 0 ? "waagerecht" : "frei";
+                const expanded = selectedMeasure === i;
+                const measurementName = m.label?.trim() || `Maß ${i + 1}`;
                 return (
-                  <div key={i} className={`rounded-lg bg-white p-2 text-xs font-bold ${selectedMeasure === i ? "ring-2 ring-accent-green" : ""}`}>
-                    <button type="button" onClick={() => setSelectedMeasure(selectedMeasure === i ? null : i)} className="w-full text-left">
-                      {Math.round(Math.hypot(dx, dy))} cm diagonal {selectedMeasure === i ? "· ausgewählt (Entf löscht)" : ""}
-                    </button>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
-                      <label className="block">Δx (cm)
-                        <NumField value={dx} onCommit={n => adjustMeasurement(i, "x", n)} className={field} />
-                      </label>
-                      <label className="block">Δy (cm)
-                        <NumField value={dy} onCommit={n => adjustMeasurement(i, "y", n)} className={field} />
+                  <div key={m.id} className={`rounded-lg bg-white p-2 text-xs font-bold ${expanded ? "ring-2 ring-accent-green" : ""}`}>
+                    <div className="flex items-center gap-1">
+                      <button type="button" aria-expanded={expanded} onClick={() => { setSelectedMeasure(expanded ? null : i); setSelectedIds([]); }} className="min-h-11 min-w-0 flex-1 rounded-lg px-1 text-left hover:bg-canvas-light">
+                        <span className="block truncate">{measurementName}</span>
+                        <span className="block font-normal opacity-60">{measurementDistance(m)} cm · {direction}</span>
+                      </button>
+                      <label className="flex min-h-11 min-w-11 cursor-pointer flex-col items-center justify-center rounded-lg hover:bg-canvas-light" title="Dieses Maß im Aufbau-/Druckplan anzeigen">
+                        <input type="checkbox" checked={m.print !== false} onChange={e => patchMeasurement(i, { print: e.target.checked })} aria-label={`${measurementName} im Druck anzeigen`} className="h-4 w-4 accent-accent-green" />
+                        <span className="mt-0.5 text-[10px] uppercase opacity-60">Druck</span>
                       </label>
                     </div>
-                    <button type="button" onClick={() => { setMeasurements(ms => ms.filter((_, j) => j !== i)); setSelectedMeasure(null); }} className="mt-1 font-bold text-red-600">Messung löschen</button>
+                    {expanded && (
+                      <div className="mt-2 space-y-2 border-t border-border-light pt-2">
+                        <label className="block">Bezeichnung (optional)
+                          <input value={m.label ?? ""} maxLength={80} placeholder="z. B. Hauptgang" onChange={e => patchMeasurement(i, { label: e.target.value })} className={field} />
+                        </label>
+                        <details className="rounded-lg bg-canvas-light p-2">
+                          <summary className="min-h-8 cursor-pointer font-bold">Abstand durch Verschieben korrigieren</summary>
+                          <p className="mt-1 font-normal text-base-dark/60">Das Element unter Punkt B wird verschoben. Andere Elemente können dadurch ihre Position ändern.</p>
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            <label className="block">Δx (cm)
+                              <NumField value={dx} onCommit={n => adjustMeasurement(i, "x", n)} className={field} />
+                            </label>
+                            <label className="block">Δy (cm)
+                              <NumField value={dy} onCommit={n => adjustMeasurement(i, "y", n)} className={field} />
+                            </label>
+                          </div>
+                        </details>
+                        <button type="button" onClick={() => deleteMeasurement(i)} className="min-h-10 rounded-lg px-2 font-bold text-red-600 hover:bg-red-50">Maß löschen (Undo möglich)</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
-              {measurements.length > 0 && <button type="button" onClick={() => { setMeasurements([]); setSelectedMeasure(null); }} className="text-xs font-bold text-red-600">Alle Messungen löschen</button>}
-            </div>
+              {measurements.length > 0 && (
+                <>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button type="button" onClick={() => changeMeasurements(items => items.map(m => ({ ...m, print: true })))} className="min-h-10 rounded-lg bg-white text-xs font-bold hover:bg-white/70">Alle drucken</button>
+                    <button type="button" onClick={() => changeMeasurements(items => items.map(m => ({ ...m, print: false })))} className="min-h-10 rounded-lg bg-white text-xs font-bold hover:bg-white/70">Keine drucken</button>
+                  </div>
+                  <button type="button" onClick={clearMeasurements} className="min-h-10 w-full rounded-lg text-xs font-bold text-red-600 hover:bg-red-50">Alle eigenen Maße löschen</button>
+                </>
+              )}
+              <p className="text-[11px] font-normal text-base-dark/60">Eigene Maße sind freie Linien. Nach dem Verschieben von Bauteilen ihre Position bitte kurz prüfen.</p>
+            </section>
           )}
           {selectedIds.length > 1 && (
             <div className="mb-4 space-y-2 rounded-xl bg-canvas-light p-3">

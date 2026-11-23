@@ -4,8 +4,16 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Turnstile } from '@marsidev/react-turnstile';
+import dynamic from "next/dynamic";
 import { submitContactForm } from "@/app/actions/contact";
+
+const Turnstile = dynamic(
+  () => import('@marsidev/react-turnstile').then(module => module.Turnstile),
+  {
+    ssr: false,
+    loading: () => <div className="h-[65px] w-full max-w-[300px] animate-pulse rounded bg-border-light/60" aria-hidden="true" />,
+  },
+);
 
 const EVENT_TYPES = [
   { value: 'volksfest', key: 'option_volksfest' },
@@ -48,6 +56,7 @@ export default function ContactSection() {
   const goToStep = (nextStep: number) => {
     setDirection(nextStep > step ? 1 : -1);
     setStepError("");
+    if (nextStep !== step) setTurnstileToken("");
     setStep(nextStep);
   };
 
@@ -401,18 +410,20 @@ export default function ContactSection() {
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Turnstile bleibt gemountet (Token geht beim Step-Wechsel nicht verloren),
-                    wird aber nur in Step 3 gezeigt */}
-                <div className={step === 2 ? "py-6" : "hidden"}>
-                  <Turnstile
-                    key={captchaVersion}
-                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
-                    onSuccess={(token) => setTurnstileToken(token)}
-                    onExpire={() => setTurnstileToken('')}
-                    onError={() => setTurnstileToken('')}
-                    options={{ theme: 'light', action: 'contact' }}
-                  />
-                </div>
+                {/* Das externe Captcha-Script wird erst fuer den letzten Schritt geladen.
+                    Beim Zurueckgehen wird das Token verworfen und spaeter neu ausgestellt. */}
+                {step === 2 && (
+                  <div className="py-6">
+                    <Turnstile
+                      key={captchaVersion}
+                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken('')}
+                      onError={() => setTurnstileToken('')}
+                      options={{ theme: 'light', action: 'contact' }}
+                    />
+                  </div>
+                )}
 
                 {/* Navigation */}
                 <div className="relative pt-6 flex justify-between items-center gap-4">

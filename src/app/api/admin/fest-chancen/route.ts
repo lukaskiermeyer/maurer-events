@@ -8,8 +8,14 @@ import { csvCell } from "@/lib/csv";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function expectedToken(): string {
-  return (process.env.MAURER_API_KEY || "").trim();
+function expectedTokens(): string[] {
+  return [process.env.MAURER_API_KEY, process.env.FEST_CHANCEN_INGEST_TOKEN]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
+}
+
+function isAuthorized(provided: string, expected: string[]): boolean {
+  return expected.some((tok) => safeEqual(provided, tok));
 }
 
 function getToken(request: Request): string {
@@ -50,6 +56,10 @@ const CSV_COLUMNS = [
   "location",
   "region",
   "eventDate",
+  "sourceDate",
+  "applicationDeadline",
+  "verificationStatus",
+  "verificationSummary",
   "monthsAhead",
   "jubileeYears",
   "festwirtStatus",
@@ -77,12 +87,12 @@ const CSV_COLUMNS = [
 
 
 export async function GET(request: Request) {
-  const expected = expectedToken();
-  if (!expected) {
+  const expected = expectedTokens();
+  if (expected.length === 0) {
     return NextResponse.json({ ok: false, error: "server_not_configured" }, { status: 500 });
   }
   const provided = getToken(request);
-  if (!provided || !safeEqual(provided, expected)) {
+  if (!provided || !isAuthorized(provided, expected)) {
     return unauthorized();
   }
 

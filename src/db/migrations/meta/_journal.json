@@ -365,6 +365,13 @@
       "when": 1795900000000,
       "tag": "0046_event_invite_template",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1796000000000,
+      "tag": "0047_fest_chances_verification_and_visits",
+      "breakpoints": true
     }
   ]
 }

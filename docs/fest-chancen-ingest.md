@@ -37,6 +37,10 @@ curl -X POST "https://<PRODUKTIONSDOMAIN>/api/admin/fest-chancen/ingest" \
 | `region` | string \| null | nein | null |
 | `eventDate` | string \| null (`YYYY-MM-DD`) | nein | null |
 | `sourceDate` | string \| null (`YYYY-MM-DD`, Veröffentlichungsdatum der Quelle) | nein | null |
+| `applicationDeadline` | string \| null (`YYYY-MM-DD`, Bewerbungs-/Einschreibefrist) | nein | null |
+| `verificationStatus` | `verified` \| `unverified` \| `expired` \| `already_awarded` | nein | `unverified` |
+| `verificationSummary` | string \| null (Ergebnis aus Stufe-2 Nachrecherche) | nein | null |
+| `verifiedAt` | ISO-DateTime-String \| null | nein | null |
 | `monthsAhead` | int \| null | nein | null |
 | `jubileeYears` | int \| null | nein | null |
 | `festwirtStatus` | `open` \| `taken` \| `unknown` \| `closed` | nein | `unknown` |
@@ -72,13 +76,21 @@ veraltete Elemente; `stale` ist die Teilmenge der veralteten Elemente.
 ## Aktualitäts-Filter
 
 Elemente mit veralteter Datierung werden abgewiesen (`stale`), bevor sie
-angelegt oder aktualisiert werden:
+angelegt oder aktualisiert werden (immer dynamisch gegen `now`):
 
-- `eventDate` liegt mehr als 31 Tage in der Vergangenheit (Kulanz für
-  mehrtägige Feste und `dateAssumed`),
+- `verificationStatus` ist `expired` oder `already_awarded`,
+- `applicationDeadline` liegt vor dem heutigen Tag (abgelaufene Bewerbungsfrist),
+- `eventDate` liegt mehr als 14 Tage in der Vergangenheit,
 - `eventYear` liegt vor dem aktuellen Jahr,
 - `monthsAhead` ist negativ,
-- `sourceDate` ist älter als 24 Monate.
+- `sourceDate` ist älter als 12 Monate.
+
+## Pre-Filter Endpoint (`known`)
+
+- **Methode / Pfad:** `GET /api/admin/fest-chancen/known` (gleiche Auth wie Ingest)
+- Liefert `{ ok, today, urls, eventKeys, radarDomains, radarDeletedLeadKeys }`,
+  damit n8n bereits bekannte oder gelöschte URLs/Domains vor den LLM- und
+  Verifizierungs-Nodes überspringen kann.
 
 Der Filter greift serverseitig und unabhängig von der n8n-Workflow-Version.
 Der Workflow `docs/n8n-festwirt-finder.json` filtert zusätzlich vor dem Senden

@@ -7,7 +7,9 @@ import { Link } from "@/i18n/routing";
 import { useTranslations, useLocale } from "next-intl";
 import { reservationBadge, resolveReservationMode } from "@/lib/reservation-mode";
 import { localized, ui, MONTHS } from "@/lib/localize";
-import DocumentViewer from "./DocumentViewer";
+import dynamic from "next/dynamic";
+
+const DocumentViewer = dynamic(() => import("./DocumentViewer"), { ssr: false });
 
 const AWNING_CLIP_PATH = (() => {
   const numScallops = 16;
@@ -380,14 +382,16 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                 }))}
           </div>
         </div>
-        <DocumentViewer
-          key={documentView?.documents.map(document => document.id).join(",") || "closed"}
-          open={!!documentView}
-          onClose={() => setDocumentView(null)}
-          documents={documentView?.documents || []}
-          title={documentView?.title || ""}
-          locale={locale}
-        />
+        {documentView && (
+          <DocumentViewer
+            key={documentView.documents.map(document => document.id).join(",")}
+            open
+            onClose={() => setDocumentView(null)}
+            documents={documentView.documents}
+            title={documentView.title}
+            locale={locale}
+          />
+        )}
       </section>
   );
 }

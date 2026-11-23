@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  computeDimensions, descendantIds, drillDownAt, highestGroupAt, isAncestorOf, nearestWallDoor, planBounds, rowBlockGeometry, snapCandidates, snapValue, tableLabel,
-  type PlanElement, type PlanLayout, type PlanTable, type RowSpec, type TableOccupancy,
+  computeDimensions, descendantIds, drillDownAt, highestGroupAt, isAncestorOf, measurementDistance, measurementEndpoint, nearestWallDoor, planBounds, rowBlockGeometry, snapCandidates, snapValue, tableLabel,
+  type MeasurementMode, type PlanElement, type PlanLayout, type PlanMeasurement, type PlanTable, type RowSpec, type TableOccupancy,
 } from "@/lib/plan-types";
 
 export type { TableOccupancy };
 export type PlanTool = "select" | "pan" | "area" | "boundary" | "stage" | "wall" | "door" | "table" | "row" | "label" | "measure";
 export interface DrawPreset { label?: string; color?: string }
-export interface Measurement { a: { x: number; y: number }; b: { x: number; y: number } }
+export type Measurement = PlanMeasurement;
 export interface DoorSpec { width: number; label: string }
 
 const KIND_ORDER: Record<PlanElement["kind"], number> = { area: 0, boundary: 1, wall: 2, door: 3, row: 4, stage: 5, table: 6, label: 7 };
@@ -155,17 +155,60 @@ export function PlanDimensions({ layout }: { layout: PlanLayout }) {
         const vertical = d.x1 === d.x2;
         const mx = (d.x1 + d.x2) / 2;
         const my = (d.y1 + d.y2) / 2;
+        const tx = vertical ? 20 : 0;
+        const ty = vertical ? 0 : 20;
         return (
           <g key={`dim-${i}`}>
             <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
-            <line x1={d.x1 - 20} y1={d.y1} x2={d.x1 + 20} y2={d.y1} stroke="#D32F2F" strokeWidth={3} />
-            <line x1={d.x2 - 20} y1={d.y2} x2={d.x2 + 20} y2={d.y2} stroke="#D32F2F" strokeWidth={3} />
+            <line x1={d.x1 - tx} y1={d.y1 - ty} x2={d.x1 + tx} y2={d.y1 + ty} stroke="#D32F2F" strokeWidth={3} />
+            <line x1={d.x2 - tx} y1={d.y2 - ty} x2={d.x2 + tx} y2={d.y2 + ty} stroke="#D32F2F" strokeWidth={3} />
             {vertical ? (
-              // Beschriftung entlang der Linie drehen, damit sie nicht über den Planrand hinausläuft
-              <text transform={`translate(${mx - 12} ${my}) rotate(-90)`} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F">{d.label}</text>
+              <text transform={`translate(${mx - 12} ${my}) rotate(-90)`} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F" stroke="#FFFFFF" strokeWidth={12} paintOrder="stroke">{d.label}</text>
             ) : (
-              <text x={mx} y={my - 12} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F">{d.label}</text>
+              <text x={mx} y={my - 12} textAnchor="middle" dominantBaseline="middle" fontSize={42} fontWeight={700} fill="#D32F2F" stroke="#FFFFFF" strokeWidth={12} paintOrder="stroke">{d.label}</text>
             )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** Eigene Maße verwenden im Druck dieselbe klare Darstellung wie Auto-Maßketten. */
+export function PlanMeasurements({ measurements, selectedMeasure = null, onMeasureSelect, draft = false }: {
+  measurements: PlanMeasurement[];
+  selectedMeasure?: number | null;
+  onMeasureSelect?: (i: number | null) => void;
+  draft?: boolean;
+}) {
+  return (
+    <g>
+      {measurements.map((m, i) => {
+        const dx = Math.round(m.b.x - m.a.x);
+        const dy = Math.round(m.b.y - m.a.y);
+        const length = Math.hypot(dx, dy);
+        const dist = measurementDistance(m);
+        const interactive = !draft && !!onMeasureSelect;
+        const sel = interactive && selectedMeasure === i;
+        const color = sel ? "#2563EB" : "#D32F2F";
+        const mx = (m.a.x + m.b.x) / 2;
+        const my = (m.a.y + m.b.y) / 2;
+        const nx = length > 0 ? -dy / length * 18 : 0;
+        const ny = length > 0 ? dx / length * 18 : 18;
+        const label = `${m.label?.trim() ? `${m.label.trim()}: ` : ""}${dist} cm`;
+        return (
+          <g
+            key={m.id}
+            style={{ pointerEvents: interactive ? "auto" : "none", cursor: interactive ? "pointer" : undefined }}
+            onPointerDown={interactive ? e => { e.stopPropagation(); onMeasureSelect?.(sel ? null : i); } : undefined}
+          >
+            {interactive && <line x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y} stroke="transparent" strokeWidth={60} />}
+            <line x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y} stroke={color} strokeWidth={sel ? 7 : 4} strokeDasharray={draft ? "25 15" : undefined} />
+            <line x1={m.a.x - nx} y1={m.a.y - ny} x2={m.a.x + nx} y2={m.a.y + ny} stroke={color} strokeWidth={4} />
+            <line x1={m.b.x - nx} y1={m.b.y - ny} x2={m.b.x + nx} y2={m.b.y + ny} stroke={color} strokeWidth={4} />
+            {(draft || sel) && <><circle cx={m.a.x} cy={m.a.y} r={12} fill={color} /><circle cx={m.b.x} cy={m.b.y} r={12} fill={color} /></>}
+            <text x={mx + 20} y={my - 20} fontSize={44} fontWeight={800} fill={color} stroke="#FFFFFF" strokeWidth={12} paintOrder="stroke">{label}</text>
+            {sel && dx !== 0 && dy !== 0 && <text x={mx + 20} y={my + 35} fontSize={34} fontWeight={600} fill={color} stroke="#FFFFFF" strokeWidth={10} paintOrder="stroke">Δx {dx} · Δy {dy}</text>}
           </g>
         );
       })}
@@ -181,6 +224,7 @@ export function PlanStaticSvg({ layout, occupancy, showDims = false, neutral = f
     <svg viewBox={`${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}`} className={className} role="img" aria-label="Tischplan">
       <PlanElements layout={layout} occupancy={occupancy} neutral={neutral} />
       {showDims && <PlanDimensions layout={layout} />}
+      {showDims && <PlanMeasurements measurements={(layout.measurements ?? []).filter(m => m.print !== false)} />}
     </svg>
   );
 }
@@ -194,7 +238,7 @@ type Drag =
   | { type: "marquee"; startX: number; startY: number; additive: boolean }
   | null;
 
-export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedIds, rowSpec, doorSpec, drawPreset, showDims = false, measurements = [], selectedMeasure = null, onMeasureSelect, onTogglePan, onToggleSelect, onToggleDims, onUndo, onRedo, canUndo = false, canRedo = false, onDuplicate, onDeleteSelected, onSelect, onMoveStart, onMoveGroup, onResize, onCreateRect, onCreateDoor, onCreateTable, onPlaceRow, onLabelPoint, onMeasure, onTableClick, onTableDrop }: {
+export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedIds, rowSpec, doorSpec, drawPreset, showDims = false, measureMode = "axis", measurements = [], selectedMeasure = null, onMeasureSelect, onTogglePan, onToggleSelect, onToggleDims, onUndo, onRedo, canUndo = false, canRedo = false, onDuplicate, onDeleteSelected, onSelect, onMoveStart, onMoveGroup, onResize, onCreateRect, onCreateDoor, onCreateTable, onPlaceRow, onLabelPoint, onMeasure, onTableClick, onTableDrop }: {
   layout: PlanLayout;
   mode: "edit" | "view";
   tool?: PlanTool;
@@ -204,6 +248,7 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
   doorSpec?: DoorSpec | null;
   drawPreset?: DrawPreset | null;
   showDims?: boolean;
+  measureMode?: MeasurementMode;
   measurements?: Measurement[];
   selectedMeasure?: number | null;
   onMeasureSelect?: (i: number | null) => void;
@@ -382,10 +427,13 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
       setGhost(p);
     } else if (tool === "measure") {
       const s = snapPoint(p, e.altKey);
-      const q = { x: s.x, y: s.y };
+      const q = measureA ? measurementEndpoint(measureA, { x: s.x, y: s.y }, measureMode) : { x: s.x, y: s.y };
       setGuides({ x: s.gx, y: s.gy });
       if (!measureA) { setMeasureA(q); setMeasureHover(q); }
-      else { onMeasure?.({ a: measureA, b: q }); setMeasureA(null); setMeasureHover(null); setGuides({ x: null, y: null }); }
+      else {
+        if (measurementDistance({ a: measureA, b: q }) > 0) onMeasure?.({ id: crypto.randomUUID(), a: measureA, b: q, print: true });
+        setMeasureA(null); setMeasureHover(null); setGuides({ x: null, y: null });
+      }
     }
   };
 
@@ -411,11 +459,9 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
       return;
     }
     if (mode === "edit" && tool === "measure") {
-      if (measureA) {
-        const s = snapPoint(p, e.altKey);
-        setMeasureHover({ x: s.x, y: s.y });
-        setGuides({ x: s.gx, y: s.gy });
-      }
+      const s = snapPoint(p, e.altKey);
+      setMeasureHover(measureA ? measurementEndpoint(measureA, { x: s.x, y: s.y }, measureMode) : { x: s.x, y: s.y });
+      setGuides({ x: s.gx, y: s.gy });
       return;
     }
     if (mode === "edit" && tool === "row" && rowSpec) {
@@ -539,6 +585,7 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
     <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-canvas-light" style={{ touchAction: "none", cursor }}>
       <svg
         className="absolute inset-0 h-full w-full"
+        aria-label="Interaktiver Tischplan"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -597,26 +644,9 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
           {guides.x !== null && <line x1={guides.x} y1={-100000} x2={guides.x} y2={100000} stroke="#E91E63" strokeWidth={2 / view.zoom} style={{ pointerEvents: "none" }} />}
           {guides.y !== null && <line x1={-100000} y1={guides.y} x2={100000} y2={guides.y} stroke="#E91E63" strokeWidth={2 / view.zoom} style={{ pointerEvents: "none" }} />}
           {showDims && <PlanDimensions layout={layout} />}
-          {[...measurements, ...(measureA && measureHover ? [{ a: measureA, b: measureHover }] : [])].map((m, i) => {
-            const dist = Math.round(Math.hypot(m.b.x - m.a.x, m.b.y - m.a.y));
-            const dx = Math.round(m.b.x - m.a.x), dy = Math.round(m.b.y - m.a.y);
-            const committed = i < measurements.length;
-            const sel = committed && selectedMeasure === i;
-            return (
-              <g
-                key={`m-${i}`}
-                style={{ pointerEvents: committed ? "auto" : "none", cursor: committed ? "pointer" : undefined }}
-                onPointerDown={committed ? e => { e.stopPropagation(); onMeasureSelect?.(sel ? null : i); } : undefined}
-              >
-                {committed && <line x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y} stroke="transparent" strokeWidth={60} />}
-                <line x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y} stroke={sel ? "#2563EB" : "#D32F2F"} strokeWidth={sel ? 8 : 4} strokeDasharray="25 15" />
-                <circle cx={m.a.x} cy={m.a.y} r={12} fill={sel ? "#2563EB" : "#D32F2F"} />
-                <circle cx={m.b.x} cy={m.b.y} r={12} fill={sel ? "#2563EB" : "#D32F2F"} />
-                <text x={(m.a.x + m.b.x) / 2 + 20} y={(m.a.y + m.b.y) / 2 - 20} fontSize={48} fontWeight={800} fill={sel ? "#2563EB" : "#D32F2F"}>{dist} cm</text>
-                <text x={(m.a.x + m.b.x) / 2 + 20} y={(m.a.y + m.b.y) / 2 + 35} fontSize={36} fontWeight={600} fill={sel ? "#2563EB" : "#D32F2F"}>Δx {dx} · Δy {dy}</text>
-              </g>
-            );
-          })}
+          <PlanMeasurements measurements={measurements} selectedMeasure={selectedMeasure} onMeasureSelect={onMeasureSelect} />
+          {measureA && measureHover && <PlanMeasurements measurements={[{ id: "__draft", a: measureA, b: measureHover, print: false }]} draft />}
+          {mode === "edit" && tool === "measure" && !measureA && measureHover && <circle cx={measureHover.x} cy={measureHover.y} r={10} fill="#D32F2F" style={{ pointerEvents: "none" }} />}
         </g>
       </svg>
       {(draft || ghost || movePos) && (
@@ -671,7 +701,9 @@ export function PlanCanvas({ layout, mode, tool = "select", occupancy, selectedI
         <button type="button" aria-label="Plan einpassen" onClick={fit} className="h-9 rounded-lg px-2 text-xs font-bold hover:bg-canvas-light">Einpassen</button>
       </div>
       <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-white/90 px-2 py-1 text-[11px] font-bold text-base-dark/60 shadow">
-        Scrollen = Zoom · {tool === "pan" || mode === "view" ? "Ziehen = Plan verschieben" : "Hand-Icon = Plan verschieben"}{mode === "edit" && tool === "select" ? " · Doppelklick = Ebene tiefer" : ""}{mode === "edit" ? " · Alt = Snap aus" : ""}
+        {mode === "edit" && tool === "measure"
+          ? `2 Klicks = Maß speichern · ${measureMode === "axis" ? "waagerecht/senkrecht" : "freie Richtung"} · Esc = Startpunkt abbrechen · Alt = Snap aus`
+          : <>Scrollen = Zoom · {tool === "pan" || mode === "view" ? "Ziehen = Plan verschieben" : "Hand-Icon = Plan verschieben"}{mode === "edit" && tool === "select" ? " · Doppelklick = Ebene tiefer" : ""}{mode === "edit" ? " · Alt = Snap aus" : ""}</>}
       </div>
     </div>
   );

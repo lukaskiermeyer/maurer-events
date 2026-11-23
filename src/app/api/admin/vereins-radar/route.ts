@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/db";
 import { vereinsRadar } from "@/db/schema";
-import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, ne, or, sql } from "drizzle-orm";
 import { csvCell } from "@/lib/csv";
 
 export const runtime = "nodejs";
@@ -17,8 +17,14 @@ function getToken(request: Request): string {
   return (request.headers.get("x-api-key") || request.headers.get("x-n8n-api-key") || "").trim();
 }
 
-function expectedToken(): string {
-  return (process.env.MAURER_API_KEY || "").trim();
+function expectedTokens(): string[] {
+  return [process.env.MAURER_API_KEY, process.env.FEST_CHANCEN_INGEST_TOKEN]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
+}
+
+function isAuthorized(provided: string, expected: string[]): boolean {
+  return expected.some((tok) => safeEqual(provided, tok));
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -33,17 +39,18 @@ const CSV_COLUMNS = [
   "mitglieder", "eventYear", "jubileeYears", "monthsAhead", "dateAssumed", "phase",
   "status", "score", "scoreReason", "planningSignals", "incumbentFestwirt",
   "brauereiPartner", "contactName", "contactRole", "contactEmail", "contactPhone",
-  "nextAction", "sourceUrl", "domain", "contentHash", "queryType", "runId",
+  "nextAction", "nextVisitEvent", "nextVisitDate", "nextVisitUrl", "tentHistory",
+  "verificationSummary", "verifiedAt", "sourceUrl", "domain", "contentHash", "queryType", "runId",
   "wirtStatus", "wirtNotiz", "wiedervorlage", "discoveredAt", "lastSeenAt",
 ];
 
 
 
 export async function GET(request: Request) {
-  const expected = expectedToken();
-  if (!expected) return NextResponse.json({ ok: false, error: "server_not_configured" }, { status: 500 });
+  const expected = expectedTokens();
+  if (expected.length === 0) return NextResponse.json({ ok: false, error: "server_not_configured" }, { status: 500 });
   const provided = getToken(request);
-  if (!provided || !safeEqual(provided, expected)) {
+  if (!provided || !isAuthorized(provided, expected)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -63,6 +70,7 @@ export async function GET(request: Request) {
 
   const conditions = [];
   if (status) conditions.push(eq(vereinsRadar.status, status));
+  else conditions.push(ne(vereinsRadar.status, "deleted"));
   if (region) conditions.push(eq(vereinsRadar.region, region));
   if (wirtStatus) conditions.push(eq(vereinsRadar.wirtStatus, wirtStatus));
   if (minScore !== null && !Number.isNaN(minScore)) conditions.push(gte(vereinsRadar.score, minScore));

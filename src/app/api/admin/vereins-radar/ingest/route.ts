@@ -42,6 +42,12 @@ const ItemSchema = z.object({
   contentHash: z.string().nullable().optional().default(null),
   queryType: z.string().nullable().optional().default(null),
   runId: z.string().nullable().optional().default(null),
+  nextVisitEvent: z.string().nullable().optional().default(null),
+  nextVisitDate: z.string().nullable().optional().default(null),
+  nextVisitUrl: z.string().nullable().optional().default(null),
+  tentHistory: z.string().nullable().optional().default(null),
+  verificationSummary: z.string().nullable().optional().default(null),
+  verifiedAt: z.string().datetime().nullable().optional().default(null),
   discoveredAt: z.string().datetime().optional(),
 });
 
@@ -58,8 +64,10 @@ function getToken(request: Request): string {
   ).trim();
 }
 
-function expectedToken(): string {
-  return (process.env.MAURER_API_KEY || "").trim();
+function expectedTokens(): string[] {
+  return [process.env.MAURER_API_KEY, process.env.FEST_CHANCEN_INGEST_TOKEN]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -69,12 +77,39 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(ba, bb);
 }
 
-function monthsAheadFromEventYear(year: number | null | undefined): number | null {
+function isAuthorized(provided: string, expected: string[]): boolean {
+  return expected.some((tok) => safeEqual(provided, tok));
+}
+
+function parseDateOnly(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  const iso = de ? `${de[3]}-${de[2].padStart(2, "0")}-${de[1].padStart(2, "0")}` : s;
+  const d = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00Z");
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeFutureIsoDate(raw: string | null | undefined, now: Date): string | null {
+  const d = parseDateOnly(raw);
+  if (!d) return null;
+  const todayStartUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (d.getTime() < todayStartUtc) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function monthsAheadFromEventYear(year: number | null | undefined, now = new Date()): number | null {
   if (!year) return null;
-  const now = new Date();
   const eventDate = new Date(Date.UTC(year, 5, 1)); // 1. Juni
   const diffMs = eventDate.getTime() - now.getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44));
+}
+
+function deriveRadarPhaseAndStatus(months: number | null): { phase: string; status: (typeof STATUS_VALUES)[number] } | null {
+  if (months === null) return null;
+  if (months >= 18 && months <= 42) return { phase: "connecten", status: "connecten" };
+  if (months < 18) return { phase: months < 6 ? "reaktiv" : "angebot", status: "jetzt_anbieten" };
+  return { phase: "beobachten", status: "beobachten" };
 }
 
 function methodNotAllowed() {
@@ -86,12 +121,12 @@ function unauthorized() {
 }
 
 export async function POST(request: Request) {
-  const expected = expectedToken();
-  if (!expected) {
+  const expected = expectedTokens();
+  if (expected.length === 0) {
     return NextResponse.json({ ok: false, error: "server_not_configured" }, { status: 500 });
   }
   const provided = getToken(request);
-  if (!provided || !safeEqual(provided, expected)) {
+  if (!provided || !isAuthorized(provided, expected)) {
     return unauthorized();
   }
 
@@ -136,11 +171,27 @@ export async function POST(request: Request) {
 
   let inserted = 0;
   let updated = 0;
+  let stale = 0;
   let skipped = invalidCount;
 
   try {
     await db.transaction(async (tx) => {
       for (const item of validItems) {
+        // Dynamischer Datums-Check gegen `now`: vergangene Jubiläumsjahre sofort abweisen
+        const computedMonths = monthsAheadFromEventYear(item.eventYear, now);
+        if (
+          (item.eventYear != null && item.eventYear < now.getUTCFullYear()) ||
+          (computedMonths !== null && computedMonths < 0) ||
+          (item.monthsAhead != null && item.monthsAhead < 0)
+        ) {
+          stale++;
+          skipped++;
+          continue;
+        }
+
+        const futureVisitDate = normalizeFutureIsoDate(item.nextVisitDate, now);
+        const verifiedAtDate = item.verifiedAt ? new Date(item.verifiedAt) : null;
+
         await tx.execute(sql`SAVEPOINT item_sp`);
         try {
           const existing = await tx
@@ -149,15 +200,26 @@ export async function POST(request: Request) {
             .where(eq(vereinsRadar.leadKey, item.leadKey))
             .limit(1);
 
-          // contentHash identical AND no new planningSignals -> skipped
+          // Gelöschte Leads bleiben gelöscht: kein Update, keine Wiederanlage.
+          if (existing.length > 0 && existing[0].status === "deleted") {
+            skipped++;
+            continue;
+          }
+
+          // contentHash identical AND no new planningSignals AND no new enrichment -> skipped
           const newSignals = item.planningSignals || [];
           const oldSignals: string[] = Array.isArray(existing[0]?.planningSignals) ? existing[0].planningSignals : [];
           const mergedSignals = Array.from(new Set([...oldSignals, ...newSignals]));
           const hasNewSignals = newSignals.some((s) => !oldSignals.includes(s));
+          const hasNewEnrichment = Boolean(
+            (verifiedAtDate && !existing[0]?.verifiedAt) ||
+            (item.nextVisitEvent && item.nextVisitEvent !== existing[0]?.nextVisitEvent) ||
+            (futureVisitDate && futureVisitDate !== existing[0]?.nextVisitDate),
+          );
 
           if (existing.length > 0) {
             const old = existing[0];
-            if (item.contentHash && old.contentHash === item.contentHash && !hasNewSignals) {
+            if (item.contentHash && old.contentHash === item.contentHash && !hasNewSignals && !hasNewEnrichment) {
               // skipped: nur lastSeenAt
               await tx.update(vereinsRadar).set({ lastSeenAt: now, updatedAt: now }).where(eq(vereinsRadar.id, old.id));
               skipped++;
@@ -195,17 +257,31 @@ export async function POST(request: Request) {
             if (item.queryType != null) updateSet.queryType = item.queryType;
             if (item.runId != null) updateSet.runId = item.runId;
             if (item.dateAssumed !== undefined) updateSet.dateAssumed = item.dateAssumed;
-            // monthsAhead dynamisch aus eventYear neu berechnen
+            if (item.nextVisitEvent != null) updateSet.nextVisitEvent = item.nextVisitEvent;
+            if (futureVisitDate != null) updateSet.nextVisitDate = futureVisitDate;
+            if (item.nextVisitUrl != null) updateSet.nextVisitUrl = item.nextVisitUrl;
+            if (item.tentHistory != null) updateSet.tentHistory = item.tentHistory;
+            if (item.verificationSummary != null) updateSet.verificationSummary = item.verificationSummary;
+            if (verifiedAtDate) updateSet.verifiedAt = verifiedAtDate;
+            // monthsAhead & Phase dynamisch aus eventYear gegen `now` neu berechnen
             const ey = item.eventYear ?? old.eventYear;
-            const ma = monthsAheadFromEventYear(ey);
-            if (ma !== null) updateSet.monthsAhead = ma;
+            const ma = monthsAheadFromEventYear(ey, now);
+            if (ma !== null) {
+              updateSet.monthsAhead = ma;
+              const derived = deriveRadarPhaseAndStatus(ma);
+              if (derived) {
+                updateSet.phase = item.phase ?? derived.phase;
+                updateSet.status = item.status ?? derived.status;
+              }
+            }
             if (item.discoveredAt) updateSet.discoveredAt = new Date(item.discoveredAt);
 
             await tx.update(vereinsRadar).set(updateSet).where(eq(vereinsRadar.id, old.id));
             updated++;
           } else {
             const ey = item.eventYear;
-            const ma = item.monthsAhead ?? monthsAheadFromEventYear(ey);
+            const ma = monthsAheadFromEventYear(ey, now) ?? item.monthsAhead;
+            const derived = deriveRadarPhaseAndStatus(ma);
             await tx.insert(vereinsRadar).values({
               leadKey: item.leadKey,
               vereinName: item.vereinName,
@@ -218,8 +294,8 @@ export async function POST(request: Request) {
               jubileeYears: item.jubileeYears,
               monthsAhead: ma,
               dateAssumed: item.dateAssumed,
-              phase: item.phase,
-              status: item.status || "beobachten",
+              phase: item.phase ?? derived?.phase ?? null,
+              status: item.status || derived?.status || "beobachten",
               score: item.score,
               scoreReason: item.scoreReason,
               planningSignals: newSignals,
@@ -235,6 +311,12 @@ export async function POST(request: Request) {
               contentHash: item.contentHash,
               queryType: item.queryType,
               runId: item.runId,
+              nextVisitEvent: item.nextVisitEvent,
+              nextVisitDate: futureVisitDate,
+              nextVisitUrl: item.nextVisitUrl,
+              tentHistory: item.tentHistory,
+              verificationSummary: item.verificationSummary,
+              verifiedAt: verifiedAtDate,
               discoveredAt: item.discoveredAt ? new Date(item.discoveredAt) : now,
               lastSeenAt: now,
               createdAt: now,
@@ -263,6 +345,7 @@ export async function POST(request: Request) {
     inserted,
     updated,
     skipped,
+    stale,
   });
 }
 

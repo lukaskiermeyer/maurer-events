@@ -324,6 +324,7 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
                   mode="view"
                   occupancy={occupancy}
                   showDims={showDims}
+                  measurements={showDims ? (layout.measurements ?? []).filter(m => m.print !== false) : []}
                   onTableClick={id => {
                     if (selectedCustomerId) { assignCustomer(selectedCustomerId, id); return; }
                     setSelectedTableId(id === selectedTableId ? null : id);
