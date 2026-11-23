@@ -1,7 +1,8 @@
 "use client";
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { logout } from '@/app/actions/authActions';
+import { getOpenMailTodos } from '@/app/actions/reservations';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
 
 const NAV_ITEMS = [
@@ -44,26 +45,39 @@ const NAV_ITEMS = [
   },
 ] as const;
 
-function NavPill({ href, label, active }: { href: string; label: string; active: boolean }) {
+function NavPill({ href, label, active, badge = 0 }: { href: string; label: string; active: boolean; badge?: number }) {
   return (
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-4 sm:px-5 text-sm font-bold transition-all duration-200 ${
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 sm:px-5 text-sm font-bold transition-all duration-200 ${
         active
           ? 'bg-accent-green text-white shadow-lg shadow-accent-green/30 ring-2 ring-accent-green/25 scale-[1.02]'
           : 'text-base-dark/60 hover:bg-white hover:text-base-dark hover:shadow-sm active:bg-base-light'
       }`}
     >
       {label}
+      {badge > 0 && (
+        <span title={`${badge} offene Bestätigungs-Mail(s)`} className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-black ${active ? 'bg-white text-accent-green' : 'bg-amber-400 text-amber-950'}`}>
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
 
 export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boolean }) {
   const [busy, setBusy] = useState(false);
+  const [mailTodos, setMailTodos] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (scannerOnly) return;
+    let alive = true;
+    getOpenMailTodos().then(rows => { if (alive) setMailTodos(rows.length); }).catch(() => { if (alive) setMailTodos(0); });
+    return () => { alive = false; };
+  }, [scannerOnly, pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border-light bg-white/95 text-base-dark shadow-[0_1px_12px_rgba(0,0,0,0.04)] backdrop-blur">
@@ -88,6 +102,7 @@ export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boo
                   href={item.href}
                   label={item.label}
                   active={item.isActive(pathname)}
+                  badge={item.href === '/admin' ? mailTodos : 0}
                 />
               ))}
             </nav>
@@ -118,6 +133,7 @@ export default function StaffHeader({ scannerOnly = false }: { scannerOnly?: boo
                 href={item.href}
                 label={item.label}
                 active={item.isActive(pathname)}
+                badge={item.href === '/admin' ? mailTodos : 0}
               />
             ))}
           </nav>

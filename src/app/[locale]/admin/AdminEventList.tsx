@@ -23,6 +23,16 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [evQuery, setEvQuery] = useState("");
+  const [evFilter, setEvFilter] = useState<"all" | "reservable" | "published" | "draft">("all");
+  const filteredEvents = useMemo(() => initialEvents.filter(e => {
+    const q = evQuery.trim().toLowerCase();
+    if (q && !(e.title.toLowerCase().includes(q) || (e.location || "").toLowerCase().includes(q))) return false;
+    if (evFilter === "reservable") return e.reservable;
+    if (evFilter === "published") return e.isPublished;
+    if (evFilter === "draft") return !e.isPublished;
+    return true;
+  }), [initialEvents, evQuery, evFilter]);
   const [deletedEvents, setDeletedEvents] = useState<EventRecord[]>([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [step, setStep] = useState(1);
@@ -294,7 +304,23 @@ export default function AdminEventList({ initialEvents, stats }: { initialEvents
         )}
 
         <h2 className="text-2xl font-bold mb-4 font-display">Aktuelle Termine</h2>
-        {initialEvents.map(event => (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <input
+            value={evQuery}
+            onChange={e => setEvQuery(e.target.value)}
+            placeholder="Suche: Titel oder Ort…"
+            aria-label="Events durchsuchen"
+            className="min-h-11 flex-1 min-w-48 rounded-xl border border-border-light bg-white px-3 font-bold focus:outline-none focus:border-accent-green"
+          />
+          <select value={evFilter} onChange={e => setEvFilter(e.target.value as typeof evFilter)} aria-label="Events filtern" className="min-h-11 rounded-xl border border-border-light bg-white px-3 font-bold">
+            <option value="all">Alle</option>
+            <option value="reservable">Reservierbar</option>
+            <option value="published">Veröffentlicht</option>
+            <option value="draft">Entwurf (unveröffentlicht)</option>
+          </select>
+          <span className="text-xs font-bold opacity-60">{filteredEvents.length} von {initialEvents.length}</span>
+        </div>
+        {filteredEvents.map(event => (
           <div key={event.id} className="group bg-white rounded-2xl border border-border-light shadow-sm hover:border-accent-green hover:shadow-md transition-all">
             <div className="flex items-start gap-3 p-5">
               <Link href={`/admin/events/${event.id}`} className="flex-1 min-w-0 block">

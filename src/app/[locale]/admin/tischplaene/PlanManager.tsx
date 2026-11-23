@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
-import { PlanCanvas, type DrawPreset, type PlanTool } from "@/components/admin/plan/PlanCanvas";
+import { PlanCanvas, PlanStaticSvg, type DrawPreset, type PlanTool } from "@/components/admin/plan/PlanCanvas";
 import NumField from "@/components/admin/plan/NumField";
 import { savePlanPreset, deletePlanPreset, duplicatePlanPreset, getPlanPresets } from "@/app/actions/plans";
 import {
-  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DIM_CATEGORIES, DOOR_WIDTHS, applyNumbering, computeMeasureReport, descendantIds,
+  AREA_COLORS, DEFAULT_LAYOUT, DEFAULT_NUMBERING, DEFAULT_ROW_SPEC, DIM_CATEGORIES, DOOR_WIDTHS, applyNumbering, childrenOf, computeMeasureReport, descendantIds, isLayout,
   garniturFootprint, highestGroupAt, isAncestorOf, moveGroup, parentOf, planRows, planTables, rowBlockGeometry, sortedRows, tableLabel, tablesOfRow,
   type DimCategory, type NumberingOptions, type NumberingScheme, type PlanElement, type PlanLayout, type PlanTable, type RowSpec,
 } from "@/lib/plan-types";
@@ -73,6 +73,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
   const [constantsOpen, setConstantsOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
   const [doorWidth, setDoorWidth] = useState(220);
   const [doorLabel, setDoorLabel] = useState("Tür 220cm");
   const [history, setHistory] = useState<PlanLayout[]>([]);
@@ -327,6 +328,109 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     toast.showToast(`${ids.size} Element${ids.size === 1 ? "" : "e"} gelöscht.`, "success");
   };
 
+  const duplicateSelected = () => {
+    if (selectedIds.length === 0) return;
+    const roots = selectionRoots(selectedIds);
+    commit(l => {
+      const idMap = new Map<string, string>();
+      const clones: PlanElement[] = [];
+      const collect = (id: string) => {
+        const el = l.elements.find(e => e.id === id);
+        if (!el) return;
+        const nid = crypto.randomUUID();
+        idMap.set(id, nid);
+        for (const child of childrenOf(l, id)) collect(child.id);
+        clones.push({ ...el, id: nid, x: el.x + 60, y: el.y + 60 } as PlanElement);
+      };
+      roots.forEach(collect);
+      const remapped = clones.map(el => {
+        const next = { ...el } as Record<string, unknown>;
+        if (next.rowId) next.rowId = idMap.get(String(next.rowId)) ?? null;
+        if (next.areaId && idMap.has(String(next.areaId))) next.areaId = idMap.get(String(next.areaId));
+        if (next.wallId && idMap.has(String(next.wallId))) next.wallId = idMap.get(String(next.wallId));
+        return next as unknown as PlanElement;
+      });
+      return { ...l, elements: [...l.elements, ...remapped] };
+    });
+    toast.showToast("Auswahl dupliziert (+60 cm Versatz).", "success");
+  };
+
+  const bboxOf = (l: PlanLayout, id: string) => {
+    const ids = [id, ...descendantIds(l, id)];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const cid of ids) {
+      const el = l.elements.find(e => e.id === cid);
+      if (!el || el.kind === "label") continue;
+      minX = Math.min(minX, el.x); minY = Math.min(minY, el.y);
+      maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
+    }
+    return { minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+  };
+
+  const alignSelected = (mode: "left" | "right" | "top" | "bottom" | "cx" | "cy") => {
+    const roots = selectionRoots(selectedIds);
+    if (roots.length < 2) return;
+    commit(l => {
+      const boxes = roots.map(id => ({ id, b: bboxOf(l, id) }));
+      const target = mode === "left" ? Math.min(...boxes.map(x => x.b.minX))
+        : mode === "right" ? Math.max(...boxes.map(x => x.b.maxX))
+        : mode === "top" ? Math.min(...boxes.map(x => x.b.minY))
+        : mode === "bottom" ? Math.max(...boxes.map(x => x.b.maxY))
+        : mode === "cx" ? boxes.reduce((s, x) => s + x.b.cx, 0) / boxes.length
+        : boxes.reduce((s, x) => s + x.b.cy, 0) / boxes.length;
+      let next = l;
+      for (const { id, b } of boxes) {
+        const dx = mode === "left" ? target - b.minX : mode === "right" ? target - b.maxX : mode === "cx" ? target - b.cx : 0;
+        const dy = mode === "top" ? target - b.minY : mode === "bottom" ? target - b.maxY : mode === "cy" ? target - b.cy : 0;
+        next = moveGroup(next, id, Math.round(dx), Math.round(dy));
+      }
+      return next;
+    });
+  };
+
+  const distributeSelected = (axis: "x" | "y") => {
+    const roots = selectionRoots(selectedIds);
+    if (roots.length < 3) return;
+    commit(l => {
+      const boxes = roots.map(id => ({ id, b: bboxOf(l, id) })).sort((a, z) => axis === "x" ? a.b.cx - z.b.cx : a.b.cy - z.b.cy);
+      const first = boxes[0].b, last = boxes[boxes.length - 1].b;
+      const span = axis === "x" ? last.cx - first.cx : last.cy - first.cy;
+      const stepGap = span / (boxes.length - 1);
+      let next = l;
+      boxes.forEach((x, i) => {
+        const target = (axis === "x" ? first.cx : first.cy) + stepGap * i;
+        const cur = axis === "x" ? x.b.cx : x.b.cy;
+        next = moveGroup(next, x.id, axis === "x" ? Math.round(target - cur) : 0, axis === "y" ? Math.round(target - cur) : 0);
+      });
+      return next;
+    });
+  };
+
+  const exportPreset = () => {
+    const blob = new Blob([JSON.stringify({ name, description, layout }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.replace(/[^\wäöüÄÖÜ-]+/g, "_") || "tischplan"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importPreset = async (file: File) => {
+    try {
+      const parsed = JSON.parse(await file.text()) as { name?: string; description?: string | null; layout?: unknown };
+      if (!parsed.layout || !isLayout(parsed.layout)) { toast.showToast("Ungültige Plan-Datei.", "error"); return; }
+      loadPreset(null);
+      setName(parsed.name ? `${parsed.name} (Import)` : "Importierter Plan");
+      setDescription(parsed.description ?? "");
+      setLayout(parsed.layout);
+      setDirty(true);
+      toast.showToast("Plan importiert – bitte prüfen und speichern.", "success");
+    } catch {
+      toast.showToast("Datei konnte nicht gelesen werden.", "error");
+    }
+  };
+
   const patchElement = (id: string, patch: Record<string, unknown>) =>
     commit(l => ({ ...l, elements: l.elements.map(el => el.id === id ? ({ ...el, ...patch } as PlanElement) : el) }));
 
@@ -373,6 +477,14 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
       return { id, label, auto: (idx + 1) * 100 };
     });
   }, [tables, layout]);
+  const stepDone = (s: Step): boolean =>
+    s === 1 ? (!!tent || areas.length > 0)
+    : s === 2 ? layout.elements.some(el => el.kind === 'stage' || el.kind === 'door' || el.kind === 'wall')
+    : s === 3 ? rows.length > 0
+    : s === 4 ? true
+    : s === 5 ? !!layout.numbering
+    : s === 6 ? summary.overlaps === 0 && summary.outside === 0
+    : false;
   const preview = useMemo(() => applyNumbering(layout, numbering), [layout, numbering]);
   const previewLabels = useMemo(() => planTables(preview).slice(0, 6).map(t => tableLabel(preview, t)), [preview]);
   const previewRows = useMemo(() => sortedRows(preview, numbering).slice(0, 4).map(r => r.label), [preview, numbering]);
@@ -384,6 +496,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") { e.preventDefault(); duplicateSelected(); return; }
       if (e.key === "Escape") {
         if (selectedMeasure !== null) { setSelectedMeasure(null); return; }
         if (selectedIds.length > 1) setSelectedIds([]);
@@ -438,11 +551,37 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
     <div className="mx-auto max-w-[1600px] px-4 pt-6">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl sm:text-3xl font-display font-black text-base-dark">Tischpläne</h1>
-        <select value={currentId ?? ""} onChange={e => e.target.value ? selectPreset(e.target.value) : newPreset()} className="min-h-11 rounded-xl border border-border-light bg-white px-3 font-bold" aria-label="Plan-Preset wählen">
-          <option value="">+ Neuer Plan</option>
-          {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <div className="relative">
+          <button type="button" onClick={() => setPresetOpen(v => !v)} aria-expanded={presetOpen} aria-label="Plan-Preset wählen" className="min-h-11 flex items-center gap-2 rounded-xl border border-border-light bg-white px-3 font-bold">
+            <span className="max-w-40 truncate">{name || "Neuer Plan"}</span>
+            <span aria-hidden className="text-xs opacity-60">▼</span>
+          </button>
+          {presetOpen && (
+            <div className="absolute left-0 top-full z-30 mt-1 max-h-96 w-80 overflow-y-auto rounded-xl border border-border-light bg-white p-2 shadow-xl">
+              <button type="button" onClick={() => { setPresetOpen(false); void newPreset(); }} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm font-bold hover:bg-canvas-light">
+                <span className="flex h-12 w-20 items-center justify-center rounded border border-dashed border-border-light text-xs opacity-50">+</span>
+                Neuer Plan
+              </button>
+              {presets.map(p => (
+                <button key={p.id} type="button" onClick={() => { setPresetOpen(false); void selectPreset(p.id); }} className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm font-bold hover:bg-canvas-light ${p.id === currentId ? "bg-accent-green/10 text-accent-green" : ""}`}>
+                  <span className="h-12 w-20 shrink-0 overflow-hidden rounded border border-border-light bg-white">
+                    <PlanStaticSvg layout={p.layout} className="h-full w-full" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{p.name}</span>
+                    <span className="block text-xs opacity-60">{planTables(p.layout).length} Tische · {planRows(p.layout).length} Reihen</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input value={name} onChange={e => { setName(e.target.value); setDirty(true); }} maxLength={80} className="min-h-11 flex-1 min-w-40 rounded-xl border border-border-light bg-white px-3 font-bold" aria-label="Plan-Name" />
+        <label className="min-h-11 inline-flex cursor-pointer items-center rounded-xl border border-border-light bg-white px-4 font-bold hover:border-accent-green">
+          Import
+          <input type="file" accept="application/json,.json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void importPreset(f); e.target.value = ""; }} />
+        </label>
+        <button type="button" onClick={exportPreset} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-bold hover:border-accent-green">Export</button>
         <button type="button" onClick={duplicate} disabled={!currentId} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-bold disabled:opacity-40">Duplizieren</button>
         <button type="button" onClick={remove} disabled={!currentId} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-bold text-red-600 disabled:opacity-40">Löschen</button>
         <button type="button" onClick={save} disabled={saveState === "saving"} className="min-h-11 rounded-xl bg-accent-green px-6 font-black text-white disabled:opacity-50">{saveState === "saving" ? "Speichert…" : dirty ? "Speichern *" : "Speichern"}</button>
@@ -455,6 +594,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
         {STEPS.map(s => (
           <button key={s.step} type="button" role="tab" aria-selected={step === s.step} onClick={() => gotoStep(s.step)} className={`min-h-11 flex-1 whitespace-nowrap rounded-xl px-3 text-sm font-bold transition-colors ${step === s.step ? "bg-accent-green text-white" : "hover:bg-canvas-light"}`}>
             {s.step === 7 ? s.label : `${s.step} · ${s.label}`}
+            {stepDone(s.step) && step !== s.step ? " ✓" : ""}
           </button>
         ))}
       </div>
@@ -800,9 +940,14 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                 <button type="button" onClick={undo} disabled={history.length === 0} className="min-h-11 rounded-xl border border-border-light px-4 text-sm font-bold disabled:opacity-40">↩ Undo</button>
                 <button type="button" onClick={redo} disabled={future.length === 0} className="min-h-11 rounded-xl border border-border-light px-4 text-sm font-bold disabled:opacity-40">↪ Redo</button>
               </div>
-              <p className="text-xs text-base-dark/60">Klick wählt die <strong>höchste Gruppe</strong> (Bereich › Reihe › Tisch), Doppelklick geht eine Ebene tiefer, Esc eine hoch. <strong>Shift+Klick</strong> oder Rahmen auf leerer Fläche = mehrere auswählen; <strong>Entf löscht alles Ausgewählte</strong> samt Inhalt. Ziehen verschiebt die Auswahl gemeinsam, <strong>Ecken-Handles</strong> passen die Größe an, Pfeiltasten = 10 cm (Shift = 50 cm), Ctrl+Z/Y = Undo/Redo. Auswahl-, Hand- und Maß-Switch unten rechts im Plan funktionieren in jedem Step.</p>
+              <p className="text-xs text-base-dark/60">Klick wählt die <strong>höchste Gruppe</strong> (Bereich › Reihe › Tisch), Doppelklick geht eine Ebene tiefer, Esc eine hoch. <strong>Shift+Klick</strong> oder Rahmen auf leerer Fläche = mehrere auswählen; <strong>Entf löscht alles Ausgewählte</strong> samt Inhalt. Ziehen verschiebt die Auswahl gemeinsam, <strong>Ecken-Handles</strong> passen die Größe an, Pfeiltasten = 10 cm (Shift = 50 cm), Ctrl+Z/Y = Undo/Redo, Ctrl+D = duplizieren. Auswahl-, Hand- und Maß-Switch sowie Undo/Duplizieren/Löschen sitzen unten im Plan und funktionieren in jedem Step.</p>
             </>
           )}
+
+          <div className="flex gap-2 pt-2">
+            <button type="button" disabled={step === 1} onClick={() => gotoStep((step - 1) as Step)} className="min-h-11 flex-1 rounded-xl border border-border-light font-bold disabled:opacity-40">← Zurück</button>
+            <button type="button" disabled={step === 7} onClick={() => gotoStep((step + 1) as Step)} className="min-h-11 flex-1 rounded-xl bg-base-dark font-bold text-white disabled:opacity-40">Weiter →</button>
+          </div>
         </div>
 
         <div className="relative min-w-0 flex-1">
@@ -820,6 +965,12 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
               measurements={measurements}
               selectedMeasure={selectedMeasure}
               onMeasureSelect={setSelectedMeasure}
+              onUndo={undo}
+              onRedo={redo}
+              canUndo={history.length > 0}
+              canRedo={future.length > 0}
+              onDuplicate={duplicateSelected}
+              onDeleteSelected={deleteSelected}
               onTogglePan={togglePan}
               onToggleSelect={toggleSelect}
               onToggleDims={() => setShowDims(v => !v)}
@@ -883,6 +1034,18 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
                 );
               })}
               {measurements.length > 0 && <button type="button" onClick={() => { setMeasurements([]); setSelectedMeasure(null); }} className="text-xs font-bold text-red-600">Alle Messungen löschen</button>}
+            </div>
+          )}
+          {selectedIds.length > 1 && (
+            <div className="mb-4 space-y-2 rounded-xl bg-canvas-light p-3">
+              <p className="text-xs font-bold uppercase tracking-widest opacity-60">Ausrichten ({selectedIds.length})</p>
+              <div className="flex flex-wrap gap-1">
+                {([["left", "Links"], ["right", "Rechts"], ["top", "Oben"], ["bottom", "Unten"], ["cx", "Mitte H"], ["cy", "Mitte V"]] as const).map(([m, l]) => (
+                  <button key={m} type="button" onClick={() => alignSelected(m)} className="min-h-9 rounded-lg border border-border-light bg-white px-2 text-xs font-bold hover:border-accent-green">{l}</button>
+                ))}
+                <button type="button" onClick={() => distributeSelected("x")} disabled={selectedIds.length < 3} className="min-h-9 rounded-lg border border-border-light bg-white px-2 text-xs font-bold hover:border-accent-green disabled:opacity-40">Verteilen H</button>
+                <button type="button" onClick={() => distributeSelected("y")} disabled={selectedIds.length < 3} className="min-h-9 rounded-lg border border-border-light bg-white px-2 text-xs font-bold hover:border-accent-green disabled:opacity-40">Verteilen V</button>
+              </div>
             </div>
           )}
           {!selected && selectedIds.length === 0 && <p className="text-sm text-base-dark/60">Element auswählen oder links ein Werkzeug nutzen. In „Bearbeiten“: Klick = Gruppe, Doppelklick = Ebene tiefer, Shift+Klick oder Rahmen aufziehen = mehrere auswählen.</p>}
