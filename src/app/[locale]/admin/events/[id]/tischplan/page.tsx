@@ -9,7 +9,7 @@ import { getReservationsByEvent } from "@/app/actions/reservations";
 import { getCustomers } from "@/app/actions/customers";
 import { getTentSettings } from "@/app/actions/settings";
 import { getEventPlan } from "@/app/actions/plans";
-import { buildOccupancy, planTables, tableLabel } from "@/lib/plan-types";
+import { buildOccupancy, DIM_CATEGORIES, planBounds, planTables, tableLabel } from "@/lib/plan-types";
 import { PlanStaticSvg } from "@/components/admin/plan/PlanCanvas";
 import { Link } from "@/i18n/routing";
 import StaffHeader from "@/components/admin/StaffHeader";
@@ -37,7 +37,7 @@ export default async function TablePlanPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ date?: string; mode?: string; dims?: string }>;
+  searchParams: Promise<{ date?: string; mode?: string; dims?: string; paper?: string }>;
 }) {
   await requireAdmin(true);
   const { id } = await params;
@@ -57,6 +57,15 @@ export default async function TablePlanPage({
   const mode = query.mode === "public" ? "public" : query.mode === "setup" ? "setup" : "internal";
   const dimsOn = query.dims ? query.dims === "1" : mode === "setup";
   const planLayout = preset?.layout ?? null;
+  // Papierformat + automatische Ausrichtung: hochkant, wenn der Plan höher als breit ist
+  const PAPER_SIZES: Record<string, { w: number; h: number }> = { A4: { w: 210, h: 297 }, A3: { w: 297, h: 420 }, A2: { w: 420, h: 594 } };
+  const paper = query.paper && PAPER_SIZES[query.paper] ? query.paper : "A3";
+  const bounds = planLayout ? planBounds(planLayout) : null;
+  const orient = bounds && bounds.maxY - bounds.minY > bounds.maxX - bounds.minX ? "portrait" : "landscape";
+  const pageSize = PAPER_SIZES[paper];
+  const pageH = orient === "portrait" ? pageSize.h : pageSize.w;
+  const pageW = orient === "portrait" ? pageSize.w : pageSize.h;
+  const svgMaxH = Math.max(80, pageH - 16 - 48);
   const occupancy = planLayout ? buildOccupancy(planLayout, reservations.map(r => r.reservation), selectedDate) : null;
   const visibleReservations = reservations.filter(row => {
     const reservation = row.reservation;
@@ -113,7 +122,29 @@ export default async function TablePlanPage({
             >
               {dimsOn ? "Maße ausblenden" : "Maße einblenden"}
             </Link>
+            {(["A4", "A3", "A2"] as const).map(p => (
+              <Link
+                key={p}
+                href={`/admin/events/${event.id}/tischplan?date=${selectedDate}&mode=${mode}&dims=${dimsOn ? "1" : "0"}&paper=${p}`}
+                className={`min-h-12 inline-flex items-center px-4 border rounded-xl font-bold transition-colors ${paper === p ? "bg-accent-green text-white border-accent-green" : "bg-white border-border-light hover:border-accent-green"}`}
+              >
+                {p}
+              </Link>
+            ))}
+            <span className="min-h-12 inline-flex items-center px-4 bg-canvas-light border border-border-light rounded-xl font-bold text-base-dark/60">
+              {orient === "portrait" ? "Hochformat (auto)" : "Querformat (auto)"}
+            </span>
           </div>
+          {dimsOn && planLayout && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(planLayout.printDims ?? DIM_CATEGORIES.map(c => c.key)).map(k => {
+                const cat = DIM_CATEGORIES.find(c => c.key === k);
+                return cat ? (
+                  <span key={k} className="rounded-full bg-white border border-border-light px-3 py-1 text-xs font-bold text-base-dark/70">{cat.label}</span>
+                ) : null;
+              })}
+            </div>
+          )}
         </div>
 
         {planLayout ? (
@@ -234,7 +265,7 @@ export default async function TablePlanPage({
       </main>
 
       <style>{`
-        @page { size: A3 landscape; margin: 8mm; }
+        @page { size: ${paper} ${orient}; margin: 8mm; }
         @media print {
           html, body { background: #fff !important; height: auto !important; min-height: 0 !important; }
           /* Layout-Main darf im Druck nicht auf Viewport-Höhe stretchen (leere 2. Seite) */
@@ -242,12 +273,12 @@ export default async function TablePlanPage({
           nav, header, footer, .no-print { display: none !important; }
           .plan-page-wrap { min-height: 0 !important; padding: 0 !important; }
           .plan-page { max-width: none !important; padding: 0 !important; margin: 0 !important; }
-          /* Genau eine A3-Seite: Plan bekommt eine feste Max-Höhe in mm statt
+          /* Genau eine Seite: Plan bekommt eine feste Max-Höhe in mm statt
              Flex-Shrinking (Chrome-Druck shränkt Flex-SVGs nicht zuverlässig). */
           .plan-sheet { break-inside: avoid; page-break-inside: avoid; }
           .plan-row { display: flex; flex-direction: row; gap: 4mm; align-items: flex-start; }
-          .plan-row .plan-svg { flex: 1 1 auto; min-width: 0; width: auto; height: auto; max-height: 234mm !important; }
-          .plan-occupancy { width: 78mm; max-height: 234mm; overflow: hidden; columns: 2; column-gap: 4mm; font-size: 7.5pt; border: 0; background: none; padding: 0; border-radius: 0; }
+          .plan-row .plan-svg { flex: 1 1 auto; min-width: 0; width: auto; height: auto; max-height: ${svgMaxH}mm !important; }
+          .plan-occupancy { width: ${pageW < 260 ? 55 : 78}mm; max-height: ${svgMaxH}mm; overflow: hidden; columns: 2; column-gap: 4mm; font-size: ${pageW < 260 ? 6.5 : 7.5}pt; border: 0; background: none; padding: 0; border-radius: 0; }
           .plan-occupancy ul { margin: 0; padding: 0; list-style: none; }
           .plan-occupancy li { margin: 0 0 1.5mm; break-inside: avoid; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

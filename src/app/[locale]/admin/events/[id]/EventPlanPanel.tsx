@@ -31,6 +31,8 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
   const [busy, setBusy] = useState(false);
   const [sideTab, setSideTab] = useState<"res" | "customers">("res");
   const [showDims, setShowDims] = useState(false);
+  const [resQuery, setResQuery] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
   const [custQuery, setCustQuery] = useState("");
   const [custTag, setCustTag] = useState("all");
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
@@ -39,11 +41,21 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
 
   const layout = preset?.layout ?? null;
   const occupancy = useMemo(() => layout ? buildOccupancy(layout, reservations.map(r => r.reservation), selectedDate) : {}, [layout, reservations, selectedDate]);
-  const unassigned = useMemo(() => reservations.filter(r =>
-    !r.reservation.planTableId && !r.reservation.tableId
-    && dayKey(r.reservation.reservationDate) === selectedDate
-    && !INACTIVE_STATUSES.includes(r.reservation.status)
-  ), [reservations, selectedDate]);
+  const unassigned = useMemo(() => {
+    const q = resQuery.trim().toLowerCase();
+    return reservations.filter(r =>
+      !r.reservation.planTableId && !r.reservation.tableId
+      && dayKey(r.reservation.reservationDate) === selectedDate
+      && !INACTIVE_STATUSES.includes(r.reservation.status)
+      && (!q || r.reservation.guestName.toLowerCase().includes(q) || r.reservation.email.toLowerCase().includes(q)));
+  }, [reservations, selectedDate, resQuery]);
+  const dayGuests = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const d of days) map[d] = reservations
+      .filter(r => dayKey(r.reservation.reservationDate) === d && !INACTIVE_STATUSES.includes(r.reservation.status))
+      .reduce((s, r) => s + r.reservation.guestCount, 0);
+    return map;
+  }, [reservations, days]);
   const mailTodos = useMemo(() => reservations.filter(r =>
     r.reservation.status === "confirmed" && !r.reservation.ticketSentAt
     && dayKey(r.reservation.reservationDate) === selectedDate
@@ -184,7 +196,26 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
 
       {mailTodos.length > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <p className="text-sm font-bold text-amber-800">⚠ {mailTodos.length} festgeschriebene Reservierung(en) ohne Bestätigungs-Mail – bitte nachholen:</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-amber-800">⚠ {mailTodos.length} festgeschriebene Reservierung(en) ohne Bestätigungs-Mail – bitte nachholen:</p>
+            <button
+              type="button"
+              disabled={mailBusy}
+              onClick={async () => {
+                setMailBusy(true);
+                let sent = 0;
+                for (const r of mailTodos) {
+                  try { const res = await sendConfirmationMail(r.reservation.id); if (res.mailSent) sent++; } catch { /* nächste Mail versuchen */ }
+                }
+                setMailBusy(false);
+                toast.showToast(`${sent} von ${mailTodos.length} Mails versendet.`, sent === mailTodos.length ? "success" : "warning");
+                router.refresh();
+              }}
+              className="min-h-11 rounded-xl bg-accent-green px-4 text-sm font-bold text-white hover:bg-base-dark disabled:opacity-50"
+            >
+              {mailBusy ? "Sendet…" : "Alle offenen Mails senden"}
+            </button>
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {mailTodos.map(r => (
               <span key={r.reservation.id} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-800">
@@ -204,11 +235,12 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
         </div>
       ) : (
         <>
-          {days.length > 1 && (
+          {days.length >= 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
               {days.map(day => (
                 <button key={day} type="button" onClick={() => { setSelectedDate(day); setSelectedTableId(null); }} className={`whitespace-nowrap rounded-lg px-4 py-2 font-bold transition-colors ${selectedDate === day ? "bg-accent-green text-white" : "border border-border-light bg-canvas-light hover:border-accent-green"}`}>
                   {new Date(`${day}T12:00:00Z`).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit" })}
+                  <span className="ml-1 text-xs opacity-70">· {dayGuests[day] ?? 0} Gäste</span>
                 </button>
               ))}
             </div>
@@ -226,8 +258,16 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
               </div>
 
               {sideTab === "res" ? (
+                <>
+                <input
+                  value={resQuery}
+                  onChange={e => setResQuery(e.target.value)}
+                  placeholder="Suche: Name oder E-Mail…"
+                  aria-label="Reservierungen durchsuchen"
+                  className="mb-2 min-h-10 w-full rounded-lg border border-border-light bg-white px-3 text-sm focus:outline-none focus:border-accent-green"
+                />
                 <div className="hide-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
-                  {unassigned.length === 0 && <p className="py-10 text-center text-sm opacity-50">Alle Gäste für diesen Tag sind zugewiesen!</p>}
+                  {unassigned.length === 0 && <p className="py-10 text-center text-sm opacity-50">{resQuery ? "Keine Treffer für diese Suche." : "Alle Gäste für diesen Tag sind zugewiesen!"}</p>}
                   {unassigned.map(r => (
                     <div
                       key={r.reservation.id}
@@ -242,6 +282,7 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
                     </div>
                   ))}
                 </div>
+                </>
               ) : (
                 <>
                   <input
@@ -305,14 +346,22 @@ export default function EventPlanPanel({ event, reservations, preset, presets }:
                   {selectedTable.rowLabel ? ` · ${selectedTable.rowLabel}` : ""}
                   {selectedTable.vip ? " · VIP" : ""}
                   {selectedTable.blocked ? " · gesperrt" : ""}
-                  <span className="ml-2 text-sm font-normal opacity-60">{selectedOcc?.guests ?? 0} / {selectedTable.capacity} Personen</span>
+                  <span className={`ml-2 text-sm font-normal ${selectedOcc && selectedOcc.guests > selectedTable.capacity ? "font-bold text-red-600" : "opacity-60"}`}>
+                    {selectedOcc?.guests ?? 0} / {selectedTable.capacity} Personen{selectedOcc && selectedOcc.guests > selectedTable.capacity ? " – überbucht!" : ""}
+                  </span>
                 </h4>
                 <button type="button" onClick={() => setSelectedTableId(null)} className="text-sm font-bold opacity-60 hover:opacity-100">Schließen ×</button>
               </div>
               <div className="mt-3 space-y-2">
                 {tableReservations.length === 0 && <p className="text-sm opacity-50">Noch keine Gäste an diesem Tisch.</p>}
                 {tableReservations.map(r => (
-                  <div key={r.reservation.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-canvas-light px-3 py-2 text-sm font-bold">
+                  <div
+                    key={r.reservation.id}
+                    draggable
+                    onDragStart={e => e.dataTransfer.setData("text/reservation", r.reservation.id)}
+                    title="Auf einen anderen Tisch ziehen, um umzubuchen"
+                    className="flex cursor-grab flex-wrap items-center gap-2 rounded-xl bg-canvas-light px-3 py-2 text-sm font-bold active:cursor-grabbing"
+                  >
                     <span>{r.reservation.guestName} ({r.reservation.guestCount} P.)</span>
                     <span className="text-xs opacity-60">{r.reservation.status}</span>
                     {r.reservation.status === "confirmed" && r.reservation.ticketSentAt && <span className="text-xs text-accent-green" title="Bestätigungs-Mail versendet">✓ Mail</span>}
