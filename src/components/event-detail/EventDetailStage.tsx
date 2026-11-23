@@ -6,10 +6,9 @@ import { Link } from "@/i18n/routing";
 import type { EventRecord } from "@/types/domain";
 import { reservationBadge, reservationStatusLabel, resolveReservationMode } from "@/lib/reservation-mode";
 import FestzeltCeiling from "@/components/FestzeltCeiling";
-import EventMapEmbed from "@/components/EventMapEmbed";
 import { localized } from "@/lib/localize";
 
-export default function EventDetailStage({ event, dateLabel, resolvedMapUrl }: { event: EventRecord; dateLabel: string; resolvedMapUrl?: string | null }) {
+export default function EventDetailStage({ event, dateLabel }: { event: EventRecord; dateLabel: string }) {
   const t = useTranslations("EventDetail");
   const locale = useLocale();
 
@@ -22,6 +21,8 @@ export default function EventDetailStage({ event, dateLabel, resolvedMapUrl }: {
 
   return (
     <section className="relative w-full bg-base-light overflow-hidden">
+      {/* Grüne Kopfzone hinter der transparenten Navbar: schließt bündig an den Zeltdach-Giebel (ab 96px) an */}
+      <div aria-hidden className="absolute inset-x-0 top-0 z-0 h-[96px] bg-accent-green" />
       <FestzeltCeiling compact />
 
       {/* Inhalt beginnt unterhalb der Banner-Spitzen (compact: ~317/379/421px) inkl. Pendel-Ausschlag */}
@@ -70,20 +71,6 @@ export default function EventDetailStage({ event, dateLabel, resolvedMapUrl }: {
               </motion.h1>
 
             </div>
-
-            {location && (
-              <div className="hidden lg:block max-w-md">
-                <EventMapEmbed
-                  mapUrl={event.mapUrl}
-                  embedMapUrl={resolvedMapUrl}
-                  location={location}
-                  zip={event.zip}
-                  title={title}
-                  locale={locale}
-                  height={160}
-                />
-              </div>
-            )}
 
             <div className="border-t border-border-light pt-5">
               <motion.div

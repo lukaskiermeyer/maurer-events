@@ -1,11 +1,12 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
-import { events, reservations, tables } from '@/db/schema';
+import { events, reservations } from '@/db/schema';
 import { generateTicketPdf } from './ticket';
 import { escapeHtml } from './escape';
 import { Resend } from 'resend';
 import { emailFrom } from './email';
 import { renderEmail } from './email-template';
+import { resolveTableName } from './reservation-table';
 
 import type { CreateEmailOptions } from 'resend';
 
@@ -20,8 +21,8 @@ export async function deliverTicket(reservationId: string, connection = db, send
     if (latest.status !== 'confirmed' || latest.qrCodeText !== reservation.qrCodeText || latest.ticketSentAt) return;
     if (!reservation.ticketEmailPayload) {
       const [event] = await connection.select().from(events).where(eq(events.id, reservation.eventId));
-      const [table] = reservation.tableId ? await connection.select().from(tables).where(eq(tables.id, reservation.tableId)) : [];
-      const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), time: reservation.selectedTime, location: event?.location, guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: table?.name || 'Freie Platzwahl', qrCodeText: reservation.qrCodeText });
+      const tableName = await resolveTableName(reservation, connection);
+      const pdf = await generateTicketPdf({ eventName: event?.title || 'Maurer Event', date: reservation.reservationDate.toLocaleDateString('de-DE', { timeZone: 'UTC' }), time: reservation.selectedTime, location: event?.location, guestName: reservation.guestName, guestCount: reservation.guestCount, tableName: tableName || 'Freie Platzwahl', qrCodeText: reservation.qrCodeText });
       if (!pdf) throw new Error('PDF unavailable');
       const payload = { from: emailFrom(), to: [reservation.email], subject: `Dein Ticket für ${event?.title || 'Maurer Event'}`,
         html: renderEmail({

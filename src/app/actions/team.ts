@@ -46,12 +46,21 @@ function assertMemberText(data: { name?: string; role?: string; quote?: string }
   if (data.quote !== undefined && (typeof data.quote !== 'string' || !data.quote.trim() || data.quote.length > 500)) throw new Error('Ungültiges Zitat.');
 }
 
+export type MemberTexts = {
+  role?: string;
+  quote?: string;
+  roleEn?: string | null;
+  roleBar?: string | null;
+  quoteEn?: string | null;
+  quoteBar?: string | null;
+};
+
 export async function createTeamMember(data: {
   name: string;
   role: string;
   quote: string;
   imageUrl?: string | null;
-}) {
+} & MemberTexts) {
   await requireAdmin();
   assertMemberText(data);
   const translated = await translateFields({ role: data.role, quote: data.quote });
@@ -62,10 +71,10 @@ export async function createTeamMember(data: {
     name: data.name.trim(),
     role: data.role.trim(),
     quote: data.quote.trim(),
-    roleEn: translated.en.role,
-    roleBar: translated.bar.role,
-    quoteEn: translated.en.quote,
-    quoteBar: translated.bar.quote,
+    roleEn: data.roleEn !== undefined ? data.roleEn : translated.en.role,
+    roleBar: data.roleBar !== undefined ? data.roleBar : translated.bar.role,
+    quoteEn: data.quoteEn !== undefined ? data.quoteEn : translated.en.quote,
+    quoteBar: data.quoteBar !== undefined ? data.quoteBar : translated.bar.quote,
     imageUrl: data.imageUrl || null,
     sortOrder: Number(maxOrder) + 1,
   }).returning();
@@ -75,10 +84,8 @@ export async function createTeamMember(data: {
 
 export async function updateTeamMember(id: string, data: {
   name?: string;
-  role?: string;
-  quote?: string;
   imageUrl?: string | null;
-}) {
+} & MemberTexts) {
   await requireAdmin();
   uuid(id);
   assertMemberText(data);
@@ -88,13 +95,21 @@ export async function updateTeamMember(id: string, data: {
   if (data.quote !== undefined) updates.quote = data.quote.trim();
   if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl || null;
 
-  if (data.role !== undefined || data.quote !== undefined) {
-    const translated = await translateFields({
-      role: data.role ?? '',
-      quote: data.quote ?? '',
-    });
-    if (data.role !== undefined) { updates.roleEn = translated.en.role; updates.roleBar = translated.bar.role; }
-    if (data.quote !== undefined) { updates.quoteEn = translated.en.quote; updates.quoteBar = translated.bar.quote; }
+  // Manuelle EN/Bar-Werte haben Vorrang; KI füllt nur leere Ziele ohne expliziten Wert.
+  const [cur] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
+  for (const f of [{ src: 'role', en: 'roleEn', bar: 'roleBar' }, { src: 'quote', en: 'quoteEn', bar: 'quoteBar' }] as const) {
+    const explicitEn = data[f.en];
+    const explicitBar = data[f.bar];
+    if (explicitEn !== undefined) updates[f.en] = explicitEn;
+    if (explicitBar !== undefined) updates[f.bar] = explicitBar;
+    const deChanged = data[f.src] !== undefined;
+    const enEmpty = !cur?.[f.en]?.trim();
+    const barEmpty = !cur?.[f.bar]?.trim();
+    if (deChanged && ((explicitEn === undefined && enEmpty) || (explicitBar === undefined && barEmpty))) {
+      const t = await translateFields({ [f.src]: data[f.src] as string });
+      if (explicitEn === undefined && enEmpty) updates[f.en] = t.en[f.src];
+      if (explicitBar === undefined && barEmpty) updates[f.bar] = t.bar[f.src];
+    }
   }
 
   const [row] = await db.update(teamMembers).set(updates).where(eq(teamMembers.id, id)).returning();

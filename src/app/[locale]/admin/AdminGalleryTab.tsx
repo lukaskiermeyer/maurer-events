@@ -8,13 +8,15 @@ import {
   moveGalleryFavorite, moveGalleryAlbum, setAlbumCoverFromImage, assignGalleryImage, getGalleryImages,
 } from "@/app/actions/gallery";
 import { uploadImage } from "@/lib/client-image-upload";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import DropZone from "@/components/ui/DropZone";
 import AdminAlbumCard, { type AlbumDetailInput } from "./AdminAlbumCard";
 import { useToast } from "@/components/ui/Toast";
 import { useDialog } from "@/components/ui/Dialog";
 
 const MAX_FAVORITES = 8;
-const EMPTY_CREATE = { title: "", date: "", location: "", description: "", coverImageUrl: "" };
+const EMPTY_CREATE = { title: "", date: "", location: "", description: "", coverImageUrl: "", titleEn: "", titleBar: "", locationEn: "", locationBar: "", descriptionEn: "", descriptionBar: "" };
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Unbekannter Fehler");
 
 export default function AdminGalleryTab({
@@ -39,6 +41,7 @@ export default function AdminGalleryTab({
   const [createSaving, setCreateSaving] = useState(false);
   const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE });
   const [createCoverFile, setCreateCoverFile] = useState<File | null>(null);
+  const [createTranslating, setCreateTranslating] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
   const [savedMark, setSavedMark] = useState<{ kind: "album" | "fav"; id: string } | null>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -239,12 +242,39 @@ export default function AdminGalleryTab({
         location: createForm.location,
         description: createForm.description,
         coverImageUrl: coverUrl || null,
+        titleEn: createForm.titleEn, titleBar: createForm.titleBar,
+        locationEn: createForm.locationEn, locationBar: createForm.locationBar,
+        descriptionEn: createForm.descriptionEn, descriptionBar: createForm.descriptionBar,
       });
       if (album) setAlbumList(prev => [album, ...prev]);
       setIsCreateOpen(false);
       toast.showToast("Album erstellt.", "success");
     } catch (err) { toast.showToast(errMsg(err), "error"); }
     setCreateSaving(false);
+  };
+
+  const createLocValues: LocValues = {
+    title: { de: createForm.title, en: createForm.titleEn, bar: createForm.titleBar },
+    location: { de: createForm.location, en: createForm.locationEn, bar: createForm.locationBar },
+    description: { de: createForm.description, en: createForm.descriptionEn, bar: createForm.descriptionBar },
+  };
+  const handleCreateLocChange = (key: string, lang: Lang, value: string) => {
+    const suffix = lang === "de" ? "" : lang === "en" ? "En" : "Bar";
+    setCreateForm(prev => ({ ...prev, [`${key}${suffix}`]: value }));
+  };
+  const handleCreateTranslate = async () => {
+    setCreateTranslating(true);
+    try {
+      const t = await translateTextsNow({ title: createForm.title, location: createForm.location, description: createForm.description });
+      setCreateForm(prev => ({
+        ...prev,
+        titleEn: t.en.title ?? prev.titleEn, titleBar: t.bar.title ?? prev.titleBar,
+        locationEn: t.en.location ?? prev.locationEn, locationBar: t.bar.location ?? prev.locationBar,
+        descriptionEn: t.en.description ?? prev.descriptionEn, descriptionBar: t.bar.description ?? prev.descriptionBar,
+      }));
+      toast.showToast("KI-Übersetzungen eingetragen – bitte prüfen und speichern.", "success");
+    } catch { toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error"); }
+    setCreateTranslating(false);
   };
 
   return (
@@ -426,21 +456,20 @@ export default function AdminGalleryTab({
             </div>
             <form onSubmit={handleCreate} className="p-4 sm:p-6 space-y-4 font-sans">
               <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Titel</label>
-                <input required type="text" value={createForm.title} onChange={e => setCreateForm({ ...createForm, title: e.target.value })} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Fasching 2019" />
-              </div>
-              <div>
                 <label className="block text-sm font-bold mb-1 opacity-70">Datum</label>
                 <input required type="date" value={createForm.date} onChange={e => setCreateForm({ ...createForm, date: e.target.value })} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" />
               </div>
-              <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Location</label>
-                <input required type="text" value={createForm.location} onChange={e => setCreateForm({ ...createForm, location: e.target.value })} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green" placeholder="z.B. Festzelt" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold mb-1 opacity-70">Beschreibung</label>
-                <textarea required value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} className="w-full border border-border-light rounded-lg p-3 bg-base-light focus:outline-none focus:border-accent-green min-h-[100px]" placeholder="Kurze Beschreibung…" />
-              </div>
+              <LocalizedFields
+                fields={[
+                  { key: "title", label: "Titel" },
+                  { key: "location", label: "Ort" },
+                  { key: "description", label: "Beschreibung", multiline: true, rows: 4 },
+                ]}
+                values={createLocValues}
+                onChange={handleCreateLocChange}
+                onTranslate={handleCreateTranslate}
+                translating={createTranslating}
+              />
               <div className="space-y-2">
                 <label className="block text-sm font-bold mb-1 opacity-70">Cover-Bild (optional)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

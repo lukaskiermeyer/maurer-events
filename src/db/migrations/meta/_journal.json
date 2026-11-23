@@ -295,6 +295,20 @@
       "when": 1795700000000,
       "tag": "0044_team_mock_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795800000000,
+      "tag": "0045_plan_presets",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795900000000,
+      "tag": "0046_event_invite_template",
+      "breakpoints": true
     }
   ]
 }

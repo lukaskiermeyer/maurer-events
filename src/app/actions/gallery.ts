@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { galleries, galleryAlbums, events } from "@/db/schema";
 import { eq, sql, and, or, isNull, isNotNull, asc, desc, lte, inArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { translateFields } from "@/lib/translate";
 import { uuid } from "@/lib/reservation-policy";
@@ -11,6 +11,7 @@ import { uuid } from "@/lib/reservation-policy";
 const MAX_FAVORITES = 8;
 
 function revalidateGallery() {
+  revalidateTag("gallery", "max");
   revalidatePath("/");
   revalidatePath("/galerie");
   revalidatePath("/galerie/[albumId]", "page");
@@ -22,7 +23,7 @@ function revalidateGallery() {
 // ---------- Alben (öffentlich) ----------
 
 // Galerie-Übersicht: nur vergangene, nicht gelöschte Alben (Galerie = Rückblick).
-export async function getGalleryAlbums() {
+export const getGalleryAlbums = unstable_cache(async () => {
   const result = await db.select({
     id: galleryAlbums.id,
     title: galleryAlbums.title,
@@ -51,35 +52,37 @@ export async function getGalleryAlbums() {
     coverImage: album.coverImageUrl || album.fallbackImageUrl,
     imageCount: Number(album.imageCount)
   }));
-}
+}, ['public-gallery-albums'], { revalidate: 3600, tags: ['gallery'] });
 
-export async function getGalleryAlbumById(albumId: string) {
+export const getGalleryAlbumById = unstable_cache(async (albumId: string) => {
   const [album] = await db.select().from(galleryAlbums)
     .where(and(eq(galleryAlbums.id, albumId), isNull(galleryAlbums.deletedAt)));
   return album ?? null;
-}
+}, ['public-gallery-album-by-id'], { revalidate: 3600, tags: ['gallery'] });
 
-export async function getGalleryImages(albumId: string) {
+export const getGalleryImages = unstable_cache(async (albumId: string) => {
   return await db.select().from(galleries)
     .where(eq(galleries.albumId, albumId))
     .orderBy(asc(galleries.createdAt));
-}
+}, ['public-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 // Alben, die mit einem Fest verknüpft sind (Eventseite + Event-Admin).
-export async function getAlbumsForEvent(eventId: string) {
+export const getAlbumsForEvent = unstable_cache(async (eventId: string) => {
   return await db.select().from(galleryAlbums)
     .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
     .orderBy(asc(galleryAlbums.createdAt));
-}
+}, ['public-albums-for-event'], { revalidate: 3600, tags: ['gallery'] });
 
 // Bilder aller Alben eines Festes – für die Foto-Sektion der Eventseite.
-export async function getEventGalleryImages(eventId: string) {
-  const albums = await getAlbumsForEvent(eventId);
+export const getEventGalleryImages = unstable_cache(async (eventId: string) => {
+  const albums = await db.select().from(galleryAlbums)
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
+    .orderBy(asc(galleryAlbums.createdAt));
   if (albums.length === 0) return [];
   return await db.select().from(galleries)
     .where(inArray(galleries.albumId, albums.map(a => a.id)))
     .orderBy(asc(galleries.createdAt));
-}
+}, ['public-event-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 // ---------- Alben (Admin) ----------
 
@@ -144,6 +147,24 @@ function assertAlbumText(data: { title?: string; location?: string; description?
   if (data.description !== undefined && (typeof data.description !== 'string' || !data.description.trim() || data.description.length > 100000)) throw new Error('Ungültige Beschreibung.');
 }
 
+export type AlbumTexts = {
+  title?: string;
+  location?: string;
+  description?: string;
+  titleEn?: string | null;
+  titleBar?: string | null;
+  locationEn?: string | null;
+  locationBar?: string | null;
+  descriptionEn?: string | null;
+  descriptionBar?: string | null;
+};
+
+const ALBUM_FIELDS = [
+  { src: 'title', en: 'titleEn', bar: 'titleBar' },
+  { src: 'location', en: 'locationEn', bar: 'locationBar' },
+  { src: 'description', en: 'descriptionEn', bar: 'descriptionBar' },
+] as const;
+
 export async function createGalleryAlbum(data: {
   title: string;
   date: Date;
@@ -151,7 +172,7 @@ export async function createGalleryAlbum(data: {
   description: string;
   coverImageUrl?: string | null;
   eventId?: string | null;
-}) {
+} & AlbumTexts) {
   await requireAdmin();
   assertAlbumText(data);
   if (!(data.date instanceof Date) || !Number.isFinite(data.date.getTime())) throw new Error('Ungültiges Datum.');
@@ -172,25 +193,22 @@ export async function createGalleryAlbum(data: {
     description: data.description,
     coverImageUrl: data.coverImageUrl || null,
     eventId: data.eventId || null,
-    titleEn: translated.en.title,
-    locationEn: translated.en.location,
-    descriptionEn: translated.en.description,
-    titleBar: translated.bar.title,
-    locationBar: translated.bar.location,
-    descriptionBar: translated.bar.description,
+    titleEn: data.titleEn !== undefined ? data.titleEn : translated.en.title,
+    locationEn: data.locationEn !== undefined ? data.locationEn : translated.en.location,
+    descriptionEn: data.descriptionEn !== undefined ? data.descriptionEn : translated.en.description,
+    titleBar: data.titleBar !== undefined ? data.titleBar : translated.bar.title,
+    locationBar: data.locationBar !== undefined ? data.locationBar : translated.bar.location,
+    descriptionBar: data.descriptionBar !== undefined ? data.descriptionBar : translated.bar.description,
   }).returning({ id: galleryAlbums.id });
   revalidateGallery();
   return await loadAdminAlbum(album.id);
 }
 
 export async function updateGalleryAlbum(id: string, data: {
-  title?: string;
   date?: Date;
-  location?: string;
-  description?: string;
   coverImageUrl?: string | null;
   coverPublicId?: string | null;
-}) {
+} & AlbumTexts) {
   await requireAdmin();
   uuid(id);
   assertAlbumText(data);
@@ -205,15 +223,22 @@ export async function updateGalleryAlbum(id: string, data: {
   if (data.coverImageUrl !== undefined) updates.coverImageUrl = data.coverImageUrl || null;
   if (data.coverPublicId !== undefined) updates.coverPublicId = data.coverPublicId || null;
 
-  if (data.title !== undefined || data.location !== undefined || data.description !== undefined) {
-    const translated = await translateFields({
-      title: data.title,
-      location: data.location,
-      description: data.description,
-    });
-    if (data.title !== undefined) { updates.titleEn = translated.en.title; updates.titleBar = translated.bar.title; }
-    if (data.location !== undefined) { updates.locationEn = translated.en.location; updates.locationBar = translated.bar.location; }
-    if (data.description !== undefined) { updates.descriptionEn = translated.en.description; updates.descriptionBar = translated.bar.description; }
+  // Manuelle EN/Bar-Werte haben Vorrang; KI füllt nur leere Ziele, wenn kein
+  // expliziter Wert mitkommt — sonst würden manuelle Korrekturen überschrieben.
+  const [cur] = await db.select().from(galleryAlbums).where(eq(galleryAlbums.id, id));
+  for (const f of ALBUM_FIELDS) {
+    const explicitEn = data[f.en];
+    const explicitBar = data[f.bar];
+    if (explicitEn !== undefined) updates[f.en] = explicitEn;
+    if (explicitBar !== undefined) updates[f.bar] = explicitBar;
+    const deChanged = data[f.src] !== undefined;
+    const enEmpty = !cur?.[f.en]?.trim();
+    const barEmpty = !cur?.[f.bar]?.trim();
+    if (deChanged && ((explicitEn === undefined && enEmpty) || (explicitBar === undefined && barEmpty))) {
+      const t = await translateFields({ [f.src]: data[f.src] as string });
+      if (explicitEn === undefined && enEmpty) updates[f.en] = t.en[f.src];
+      if (explicitBar === undefined && barEmpty) updates[f.bar] = t.bar[f.src];
+    }
   }
 
   await db.update(galleryAlbums).set(updates).where(eq(galleryAlbums.id, id));
@@ -337,14 +362,14 @@ export async function getAllGalleryImages() {
 // ---------- Startseiten-Favoriten ----------
 
 // Kuratierte "Best of"-Fotos fuer die Startseite (ueber alle Alben), in Reihenfolge.
-export async function getFavoriteGalleryImages(limit = MAX_FAVORITES) {
+export const getFavoriteGalleryImages = unstable_cache(async (limit = MAX_FAVORITES) => {
   return await db.select({ gallery: galleries, album: galleryAlbums })
     .from(galleries)
     .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
     .where(and(eq(galleries.isFavorite, true), or(isNull(galleryAlbums.id), isNull(galleryAlbums.deletedAt))))
     .orderBy(asc(galleries.favoriteOrder), asc(galleries.createdAt))
     .limit(limit);
-}
+}, ['public-favorite-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 export async function setGalleryFavorite(imageId: string, favorite: boolean) {
   await requireAdmin();

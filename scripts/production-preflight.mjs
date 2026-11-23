@@ -97,7 +97,7 @@ await check('resend', async () => {
 });
 
 if (origin) {
-  for (const route of ['/api/health', '/', '/en', '/admin', '/admin/login']) await check(`http.${route}`, async () => {
+  for (const route of ['/api/health', '/api/health/db', '/', '/en', '/admin', '/admin/login']) await check(`http.${route}`, async () => {
     const response = await get(`${origin}${route}`);
     const html = route === '/admin' || route === '/' || route === '/en' ? await response.text() : '';
     const login = route !== '/admin' || new URL(response.url).pathname.endsWith('/admin/login') || (html.includes('NEXT_REDIRECT') && html.includes('/admin/login'));
@@ -106,7 +106,7 @@ if (origin) {
       const renderFailed = response.status !== 200 || html.includes('Da ist etwas schiefgelaufen.') || html.includes('Internal Server Error');
       record(`http.render.${route}`, renderFailed ? 'fail' : 'pass', renderFailed ? 'HTTP- oder Serverrenderfehler.' : 'Keine Serverfehleransicht erkannt; Hydrierung separat im Browser prüfen.');
     }
-    if (route === '/api/health') record('http.health-cache', /no-store/.test(response.headers.get('cache-control') || '') ? 'pass' : 'fail', 'Readiness muss aktuellen Datenbankzustand ohne Cache melden.');
+    if (route === '/api/health/db') record('http.health-cache', /no-store/.test(response.headers.get('cache-control') || '') ? 'pass' : 'fail', 'Readiness muss aktuellen Datenbankzustand ohne Cache melden.');
     if (route === '/') for (const [header, expectedValue] of [['x-frame-options', 'DENY'], ['x-content-type-options', 'nosniff'], ['referrer-policy', 'strict-origin-when-cross-origin']]) record(`http.header.${header}`, response.headers.get(header) === expectedValue ? 'pass' : 'fail', `Erwarteter Header ${expectedValue}.`);
   });
   for (const [id, route, init, status] of [

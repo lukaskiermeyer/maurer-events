@@ -150,7 +150,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema).replace(/</g, '\\u003c') }}
       />
 
-      <EventDetailStage event={event} dateLabel={dateLabel} resolvedMapUrl={resolvedMapUrl} />
+      <EventDetailStage event={event} dateLabel={dateLabel} />
 
       {/* Event Details Content */}
       <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-16 mt-12 md:mt-16">
@@ -160,7 +160,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </h2>
           <DescriptionRenderer content={description} />
           {location && (
-            <div className="mt-10 lg:hidden">
+            <div className="mt-10 pb-6">
               <EventMapEmbed
                 mapUrl={event.mapUrl}
                 embedMapUrl={resolvedMapUrl}

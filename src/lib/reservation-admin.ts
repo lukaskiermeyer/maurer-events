@@ -6,6 +6,7 @@ import { assertCapacity, lockEvent, lockLayout, lockReservation } from './reserv
 import { ADMIN_TRANSITIONS, assertEventDay, BookingError, calendarDate, guestDetails, uuid } from './reservation-policy';
 import { toCalendarDay } from './date';
 import { issueVouchersForReservation, voidVouchersForReservation } from './vouchers';
+import { resolveTableName } from './reservation-table';
 
 export function reservationAdmin(connection: typeof db) {
   return {
@@ -122,8 +123,8 @@ export function reservationAdmin(connection: typeof db) {
       )).returning();
       if (!updated) throw new BookingError('Ticket ungültig, storniert oder bereits eingecheckt.');
       const [event] = await connection.select({ title: events.title }).from(events).where(eq(events.id, updated.eventId));
-      const [table] = updated.tableId ? await connection.select({ name: tables.name }).from(tables).where(eq(tables.id, updated.tableId)) : [];
-      return { reservation: updated, eventTitle: event?.title || 'Maurer Event', tableName: table?.name || 'Kein Tisch' };
+      const tableName = await resolveTableName(updated, connection);
+      return { reservation: updated, eventTitle: event?.title || 'Maurer Event', tableName: tableName || 'Kein Tisch' };
     },
   };
 }

@@ -3,7 +3,7 @@
 import { db } from '@/db';
 import { settings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { after } from 'next/server';
 import { Resend } from 'resend';
 
@@ -29,10 +29,10 @@ const ATTACHMENT_TYPES: Record<string, string> = {
 };
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 
-export async function getCareerContent(): Promise<CareerContent> {
+export const getCareerContent = unstable_cache(async (): Promise<CareerContent> => {
   const [row] = await db.select().from(settings).where(eq(settings.key, CAREER_KEY));
   return parseCareerContent(row?.value);
-}
+}, ['public-career-content'], { revalidate: 3600, tags: ['career'] });
 
 export async function updateCareerContent(input: unknown) {
   await requireAdmin();
@@ -42,6 +42,7 @@ export async function updateCareerContent(input: unknown) {
     await lockLayout(tx, true);
     await tx.insert(settings).values({ key: CAREER_KEY, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
   });
+  revalidateTag("career", "max");
   revalidatePath('/[locale]/karriere', 'page');
   revalidatePath('/[locale]', 'layout');
   // KI-Uebersetzung nicht blockierend: leere EN/Bar-Felder nach der Antwort fuellen.
@@ -52,6 +53,7 @@ export async function updateCareerContent(input: unknown) {
       const filled = await fillCareerTranslations(current);
       if (JSON.stringify(filled) !== JSON.stringify(current)) {
         await db.update(settings).set({ value: JSON.stringify(filled) }).where(eq(settings.key, CAREER_KEY));
+        revalidateTag("career", "max");
         revalidatePath('/[locale]/karriere', 'page');
         revalidatePath('/[locale]', 'layout');
       }

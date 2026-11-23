@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { AdminGalleryAlbum, GalleryImage } from "@/types/domain";
 import { uploadImage } from "@/lib/client-image-upload";
 import { addGalleryImage } from "@/app/actions/gallery";
+import { translateTextsNow } from "@/app/actions/translations";
+import LocalizedFields, { type Lang, type LocValues } from "@/components/admin/LocalizedFields";
 import DropZone from "@/components/ui/DropZone";
 import { useToast } from "@/components/ui/Toast";
 
@@ -13,6 +15,12 @@ export type AlbumDetailInput = {
   location: string;
   description: string;
   coverImageUrl: string | null;
+  titleEn?: string | null;
+  titleBar?: string | null;
+  locationEn?: string | null;
+  locationBar?: string | null;
+  descriptionEn?: string | null;
+  descriptionBar?: string | null;
 };
 
 export default function AdminAlbumCard({
@@ -52,10 +60,11 @@ export default function AdminAlbumCard({
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
-  const [detail, setDetail] = useState({ title: "", date: "", location: "", description: "", coverImageUrl: "" });
+  const [detail, setDetail] = useState({ title: "", date: "", location: "", description: "", coverImageUrl: "", titleEn: "", titleBar: "", locationEn: "", locationBar: "", descriptionEn: "", descriptionBar: "" });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   const favCount = images.filter(i => i.isFavorite).length;
 
@@ -66,8 +75,40 @@ export default function AdminAlbumCard({
       location: album.location,
       description: album.description,
       coverImageUrl: album.coverImageUrl || "",
+      titleEn: album.titleEn || "",
+      titleBar: album.titleBar || "",
+      locationEn: album.locationEn || "",
+      locationBar: album.locationBar || "",
+      descriptionEn: album.descriptionEn || "",
+      descriptionBar: album.descriptionBar || "",
     });
     setEditing(true);
+  };
+
+  const locValues: LocValues = {
+    title: { de: detail.title, en: detail.titleEn, bar: detail.titleBar },
+    location: { de: detail.location, en: detail.locationEn, bar: detail.locationBar },
+    description: { de: detail.description, en: detail.descriptionEn, bar: detail.descriptionBar },
+  };
+  const handleLocChange = (key: string, lang: Lang, value: string) => {
+    const suffix = lang === "de" ? "" : lang === "en" ? "En" : "Bar";
+    setDetail(prev => ({ ...prev, [`${key}${suffix}`]: value }));
+  };
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const t = await translateTextsNow({ title: detail.title, location: detail.location, description: detail.description });
+      setDetail(prev => ({
+        ...prev,
+        titleEn: t.en.title ?? prev.titleEn, titleBar: t.bar.title ?? prev.titleBar,
+        locationEn: t.en.location ?? prev.locationEn, locationBar: t.bar.location ?? prev.locationBar,
+        descriptionEn: t.en.description ?? prev.descriptionEn, descriptionBar: t.bar.description ?? prev.descriptionBar,
+      }));
+      toast.showToast("KI-Übersetzungen eingetragen – bitte prüfen und speichern.", "success");
+    } catch {
+      toast.showToast("Übersetzung fehlgeschlagen. Prüfe den NIM_API_KEY.", "error");
+    }
+    setTranslating(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -83,6 +124,9 @@ export default function AdminAlbumCard({
       location: detail.location,
       description: detail.description,
       coverImageUrl: detail.coverImageUrl || null,
+      titleEn: detail.titleEn, titleBar: detail.titleBar,
+      locationEn: detail.locationEn, locationBar: detail.locationBar,
+      descriptionEn: detail.descriptionEn, descriptionBar: detail.descriptionBar,
     });
     setSaving(false);
     setEditing(false);
@@ -190,24 +234,21 @@ export default function AdminAlbumCard({
               </button>
             ) : (
               <form onSubmit={handleSave} className="space-y-3 bg-base-light/50 p-4 rounded-xl">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold mb-1 opacity-70">Titel</label>
-                    <input type="text" value={detail.title} onChange={e => setDetail({ ...detail, title: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-1 opacity-70">Datum</label>
-                    <input type="date" value={detail.date} onChange={e => setDetail({ ...detail, date: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
-                  </div>
-                </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 opacity-70">Location</label>
-                  <input type="text" value={detail.location} onChange={e => setDetail({ ...detail, location: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
+                  <label className="block text-xs font-bold mb-1 opacity-70">Datum</label>
+                  <input type="date" value={detail.date} onChange={e => setDetail({ ...detail, date: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold mb-1 opacity-70">Beschreibung</label>
-                  <textarea value={detail.description} onChange={e => setDetail({ ...detail, description: e.target.value })} className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm min-h-[80px]" />
-                </div>
+                <LocalizedFields
+                  fields={[
+                    { key: "title", label: "Titel" },
+                    { key: "location", label: "Ort" },
+                    { key: "description", label: "Beschreibung", multiline: true, rows: 4 },
+                  ]}
+                  values={locValues}
+                  onChange={handleLocChange}
+                  onTranslate={handleTranslate}
+                  translating={translating}
+                />
                 <div>
                   <label className="block text-xs font-bold mb-1 opacity-70">Cover-Bild-URL (optional)</label>
                   <input type="url" value={detail.coverImageUrl} onChange={e => setDetail({ ...detail, coverImageUrl: e.target.value })} placeholder="https://… (leer = erstes Bild)" className="w-full border border-border-light rounded-lg p-2 bg-white focus:outline-none focus:border-accent-green text-sm" />

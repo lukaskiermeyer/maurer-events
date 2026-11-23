@@ -3,6 +3,7 @@ import { getCareerContent } from "@/app/actions/career";
 import { getAllGalleryImages, getAdminGalleryAlbums } from "@/app/actions/gallery";
 import { getAdminTeamMembers } from "@/app/actions/team";
 import AdminTabs from "./AdminTabs";
+import AdminMailTodos from "@/components/admin/AdminMailTodos";
 import { Link } from "@/i18n/routing";
 
 import { requireAdmin } from "@/lib/auth";
@@ -47,6 +48,8 @@ export default async function AdminPage() {
             Die Übersicht konnte nicht geladen werden. Bitte lade die Seite erneut.
           </div>
         )}
+
+        <AdminMailTodos />
 
         <AdminTabs initialEvents={events} stats={stats} careerContent={careerContent} albums={albums} initialGallery={galleryImages} teamMembers={teamMembers} />
       </div>

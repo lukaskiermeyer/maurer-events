@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { customerImports, customers, events, reservations, tables } from "@/db/schema";
@@ -352,7 +352,7 @@ export async function getCustomerStats() {
     .sort((a, b) => b[1].guests - a[1].guests)
     .slice(0, 5);
   const ids = top.map(([id]) => id);
-  const customerRows = ids.length ? await db.select().from(customers).where(sql`${customers.id} = ANY(${ids})`) : [];
+  const customerRows = ids.length ? await db.select().from(customers).where(inArray(customers.id, ids)) : [];
   const byId = new Map(customerRows.map(c => [c.id, c]));
   return top.map(([id, stats]) => ({ customer: byId.get(id) || null, ...stats }));
 }
