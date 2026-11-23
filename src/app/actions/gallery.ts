@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { galleries, galleryAlbums, events } from "@/db/schema";
 import { eq, sql, and, or, isNull, isNotNull, asc, desc, lte, inArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { translateFields } from "@/lib/translate";
 import { uuid } from "@/lib/reservation-policy";
@@ -11,6 +11,7 @@ import { uuid } from "@/lib/reservation-policy";
 const MAX_FAVORITES = 8;
 
 function revalidateGallery() {
+  revalidateTag("gallery", "max");
   revalidatePath("/");
   revalidatePath("/galerie");
   revalidatePath("/galerie/[albumId]", "page");
@@ -22,7 +23,7 @@ function revalidateGallery() {
 // ---------- Alben (öffentlich) ----------
 
 // Galerie-Übersicht: nur vergangene, nicht gelöschte Alben (Galerie = Rückblick).
-export async function getGalleryAlbums() {
+export const getGalleryAlbums = unstable_cache(async () => {
   const result = await db.select({
     id: galleryAlbums.id,
     title: galleryAlbums.title,
@@ -51,35 +52,37 @@ export async function getGalleryAlbums() {
     coverImage: album.coverImageUrl || album.fallbackImageUrl,
     imageCount: Number(album.imageCount)
   }));
-}
+}, ['public-gallery-albums'], { revalidate: 3600, tags: ['gallery'] });
 
-export async function getGalleryAlbumById(albumId: string) {
+export const getGalleryAlbumById = unstable_cache(async (albumId: string) => {
   const [album] = await db.select().from(galleryAlbums)
     .where(and(eq(galleryAlbums.id, albumId), isNull(galleryAlbums.deletedAt)));
   return album ?? null;
-}
+}, ['public-gallery-album-by-id'], { revalidate: 3600, tags: ['gallery'] });
 
-export async function getGalleryImages(albumId: string) {
+export const getGalleryImages = unstable_cache(async (albumId: string) => {
   return await db.select().from(galleries)
     .where(eq(galleries.albumId, albumId))
     .orderBy(asc(galleries.createdAt));
-}
+}, ['public-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 // Alben, die mit einem Fest verknüpft sind (Eventseite + Event-Admin).
-export async function getAlbumsForEvent(eventId: string) {
+export const getAlbumsForEvent = unstable_cache(async (eventId: string) => {
   return await db.select().from(galleryAlbums)
     .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
     .orderBy(asc(galleryAlbums.createdAt));
-}
+}, ['public-albums-for-event'], { revalidate: 3600, tags: ['gallery'] });
 
 // Bilder aller Alben eines Festes – für die Foto-Sektion der Eventseite.
-export async function getEventGalleryImages(eventId: string) {
-  const albums = await getAlbumsForEvent(eventId);
+export const getEventGalleryImages = unstable_cache(async (eventId: string) => {
+  const albums = await db.select().from(galleryAlbums)
+    .where(and(eq(galleryAlbums.eventId, eventId), isNull(galleryAlbums.deletedAt)))
+    .orderBy(asc(galleryAlbums.createdAt));
   if (albums.length === 0) return [];
   return await db.select().from(galleries)
     .where(inArray(galleries.albumId, albums.map(a => a.id)))
     .orderBy(asc(galleries.createdAt));
-}
+}, ['public-event-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 // ---------- Alben (Admin) ----------
 
@@ -337,14 +340,14 @@ export async function getAllGalleryImages() {
 // ---------- Startseiten-Favoriten ----------
 
 // Kuratierte "Best of"-Fotos fuer die Startseite (ueber alle Alben), in Reihenfolge.
-export async function getFavoriteGalleryImages(limit = MAX_FAVORITES) {
+export const getFavoriteGalleryImages = unstable_cache(async (limit = MAX_FAVORITES) => {
   return await db.select({ gallery: galleries, album: galleryAlbums })
     .from(galleries)
     .leftJoin(galleryAlbums, eq(galleries.albumId, galleryAlbums.id))
     .where(and(eq(galleries.isFavorite, true), or(isNull(galleryAlbums.id), isNull(galleryAlbums.deletedAt))))
     .orderBy(asc(galleries.favoriteOrder), asc(galleries.createdAt))
     .limit(limit);
-}
+}, ['public-favorite-gallery-images'], { revalidate: 3600, tags: ['gallery'] });
 
 export async function setGalleryFavorite(imageId: string, favorite: boolean) {
   await requireAdmin();

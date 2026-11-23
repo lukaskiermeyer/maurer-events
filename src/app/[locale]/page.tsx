@@ -17,11 +17,11 @@ import { localizeCareerContent } from "@/lib/career";
 import GallerySection from "@/components/GallerySection";
 import CareersTeaser from "@/components/CareersTeaser";
 import { notFound } from 'next/navigation';
-import { redirect, routing } from '@/i18n/routing';
+import { routing } from '@/i18n/routing';
 
 
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 // Partnerlogos werden ohne Code-Änderung aufgenommen: jede Bilddatei in
 // public/partners/ erscheint als Kreis in der Partner-Sektion.
@@ -55,18 +55,11 @@ function readPartnerLogos(): PartnerLogo[] {
   }
 }
 
-export default async function Home({ params, searchParams }: {
+export default async function Home({ params }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ success?: string | string[]; session_id?: string | string[] }>;
 }) {
   const { locale } = await params;
   if (!routing.locales.some(language => language === locale)) notFound();
-  const query = await searchParams;
-  // Existing Stripe sessions retain their original return URL.
-  if (query.success === 'true') {
-    const sessionQuery = typeof query.session_id === 'string' ? `?${new URLSearchParams({ session_id: query.session_id })}` : '';
-    redirect({ href: `/reservierung/erfolgreich${sessionQuery}`, locale });
-  }
   const [events, galleryAlbums, galleryFavorites, documentsByEvent, careerRaw] = await Promise.all([
     getEvents(),
     getGalleryAlbums(),

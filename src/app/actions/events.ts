@@ -92,6 +92,9 @@ export async function createEvent(data: {
   });
 
   revalidatePath("/");
+  revalidatePath("/termine/mit-reservierung");
+  revalidatePath("/termine/ohne-reservierung");
+  revalidateTag("events", "max");
 
   // KI-Uebersetzung nicht blockierend: leere EN/Bar-Felder nach der Antwort fuellen.
   if (createdId) {
@@ -100,9 +103,6 @@ export async function createEvent(data: {
   }
 
   return createdId;
-  revalidatePath("/termine/mit-reservierung");
-  revalidatePath("/termine/ohne-reservierung");
-  revalidateTag("events", "max");
 }
 
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
