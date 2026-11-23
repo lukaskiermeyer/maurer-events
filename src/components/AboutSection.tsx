@@ -5,49 +5,35 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 
-// Gerade Lichterkette als Section-Abtrennung: gleichmaessig verteilte Birnen
-// an einer horizontalen Linie (kein Durchhang). cx-Werte werden als Prozent der
-// Breite positioniert; die Birnen selbst haben feste Pixelgroessen, damit sie
-// responsiv gleich gross bleiben.
-const GARLAND_BULBS = [
-  { cx: 50, cy: 18 },
-  { cx: 150, cy: 18 },
-  { cx: 250, cy: 18 },
-  { cx: 350, cy: 18 },
-  { cx: 450, cy: 18 },
-  { cx: 550, cy: 18 },
-  { cx: 650, cy: 18 },
-  { cx: 750, cy: 18 },
-  { cx: 850, cy: 18 },
-  { cx: 950, cy: 18 },
-  { cx: 1050, cy: 18 },
-  { cx: 1150, cy: 18 },
-] as const;
-
-// Lichterkette mit festen Pixelgroessen (Birne 16px, Schein 90px), damit die
-// Lampen auf jeder Bildschirmbreite gleich gross sind; nur die Positionen
-// skalieren prozentual. Dunkle Kontur, warmer Glaskoerper mit weissheissem Kern.
-function Garland({ className }: { className?: string }) {
+// Gerade Lichterkette als Section-Abtrennung: gleichmaessig verteilte Birnen an
+// einer horizontalen Linie (kein Durchhang). Die Wrapper-Schriftgroesse spiegelt
+// die Headline (text-5xl md:text-7xl); alle Masse sind em-basiert (Referenz 72px
+// = Headline ab md), damit die Birnen immer das gleiche Groessenverhaeltnis zum
+// Text haben. Auf kleinen Screens weniger Birnen (count), damit die Abstaende
+// nicht zu eng werden. Dunkle Kontur, warmer Glaskoerper, weissheisser Kern.
+function Garland({ count, className }: { count: number; className?: string }) {
   const reduced = useReducedMotion();
+  const positions = Array.from({ length: count }, (_, i) => ((i + 0.5) / count) * 100);
   return (
     <div
-      className={`pointer-events-none absolute left-0 h-20 w-full ${className ?? ""}`}
+      className={`pointer-events-none absolute left-0 w-full text-5xl md:text-7xl ${className ?? ""}`}
+      style={{ height: "calc(80em / 72)" }}
       aria-hidden="true"
     >
       {/* Lichtschein der Birnen: eigene Ebene mit Screen-Blend, damit die Lampen
-          den Grund ringsum aufhellen. Gleiche Positionen und feste Groesse wie
-          die Birnen, damit die Lichtkegel exakt unter den Birnen sitzen. */}
+          den Grund ringsum aufhellen. Gleiche Positionen und Groessen wie die
+          Birnen, damit die Lichtkegel exakt unter den Birnen sitzen. */}
       <div className="absolute inset-0" style={{ mixBlendMode: "screen" }}>
         {/* Sanftes, gestaffeltes Pulsieren der Lichtkegel; Reduced Motion statisch. */}
-        {GARLAND_BULBS.map((bulb, i) => (
+        {positions.map((left, i) => (
           <motion.div
             key={i}
             className="absolute rounded-full"
             style={{
-              left: `${(bulb.cx / 1200) * 100}%`,
-              top: bulb.cy + 15,
-              width: 90,
-              height: 90,
+              left: `${left}%`,
+              top: "calc(33em / 72)",
+              width: "calc(90em / 72)",
+              height: "calc(90em / 72)",
               transform: "translate(-50%, -50%)",
               background:
                 "radial-gradient(circle, rgba(255,226,160,0.3) 0%, rgba(255,206,120,0.11) 55%, rgba(255,206,120,0) 100%)",
@@ -63,23 +49,23 @@ function Garland({ className }: { className?: string }) {
       </div>
       <div
         className="absolute left-0 right-0"
-        style={{ top: 16.5, height: 3, backgroundColor: "rgba(250,248,244,0.4)" }}
+        style={{ top: "calc(16.5em / 72)", height: "calc(3em / 72)", backgroundColor: "rgba(250,248,244,0.4)" }}
       />
-      {GARLAND_BULBS.map((bulb, i) => (
+      {positions.map((left, i) => (
         <div
           key={i}
           className="absolute"
-          style={{ left: `${(bulb.cx / 1200) * 100}%`, top: bulb.cy - 2, transform: "translateX(-50%)" }}
+          style={{ left: `${left}%`, top: "calc(16em / 72)", transform: "translateX(-50%)" }}
         >
           <div
             className="mx-auto"
-            style={{ width: 7, height: 9, borderRadius: 1.5, backgroundColor: "rgba(250,248,244,0.6)" }}
+            style={{ width: "calc(7em / 72)", height: "calc(9em / 72)", borderRadius: "calc(1.5em / 72)", backgroundColor: "rgba(250,248,244,0.6)" }}
           />
-          <div className="relative rounded-full" style={{ width: 16, height: 16, backgroundColor: "#0A0A0A" }}>
-            <div className="absolute rounded-full" style={{ inset: 2, backgroundColor: "#E9B44C" }} />
+          <div className="relative rounded-full" style={{ width: "calc(16em / 72)", height: "calc(16em / 72)", backgroundColor: "#0A0A0A" }}>
+            <div className="absolute rounded-full" style={{ inset: "calc(2em / 72)", backgroundColor: "#E9B44C" }} />
             <div
               className="absolute rounded-full"
-              style={{ left: 3.7, top: 3.7, width: 5.6, height: 5.6, backgroundColor: "#FFF6DC" }}
+              style={{ left: "calc(3.7em / 72)", top: "calc(3.7em / 72)", width: "calc(5.6em / 72)", height: "calc(5.6em / 72)", backgroundColor: "#FFF6DC" }}
             />
           </div>
         </div>
@@ -94,7 +80,9 @@ export default function AboutSection() {
   return (
       <section id="about" className="py-24 md:py-32 bg-accent-green-deep border-t border-white/10 overflow-hidden relative">
         <div className="absolute inset-0 pointer-events-none">
-          <Garland className="top-0" />
+          {/* Unter md (Headline text-5xl): 6 Birnen; ab md (text-7xl): 12. */}
+          <Garland count={6} className="top-0 md:hidden" />
+          <Garland count={12} className="top-0 hidden md:block" />
         </div>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 relative z-10">
 

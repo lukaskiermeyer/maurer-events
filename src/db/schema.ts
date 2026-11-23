@@ -788,6 +788,11 @@ export const festChances = pgTable('fest_chances', {
   recurring: boolean('recurring').default(false).notNull(),
   recheckAt: timestamp('recheck_at'),
   sourceUrls: jsonb('source_urls').$type<string[]>().default([]),
+  sourceDate: text('source_date'),
+  applicationDeadline: text('application_deadline'),
+  verificationStatus: text('verification_status').default('unverified').notNull(), // verified | unverified | expired | already_awarded
+  verificationSummary: text('verification_summary'),
+  verifiedAt: timestamp('verified_at'),
   // Wirt-CRM (Task 3)
   wirtStatus: text('wirt_status').default('neu').notNull(), // neu | kontaktiert | im_gespraech | angebot | gewonnen | verloren | vertagt
   wirtNotiz: text('wirt_notiz'),
@@ -804,6 +809,8 @@ export const festChances = pgTable('fest_chances', {
   regionIdx: index('fest_chances_region_idx').on(table.region),
   runIdIdx: index('fest_chances_run_id_idx').on(table.runId),
   recheckIdx: index('fest_chances_recheck_idx').on(table.recheckAt),
+  deadlineIdx: index('fest_chances_deadline_idx').on(table.applicationDeadline),
+  verificationIdx: index('fest_chances_verification_idx').on(table.verificationStatus),
 }));
 
 // Backwards-compatible alias (singular) for callers/tests that expect `festChance`.
@@ -823,7 +830,7 @@ export const vereinsRadar = pgTable('vereins_radar', {
   monthsAhead: integer('months_ahead'),
   dateAssumed: boolean('date_assumed').default(false).notNull(),
   phase: text('phase'),
-  status: text('status').default('beobachten').notNull(), // connecten | jetzt_anbieten | beobachten
+  status: text('status').default('beobachten').notNull(), // connecten | jetzt_anbieten | beobachten | deleted (Tombstone, Ingest überspringt)
   score: integer('score').default(0).notNull(),
   scoreReason: text('score_reason'),
   planningSignals: jsonb('planning_signals').$type<string[]>().default([]),
@@ -838,6 +845,12 @@ export const vereinsRadar = pgTable('vereins_radar', {
   domain: text('domain'),
   contentHash: text('content_hash'),
   queryType: text('query_type'),
+  nextVisitEvent: text('next_visit_event'),
+  nextVisitDate: text('next_visit_date'),
+  nextVisitUrl: text('next_visit_url'),
+  tentHistory: text('tent_history'),
+  verificationSummary: text('verification_summary'),
+  verifiedAt: timestamp('verified_at'),
   runId: text('run_id'),
   discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
@@ -853,6 +866,7 @@ export const vereinsRadar = pgTable('vereins_radar', {
   regionIdx: index('vereins_radar_region_idx').on(table.region),
   scoreIdx: index('vereins_radar_score_idx').on(table.score),
   runIdIdx: index('vereins_radar_run_id_idx').on(table.runId),
+  nextVisitIdx: index('vereins_radar_next_visit_idx').on(table.nextVisitDate),
 }));
 
 export const emailLog = pgTable('email_log', {

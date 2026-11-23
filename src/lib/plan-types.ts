@@ -101,6 +101,32 @@ export interface PlanLabel {
 
 export type PlanElement = PlanTable | PlanArea | PlanBoundary | PlanStage | PlanLabel | PlanRow | PlanWall | PlanDoor;
 
+export interface PlanPoint { x: number; y: number }
+
+export interface PlanMeasurement {
+  id: string;
+  a: PlanPoint;
+  b: PlanPoint;
+  label?: string;
+  /** false = nur im Editor, nicht im Aufbau-/Druckplan. */
+  print?: boolean;
+}
+
+export type MeasurementMode = 'axis' | 'free';
+
+// Im Standard werden wie auf klassischen Zeltplänen nur horizontale oder
+// vertikale Maße erfasst. Der dominante Richtungsausschlag bestimmt die Achse.
+export function measurementEndpoint(a: PlanPoint, b: PlanPoint, mode: MeasurementMode): PlanPoint {
+  if (mode === 'free') return b;
+  return Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)
+    ? { x: b.x, y: a.y }
+    : { x: a.x, y: b.y };
+}
+
+export function measurementDistance(m: { a: PlanPoint; b: PlanPoint }): number {
+  return Math.round(Math.hypot(m.b.x - m.a.x, m.b.y - m.a.y));
+}
+
 export interface PlanLayout {
   version: 1;
   widthCm: number;
@@ -109,6 +135,7 @@ export interface PlanLayout {
   nextNumber: number;
   numbering?: NumberingOptions;
   printDims?: DimCategory[];
+  measurements?: PlanMeasurement[];
   elements: PlanElement[];
 }
 
@@ -521,6 +548,14 @@ export function planBounds(layout: PlanLayout) {
     maxX = Math.max(maxX, el.x + el.w);
     maxY = Math.max(maxY, el.y + el.h);
   }
+  // Auch weit außerhalb liegende manuelle Maßketten dürfen im Druck und beim
+  // Einpassen nicht abgeschnitten werden.
+  for (const m of layout.measurements ?? []) {
+    minX = Math.min(minX, m.a.x, m.b.x);
+    minY = Math.min(minY, m.a.y, m.b.y);
+    maxX = Math.max(maxX, m.a.x, m.b.x);
+    maxY = Math.max(maxY, m.a.y, m.b.y);
+  }
   minY -= 60; // Tür-/Zelt-Beschriftungen oberhalb der Kante
   return { minX, minY, maxX, maxY };
 }
@@ -709,5 +744,11 @@ export function snapValue(value: number, candidates: number[], threshold: number
 export function isLayout(value: unknown): value is PlanLayout {
   if (!value || typeof value !== 'object') return false;
   const l = value as PlanLayout;
-  return l.version === 1 && Array.isArray(l.elements) && typeof l.widthCm === 'number' && typeof l.heightCm === 'number';
+  const validMeasurements = l.measurements === undefined || (Array.isArray(l.measurements) && l.measurements.length <= 500 && l.measurements.every(m =>
+    m && typeof m.id === 'string' && m.id.length <= 100 &&
+    m.a && m.b && Number.isFinite(m.a.x) && Number.isFinite(m.a.y) && Number.isFinite(m.b.x) && Number.isFinite(m.b.y) &&
+    (m.label === undefined || (typeof m.label === 'string' && m.label.length <= 80)) &&
+    (m.print === undefined || typeof m.print === 'boolean')
+  ));
+  return l.version === 1 && Array.isArray(l.elements) && typeof l.widthCm === 'number' && typeof l.heightCm === 'number' && validMeasurements;
 }

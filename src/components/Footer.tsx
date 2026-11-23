@@ -39,7 +39,7 @@ export default function Footer() {
           </div>
           
           <div className="flex flex-col items-start md:items-start text-left">
-            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("nav_title")}</h4>
+            <h3 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("nav_title")}</h3>
             <ul className="space-y-3 md:space-y-4 text-sm font-bold text-white/80">
               <li><Link href="/#about" className="hover:text-white transition-colors">{navT("about")}</Link></li>
               <li><Link href="/#services" className="hover:text-white transition-colors">{navT("services")}</Link></li>
@@ -50,7 +50,7 @@ export default function Footer() {
           </div>
           
           <div className="flex flex-col items-start md:items-start text-left">
-            <h4 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("contact_title")}</h4>
+            <h3 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("contact_title")}</h3>
             <ul className="space-y-3 md:space-y-4 text-white/80 text-sm break-words hyphens-auto pr-2">
               <li>MAURER EVENTS</li>
               <li>Schwaiger Str. 6</li>

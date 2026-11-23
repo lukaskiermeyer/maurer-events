@@ -13,6 +13,7 @@ const MAX_ITEMS = 100;
 
 const LEAD_TYPES = ["open", "watch", "signal"] as const;
 const PLANNING_SIGNALS = ["none", "festausschuss", "termin", "presse"] as const;
+const VERIFICATION_STATUSES = ["verified", "unverified", "expired", "already_awarded"] as const;
 
 const ItemSchema = z.object({
   sourceUrl: z.string().url(),
@@ -23,6 +24,10 @@ const ItemSchema = z.object({
   region: z.string().nullable().optional().default(null),
   eventDate: z.string().nullable().optional().default(null),
   sourceDate: z.string().nullable().optional().default(null),
+  applicationDeadline: z.string().nullable().optional().default(null),
+  verificationStatus: z.enum(VERIFICATION_STATUSES).optional().default("unverified"),
+  verificationSummary: z.string().nullable().optional().default(null),
+  verifiedAt: z.string().datetime().nullable().optional().default(null),
   monthsAhead: z.number().int().nullable().optional().default(null),
   jubileeYears: z.number().int().nullable().optional().default(null),
   festwirtStatus: z.enum(["open", "taken", "unknown", "closed"]).default("unknown"),
@@ -53,6 +58,7 @@ const ItemSchema = z.object({
 });
 
 const LEAD_PRIORITY: Record<string, number> = { watch: 1, signal: 2, open: 3 };
+const VERIFICATION_PRIORITY: Record<string, number> = { unverified: 1, verified: 2, expired: 0, already_awarded: 0 };
 
 function getToken(request: Request): string {
   const auth = request.headers.get("authorization");
@@ -67,8 +73,10 @@ function getToken(request: Request): string {
   ).trim();
 }
 
-function expectedToken(): string {
-  return (process.env.MAURER_API_KEY || "").trim();
+function expectedTokens(): string[] {
+  return [process.env.MAURER_API_KEY, process.env.FEST_CHANCEN_INGEST_TOKEN]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -76,6 +84,10 @@ function safeEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b);
   if (ba.length === 0 || ba.length !== bb.length) return false;
   return crypto.timingSafeEqual(ba, bb);
+}
+
+function isAuthorized(provided: string, expected: string[]): boolean {
+  return expected.some((tok) => safeEqual(provided, tok));
 }
 
 function normalizeUrl(raw: string): string {
@@ -92,18 +104,32 @@ function sha256Hex(value: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Kulanz für mehrtägige Feste / ungenaue Datumsangaben (dateAssumed)
-const STALE_EVENT_GRACE_MS = 31 * DAY_MS;
-const MAX_SOURCE_AGE_MS = Math.round(24 * 30.44 * DAY_MS);
+const STALE_EVENT_GRACE_MS = 14 * DAY_MS;
+const MAX_SOURCE_AGE_MS = Math.round(12 * 30.44 * DAY_MS);
 
 function parseDateOnly(raw: string | null): Date | null {
   if (!raw) return null;
-  const d = raw.includes("T") ? new Date(raw) : new Date(raw + "T00:00:00Z");
+  const s = raw.trim();
+  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  const iso = de ? `${de[3]}-${de[2].padStart(2, "0")}-${de[1].padStart(2, "0")}` : s;
+  const d = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00Z");
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// Alte Quellen (z.B. Presseberichte von 2021) und vergangene Feste sind keine
-// Bewerbungskandidaten; der Filter greift unabhängig von der n8n-Version.
+function normalizeIsoDate(raw: string | null): string | null {
+  const d = parseDateOnly(raw);
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
+// Alte Quellen, abgelaufene Bewerbungsfristen, bereits vergebene oder vergangene Feste
+// werden dynamisch gegen das aktuelle Datum (`now`) abgewiesen.
 function staleReason(item: z.infer<typeof ItemSchema>, now: Date): string | null {
+  if (item.verificationStatus === "expired" || item.verificationStatus === "already_awarded") {
+    return "verification_rejected";
+  }
+  const todayStartUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const deadline = parseDateOnly(item.applicationDeadline);
+  if (deadline && deadline.getTime() < todayStartUtc) return "deadline_expired";
   const eventDate = parseDateOnly(item.eventDate);
   if (eventDate && eventDate.getTime() < now.getTime() - STALE_EVENT_GRACE_MS) return "event_date_past";
   if (item.eventYear != null && item.eventYear < now.getUTCFullYear()) return "event_year_past";
@@ -245,12 +271,12 @@ async function notifyLead(candidate: NotifyCandidate) {
 }
 
 export async function POST(request: Request) {
-  const expected = expectedToken();
-  if (!expected) {
+  const expected = expectedTokens();
+  if (expected.length === 0) {
     return NextResponse.json({ ok: false, error: "server_not_configured" }, { status: 500 });
   }
   const provided = getToken(request);
-  if (!provided || !safeEqual(provided, expected)) {
+  if (!provided || !isAuthorized(provided, expected)) {
     return unauthorized();
   }
 
@@ -348,6 +374,13 @@ export async function POST(request: Request) {
           }
 
           const recheckDate = item.recheckAt ? new Date(item.recheckAt + "T00:00:00Z") : null;
+          const normalizedSourceDate = normalizeIsoDate(item.sourceDate);
+          const normalizedDeadline = normalizeIsoDate(item.applicationDeadline);
+          const verifiedAtDate = item.verifiedAt
+            ? new Date(item.verifiedAt)
+            : item.verificationStatus === "verified"
+              ? now
+              : null;
 
           if (existing.length > 0) {
             const old = existing[0];
@@ -385,6 +418,8 @@ export async function POST(request: Request) {
             if (item.location != null) updateSet.location = item.location;
             if (item.region != null) updateSet.region = item.region;
             if (item.eventDate != null) updateSet.eventDate = item.eventDate;
+            if (normalizedSourceDate != null) updateSet.sourceDate = normalizedSourceDate;
+            if (normalizedDeadline != null) updateSet.applicationDeadline = normalizedDeadline;
             if (item.monthsAhead != null) updateSet.monthsAhead = item.monthsAhead;
             if (item.jubileeYears != null) updateSet.jubileeYears = item.jubileeYears;
             if (item.festwirtStatus) updateSet.festwirtStatus = item.festwirtStatus;
@@ -407,6 +442,14 @@ export async function POST(request: Request) {
             if (item.recurring !== undefined) updateSet.recurring = item.recurring;
             if (recheckDate) updateSet.recheckAt = recheckDate;
             if (item.emergency !== undefined) updateSet.emergency = item.emergency;
+            // Verifizierung nie von verified auf unverified zurückstufen
+            const oldVerPrio = VERIFICATION_PRIORITY[old.verificationStatus || "unverified"] ?? 1;
+            const newVerPrio = VERIFICATION_PRIORITY[item.verificationStatus || "unverified"] ?? 1;
+            if (newVerPrio >= oldVerPrio) {
+              updateSet.verificationStatus = item.verificationStatus;
+              if (item.verificationSummary != null) updateSet.verificationSummary = item.verificationSummary;
+              if (verifiedAtDate) updateSet.verifiedAt = verifiedAtDate;
+            }
 
             await tx
               .update(festChances)
@@ -429,6 +472,11 @@ export async function POST(request: Request) {
               location: item.location,
               region: item.region,
               eventDate: item.eventDate,
+              sourceDate: normalizedSourceDate,
+              applicationDeadline: normalizedDeadline,
+              verificationStatus: item.verificationStatus || "unverified",
+              verificationSummary: item.verificationSummary,
+              verifiedAt: verifiedAtDate,
               monthsAhead: item.monthsAhead,
               jubileeYears: item.jubileeYears,
               festwirtStatus: item.festwirtStatus,
