@@ -18,7 +18,8 @@ const aileron = localFont({
 });
 
 const yesevaOne = localFont({
-  src: "../../public/fonts/YesevaOne-Regular.ttf",
+  // Verlustfrei aus der beibehaltenen TTF-Quelle komprimiert (Glyphen verifiziert).
+  src: "../../public/fonts/YesevaOne-Regular.woff2",
   weight: "400",
   style: "normal",
   variable: "--font-yeseva",
