@@ -26,17 +26,17 @@ const GALLERY_TEASER_COUNT = 8;
 
 function formatDateRange(start: Date, end: Date | null, locale: string): string {
   const tag = DATE_TAG[locale] ?? "de-DE";
-  const full = (date: Date) => date.toLocaleDateString(tag, { day: "2-digit", month: "long", year: "numeric" });
+  const full = (date: Date) => date.toLocaleDateString(tag, { day: "2-digit", month: "long", year: "numeric", timeZone: "UTC" });
   if (!end || end.getTime() === start.getTime()) return full(start);
-  if (end.getFullYear() === start.getFullYear() && end.getMonth() === start.getMonth()) {
+  if (end.getUTCFullYear() === start.getUTCFullYear() && end.getUTCMonth() === start.getUTCMonth()) {
     return locale === "en"
-      ? `${start.toLocaleDateString(tag, { month: "long" })} ${start.getDate()}–${end.getDate()}, ${end.getFullYear()}`
-      : `${start.getDate()}.–${full(end)}`;
+      ? `${start.toLocaleDateString(tag, { month: "long", timeZone: "UTC" })} ${start.getUTCDate()}–${end.getUTCDate()}, ${end.getUTCFullYear()}`
+      : `${start.getUTCDate()}.–${full(end)}`;
   }
-  if (end.getFullYear() === start.getFullYear()) {
+  if (end.getUTCFullYear() === start.getUTCFullYear()) {
     return locale === "en"
-      ? `${start.toLocaleDateString(tag, { month: "long", day: "numeric" })} – ${full(end)}`
-      : `${start.toLocaleDateString(tag, { day: "2-digit", month: "long" })} – ${full(end)}`;
+      ? `${start.toLocaleDateString(tag, { month: "long", day: "numeric", timeZone: "UTC" })} – ${full(end)}`
+      : `${start.toLocaleDateString(tag, { day: "2-digit", month: "long", timeZone: "UTC" })} – ${full(end)}`;
   }
   return `${full(start)} – ${full(end)}`;
 }

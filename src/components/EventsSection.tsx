@@ -283,9 +283,9 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
             ) : (
                 initialEvents.map((event, index: number) => {
                   const dateObj = new Date(event.date);
-                  const day = dateObj.getDate().toString().padStart(2, '0');
-                  const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getMonth()];
-                  const year = dateObj.getFullYear();
+                  const day = dateObj.getUTCDate().toString().padStart(2, '0');
+                  const month = (MONTHS[locale] ?? MONTHS.de)[dateObj.getUTCMonth()];
+                  const year = dateObj.getUTCFullYear();
 
                   const title = localized(event, "title", locale);
                   const description = localized(event, "description", locale);
@@ -349,6 +349,7 @@ export default function EventsSection({ initialEvents, documentsByEvent = {} }: 
                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                                  </svg>
                                  {ui(locale, { de: "Karte öffnen", en: "Open map", bar: "Karte aufmachn" })}
+                                 <span className="sr-only"> – {title}</span>
                                </a>
                             </div>
 

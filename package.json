@@ -94,10 +94,10 @@
     "typescript": "^6.0.3"
   },
   "browserslist": [
-    ">0.3%",
-    "not dead",
-    "not op_mini all",
-    "not IE 11"
+    "chrome 111",
+    "edge 111",
+    "firefox 111",
+    "safari 16.4"
   ],
   "overrides": {
     "source-map-js": "^1.2.2",

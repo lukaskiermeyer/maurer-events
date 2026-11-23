@@ -153,7 +153,7 @@ export default function GallerySection({ albums, sneakPeek = false, favorites = 
                 <div className="p-3 sm:p-6">
                   <h3 className="font-subhead text-lg sm:text-xl text-base-dark mb-1 group-hover:text-accent-green transition-colors line-clamp-1">{title}</h3>
                   <p className="text-base-dark/50 text-xs sm:text-sm font-bold mb-2 sm:mb-3">
-                    {new Date(album.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE')}
+                    {new Date(album.date).toLocaleDateString(DATE_TAG[locale] ?? 'de-DE', { timeZone: 'UTC' })}
                   </p>
                   <p className="font-sans text-xs sm:text-sm text-base-dark/70 line-clamp-2 whitespace-pre-line">
                     {description}

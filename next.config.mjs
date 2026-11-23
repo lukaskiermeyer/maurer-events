@@ -12,7 +12,7 @@ const nextConfig = {
   experimental: {
     // Browser-side image preparation leaves room below Vercel's 4.5 MB limit.
     serverActions: { bodySizeLimit: '4mb' },
-    optimizeCss: true,
+    inlineCss: true,
     optimizePackageImports: [
       'lucide-react',
       'framer-motion',
@@ -22,6 +22,8 @@ const nextConfig = {
     ],
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 480],
     qualities: [70, 75],
     remotePatterns: [
       {
@@ -87,6 +89,10 @@ const nextConfig = {
           {
             key: 'X-DNS-Prefetch-Control',
             value: 'on',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
           },
         ],
       },
