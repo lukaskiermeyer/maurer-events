@@ -17,7 +17,7 @@ export default function Footer() {
     <footer className="footer-fade text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-16 md:py-24">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8">
-          
+
           <div className="col-span-2 md:col-span-2 flex flex-col items-center md:items-start text-center md:text-left">
             <Link href="/#start" className="mb-6 md:mb-8 hover:opacity-90 transition-opacity block">
               <Image src="/LogoFinalGrün_MaurerEvents.svg" alt="Maurer Events Logo" width={597} height={280} sizes="(max-width: 768px) 200px, 250px" className="h-16 sm:h-20 md:h-24 w-auto object-contain brightness-0 invert drop-shadow-md" />
@@ -37,7 +37,7 @@ export default function Footer() {
               </a>
             </div>
           </div>
-          
+
           <div className="flex flex-col items-start md:items-start text-left">
             <h3 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("nav_title")}</h3>
             <ul className="space-y-3 md:space-y-4 text-sm font-bold text-white/80">
@@ -48,7 +48,7 @@ export default function Footer() {
               <li><Link href="/#contact" className="hover:text-white transition-colors">{navT("contact")}</Link></li>
             </ul>
           </div>
-          
+
           <div className="flex flex-col items-start md:items-start text-left">
             <h3 className="font-display font-bold mb-4 md:mb-6 text-white uppercase tracking-widest text-xs">{t("contact_title")}</h3>
             <ul className="space-y-3 md:space-y-4 text-white/80 text-sm break-words hyphens-auto pr-2">
@@ -64,7 +64,7 @@ export default function Footer() {
           </div>
         </div>
       </div>
-        
+
       <div>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-16 py-2 flex flex-col md:flex-row justify-between items-center md:items-center gap-2 md:gap-4">
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left text-xs text-white/70 font-sans font-medium">

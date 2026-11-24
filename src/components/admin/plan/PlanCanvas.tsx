@@ -217,12 +217,12 @@ export function PlanMeasurements({ measurements, selectedMeasure = null, onMeasu
 }
 
 /** Statischer SVG für Druck (A3) — füllt die viewBox komplett. */
-export function PlanStaticSvg({ layout, occupancy, showDims = false, neutral = false, className }: { layout: PlanLayout; occupancy?: Record<string, TableOccupancy>; showDims?: boolean; neutral?: boolean; className?: string }) {
+export function PlanStaticSvg({ layout, occupancy, showDims = false, neutral = false, edit = false, className }: { layout: PlanLayout; occupancy?: Record<string, TableOccupancy>; showDims?: boolean; neutral?: boolean; edit?: boolean; className?: string }) {
   const pad = showDims ? 260 : 120;
   const b = planBounds(layout);
   return (
     <svg viewBox={`${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}`} className={className} role="img" aria-label="Tischplan">
-      <PlanElements layout={layout} occupancy={occupancy} neutral={neutral} />
+      <PlanElements layout={layout} occupancy={occupancy} neutral={neutral} edit={edit} />
       {showDims && <PlanDimensions layout={layout} />}
       {showDims && <PlanMeasurements measurements={(layout.measurements ?? []).filter(m => m.print !== false)} />}
     </svg>

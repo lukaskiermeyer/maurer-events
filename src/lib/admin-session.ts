@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { adminPasskeySessions, adminUsers } from '@/db/schema';
+import { adminPasskeySessions, adminTrustedDevices, adminUsers } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { randomToken, hashToken, ipHash as ipHashFn } from './admin-crypto';
 
@@ -83,15 +83,25 @@ export async function getAdminSession(token: string | undefined): Promise<{
 
 export async function revokeAdminSession(token: string, reason?: string): Promise<void> {
   const tokenHash = hashToken(token);
-  await db.update(adminPasskeySessions)
-    .set({ revokedAt: new Date(), revokeReason: reason ?? 'logout' })
-    .where(eq(adminPasskeySessions.tokenHash, tokenHash));
+  await db.transaction(async tx => {
+    await tx.update(adminPasskeySessions)
+      .set({ revokedAt: new Date(), revokeReason: reason ?? 'logout' })
+      .where(eq(adminPasskeySessions.tokenHash, tokenHash));
+    // Nur expliziter Widerruf sperrt das Gerät; natürlicher Session-Ablauf nicht.
+    await tx.delete(adminTrustedDevices).where(eq(adminTrustedDevices.sessionHash, tokenHash));
+  });
 }
 
 export async function revokeAllAdminSessions(adminId: string, reason?: string): Promise<void> {
-  await db.update(adminPasskeySessions)
-    .set({ revokedAt: new Date(), revokeReason: reason ?? 'revoke_all' })
-    .where(and(eq(adminPasskeySessions.adminId, adminId), isNull(adminPasskeySessions.revokedAt)));
+  const [admin] = await db.select({ email: adminUsers.email }).from(adminUsers).where(eq(adminUsers.id, adminId));
+  await db.transaction(async tx => {
+    await tx.update(adminPasskeySessions)
+      .set({ revokedAt: new Date(), revokeReason: reason ?? 'revoke_all' })
+      .where(and(eq(adminPasskeySessions.adminId, adminId), isNull(adminPasskeySessions.revokedAt)));
+    if (admin) {
+      await tx.delete(adminTrustedDevices).where(eq(adminTrustedDevices.email, admin.email.trim().toLowerCase()));
+    }
+  });
 }
 
 export async function setStepUp(token: string): Promise<void> {

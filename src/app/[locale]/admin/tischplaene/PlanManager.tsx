@@ -13,6 +13,10 @@ import {
 } from "@/lib/plan-types";
 import type { PlanPresetRecord } from "@/types/domain";
 
+import dynamic from "next/dynamic";
+
+const PlanImageImportDialog = dynamic(() => import("@/components/admin/plan/image-import/PlanImageImportDialog"), { ssr: false });
+
 type Rect = { x: number; y: number; w: number; h: number };
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -81,6 +85,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   const [selectedMeasure, setSelectedMeasure] = useState<number | null>(null);
   const [constantsOpen, setConstantsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
+  const [imageImportOpen, setImageImportOpen] = useState(false);
   const [doorWidth, setDoorWidth] = useState(220);
   const [doorLabel, setDoorLabel] = useState("Tür 220cm");
   const [history, setHistory] = useState<PlanLayout[]>([]);
@@ -156,6 +161,20 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
   };
 
   const guardDirty = async () => !dirty || await dialog.confirm({ title: "Ungespeicherte Änderungen", message: "Der aktuelle Plan wurde noch nicht gespeichert. Änderungen verwerfen?", confirmLabel: "Verwerfen", danger: true });
+
+  const applyImageImport = async (imported: PlanLayout) => {
+    if (!await guardDirty()) return false;
+    commit(() => imported);
+    setNumbering({ ...DEFAULT_NUMBERING });
+    setSelectedIds([]);
+    setSelectedMeasure(null);
+    setStep(7);
+    setTool("select");
+    setDrawPreset(null);
+    setImageImportOpen(false);
+    toast.showToast("Bild importiert – bitte Tische, Bereiche und Maße prüfen.", "success");
+    return true;
+  };
 
   const selectPreset = async (id: string) => {
     if (id === currentId) return;
@@ -617,8 +636,9 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
           )}
         </div>
         <input value={name} onChange={e => { setName(e.target.value); setDirty(true); }} maxLength={80} className="min-h-11 flex-1 min-w-40 rounded-xl border border-border-light bg-white px-3 font-bold" aria-label="Plan-Name" />
+        <button type="button" onClick={() => setImageImportOpen(true)} className="min-h-11 rounded-xl border border-accent-green bg-accent-green/10 px-4 font-bold text-base-dark hover:bg-accent-green hover:text-white">Aus Bild erstellen</button>
         <label className="min-h-11 inline-flex cursor-pointer items-center rounded-xl border border-border-light bg-white px-4 font-bold hover:border-accent-green">
-          Import
+          JSON-Import
           <input type="file" accept="application/json,.json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void importPreset(f); e.target.value = ""; }} />
         </label>
         <button type="button" onClick={exportPreset} className="min-h-11 rounded-xl border border-border-light bg-white px-4 font-bold hover:border-accent-green">Export</button>
@@ -1268,6 +1288,7 @@ export default function PlanManager({ presets: initialPresets, initialPresetId }
           )}
         </div>
       </div>
+      {imageImportOpen && <PlanImageImportDialog onClose={() => setImageImportOpen(false)} onApply={applyImageImport} />}
     </div>
   );
 }

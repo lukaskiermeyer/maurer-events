@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 import type { db as appDb } from '../src/db';
 import { csvCell } from '../src/lib/csv';
@@ -13,7 +14,7 @@ import { sniffMime } from '../src/lib/file-types';
 import { boundedBody, boundedJson } from '../src/lib/request-body';
 import { BookingError } from '../src/lib/reservation-policy';
 import { safeStaffMember } from '../src/lib/staff-privacy';
-import { hmacSha256 } from '../src/lib/admin-crypto';
+import { hmacSha256, hashToken } from '../src/lib/admin-crypto';
 
 const TEST_SECRET = 'security-regression-test-secret-0123456789abcdef';
 const databaseName = `security_regression_${randomUUID().replaceAll('-', '')}`;
@@ -26,6 +27,12 @@ let created = false;
 let consumeRecoveryCode: typeof import('../src/lib/admin-recovery').consumeRecoveryCode;
 let consumeRecoveryCodeForAdmin: typeof import('../src/lib/admin-mfa').consumeRecoveryCodeForAdmin;
 let updateLastStep: typeof import('../src/lib/admin-mfa').updateLastStep;
+let createTrustedDevice: typeof import('../src/lib/admin-mfa').createTrustedDevice;
+let findTrustedDevice: typeof import('../src/lib/admin-mfa').findTrustedDevice;
+let createAdminSession: typeof import('../src/lib/admin-session').createAdminSession;
+let getAdminSession: typeof import('../src/lib/admin-session').getAdminSession;
+let revokeAdminSession: typeof import('../src/lib/admin-session').revokeAdminSession;
+let revokeAllAdminSessions: typeof import('../src/lib/admin-session').revokeAllAdminSessions;
 let createEnrollmentToken: typeof import('../src/lib/admin-enrollment').createEnrollmentToken;
 let consumeEnrollmentToken: typeof import('../src/lib/admin-enrollment').consumeEnrollmentToken;
 let validateEnrollmentToken: typeof import('../src/lib/admin-enrollment').validateEnrollmentToken;
@@ -50,7 +57,8 @@ before(async () => {
   process.env.STAFF_DATA_KEY = 'security-regression-staff-key-0123456789';
   appClient = (await import('../src/db')).db.$client;
   ({ consumeRecoveryCode } = await import('../src/lib/admin-recovery'));
-  ({ consumeRecoveryCodeForAdmin, updateLastStep } = await import('../src/lib/admin-mfa'));
+  ({ consumeRecoveryCodeForAdmin, updateLastStep, createTrustedDevice, findTrustedDevice } = await import('../src/lib/admin-mfa'));
+  ({ createAdminSession, getAdminSession, revokeAdminSession, revokeAllAdminSessions } = await import('../src/lib/admin-session'));
   ({ createEnrollmentToken, consumeEnrollmentToken, validateEnrollmentToken } = await import('../src/lib/admin-enrollment'));
   ({ hashRecoveryCodeLegacy } = await import('../src/lib/totp'));
 });
@@ -207,4 +215,60 @@ test('Passwort-Reset-Verbrauch entwertet auch andere offene Tokens', async () =>
   assert.equal(results.filter(Boolean).length, 1);
   assert.equal((await validateEnrollmentToken({ rawToken: reset.rawToken })).ok, false);
   assert.equal((await validateEnrollmentToken({ rawToken: invite.rawToken, pin: invite.pin })).ok, false);
+});
+
+const trustedDeviceCtx = { ip: '203.0.113.27', userAgent: 'security-regression-browser' };
+
+test('Session-Widerruf entwertet nur das zugeordnete Trusted Device', async () => {
+  const adminRow = await adminFixture();
+  const otherAdmin = await adminFixture();
+  const session = await createAdminSession({ adminId: adminRow.id });
+  const otherSession = await createAdminSession({ adminId: otherAdmin.id });
+  const raw = await createTrustedDevice(adminRow.email, trustedDeviceCtx, session.token);
+  const otherRaw = await createTrustedDevice(otherAdmin.email, trustedDeviceCtx, otherSession.token);
+
+  await revokeAdminSession(session.token, 'security_regression');
+
+  assert.equal(await getAdminSession(session.token), null);
+  assert.equal(await findTrustedDevice(raw, adminRow.email, trustedDeviceCtx), null);
+  assert.ok(await findTrustedDevice(otherRaw, otherAdmin.email, trustedDeviceCtx));
+  assert.ok(await getAdminSession(otherSession.token));
+});
+
+test('Globaler Session-Widerruf entwertet alle Trusted Devices dieses Admins', async () => {
+  const adminRow = await adminFixture();
+  const otherAdmin = await adminFixture();
+  const sessions = await Promise.all([
+    createAdminSession({ adminId: adminRow.id }),
+    createAdminSession({ adminId: adminRow.id }),
+  ]);
+  const otherSession = await createAdminSession({ adminId: otherAdmin.id });
+  const rawTokens = await Promise.all(sessions.map(session => createTrustedDevice(adminRow.email, trustedDeviceCtx, session.token)));
+  const otherRaw = await createTrustedDevice(otherAdmin.email, trustedDeviceCtx, otherSession.token);
+
+  await revokeAllAdminSessions(adminRow.id, 'security_regression');
+
+  for (const session of sessions) assert.equal(await getAdminSession(session.token), null);
+  for (const raw of rawTokens) assert.equal(await findTrustedDevice(raw, adminRow.email, trustedDeviceCtx), null);
+  assert.ok(await findTrustedDevice(otherRaw, otherAdmin.email, trustedDeviceCtx));
+  assert.ok(await getAdminSession(otherSession.token));
+});
+
+test('Natürlicher Session-Ablauf lässt das Trusted Device bis zu seinem eigenen Ablauf gültig', async () => {
+  const adminRow = await adminFixture();
+  const session = await createAdminSession({ adminId: adminRow.id });
+  const raw = await createTrustedDevice(adminRow.email, trustedDeviceCtx, session.token);
+  await connection.update(schema.adminPasskeySessions)
+    .set({ idleExpiresAt: new Date(0) })
+    .where(eq(schema.adminPasskeySessions.tokenHash, hashToken(session.token)));
+
+  assert.equal(await getAdminSession(session.token), null);
+  assert.ok(await findTrustedDevice(raw, adminRow.email, trustedDeviceCtx));
+});
+
+test('API-Logout löscht Session, MFA-Fenster und Trusted-Device-Cookie', async () => {
+  const source = await readFile('src/app/api/admin/auth/logout/route.ts', 'utf8');
+  for (const cookie of ['__Host-adm_session', '__Host-adm_mfa', '__Host-adm_trusted']) {
+    assert.ok(source.includes(`cookieStore.delete('${cookie}');`), `${cookie} wird nicht gelöscht`);
+  }
 });

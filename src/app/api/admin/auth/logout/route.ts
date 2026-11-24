@@ -10,6 +10,7 @@ export async function POST() {
   }
   cookieStore.delete('__Host-adm_session');
   cookieStore.delete('__Host-adm_mfa');
+  cookieStore.delete('__Host-adm_trusted');
   const res = NextResponse.json({ ok: true });
   res.headers.set('Cache-Control', 'no-store');
   return res;
