@@ -21,6 +21,12 @@ const nextConfig = {
       'date-fns',
     ],
   },
+  turbopack: {
+    resolveAlias: {
+      // OpenCV referenziert fs nur in seinem im Browser nicht ausgeführten Node-Zweig.
+      fs: { browser: './src/lib/empty-browser-module.ts' },
+    },
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 480],
